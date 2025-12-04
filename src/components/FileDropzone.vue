@@ -47,8 +47,8 @@ function openFileDialog() {
   <div
     class="relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer"
     :class="isDragging 
-      ? 'border-flux-500 bg-flux-50 scale-[1.02]' 
-      : 'border-gray-300 hover:border-flux-400 hover:bg-gray-50'"
+      ? 'border-flux-500 bg-flux-50 dark:bg-flux-900/20 scale-[1.02]' 
+      : 'border-gray-300 dark:border-gray-600 hover:border-flux-400 hover:bg-gray-50 dark:hover:bg-gray-800'"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
@@ -67,7 +67,7 @@ function openFileDialog() {
     <!-- Icon -->
     <div 
       class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors"
-      :class="isDragging ? 'bg-flux-100 text-flux-600' : 'bg-gray-100 text-gray-400'"
+      :class="isDragging ? 'bg-flux-100 dark:bg-flux-900/50 text-flux-600 dark:text-flux-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'"
     >
       <Upload v-if="isDragging" class="w-8 h-8" />
       <FileText v-else class="w-8 h-8" />
@@ -76,17 +76,17 @@ function openFileDialog() {
     <!-- Text -->
     <h3 
       class="text-lg font-semibold mb-2"
-      :class="isDragging ? 'text-flux-700' : 'text-gray-700'"
+      :class="isDragging ? 'text-flux-700 dark:text-flux-400' : 'text-gray-700 dark:text-gray-200'"
     >
       {{ isDragging ? 'Drop your PDF here' : 'Upload PDF files' }}
     </h3>
     
-    <p class="text-sm text-gray-500 mb-4">
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
       Drag & drop PDF files here, or click to browse
     </p>
     
     <!-- Supported formats hint -->
-    <p class="text-xs text-gray-400">
+    <p class="text-xs text-gray-400 dark:text-gray-500">
       Supports: .pdf files
     </p>
     

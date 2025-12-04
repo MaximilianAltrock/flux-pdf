@@ -23,23 +23,23 @@ class ThumbnailCache {
   get(pageRef: PageReference, width: number): string | null {
     const key = this.getKey(pageRef, width)
     const entry = this.cache.get(key)
-    
+
     if (entry) {
       entry.lastAccessed = Date.now()
       return entry.url
     }
-    
+
     return null
   }
 
   set(pageRef: PageReference, width: number, url: string): void {
     const key = this.getKey(pageRef, width)
-    
+
     // Evict if at capacity
     if (this.cache.size >= this.maxSize) {
       this.evictLRU()
     }
-    
+
     this.cache.set(key, { url, lastAccessed: Date.now() })
   }
 
@@ -83,7 +83,7 @@ export function useThumbnailRenderer() {
 
   /**
    * Render a PDF page to a canvas and return a blob URL
-   * 
+   *
    * @param pageRef - The page reference to render
    * @param displayWidth - The CSS display width (actual render will be higher for sharpness)
    * @param scaleFactor - Multiplier for render resolution (default 3x for crisp text)
@@ -91,7 +91,7 @@ export function useThumbnailRenderer() {
   async function renderThumbnail(
     pageRef: PageReference,
     displayWidth = 200,
-    scaleFactor = 3
+    scaleFactor = 2,
   ): Promise<string> {
     // Check cache first
     const cached = thumbnailCache.get(pageRef, displayWidth)
@@ -106,55 +106,52 @@ export function useThumbnailRenderer() {
     try {
       // Get the PDF document
       const pdfDoc = await pdfManager.getPdfDocument(pageRef.sourceFileId)
-      
+
       // Check if aborted
       if (abortController.signal.aborted) {
         throw new Error('Render aborted')
       }
-      
+
       // Get the page (PDF.js uses 1-based indexing)
       const page = await pdfDoc.getPage(pageRef.sourcePageIndex + 1)
-      
-      // Calculate scale - render at higher resolution for sharpness
-      // Account for device pixel ratio for retina displays
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const renderWidth = displayWidth * scaleFactor * dpr
-      
+
+      const renderWidth = displayWidth * scaleFactor
+
       const viewport = page.getViewport({ scale: 1, rotation: pageRef.rotation })
       const scale = renderWidth / viewport.width
       const scaledViewport = page.getViewport({ scale, rotation: pageRef.rotation })
-      
+
       // Create canvas at high resolution
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')!
-      
+
       canvas.width = Math.floor(scaledViewport.width)
       canvas.height = Math.floor(scaledViewport.height)
-      
+
       // Render at high resolution
       await page.render({
         canvasContext: context,
-        viewport: scaledViewport
+        viewport: scaledViewport,
       }).promise
-      
+
       // Check if aborted
       if (abortController.signal.aborted) {
         throw new Error('Render aborted')
       }
-      
+
       // Convert to blob URL with good quality
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
-          (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
-          'image/png'
+          (b) => (b ? resolve(b) : reject(new Error('Failed to create blob'))),
+          'image/png',
         )
       })
-      
+
       const url = URL.createObjectURL(blob)
-      
+
       // Cache it
       thumbnailCache.set(pageRef, displayWidth, url)
-      
+
       return url
     } finally {
       renderQueue.value.delete(pageRef.id)
@@ -203,6 +200,6 @@ export function useThumbnailRenderer() {
     cancelRender,
     cancelAllRenders,
     clearCache,
-    invalidatePage
+    invalidatePage,
   }
 }

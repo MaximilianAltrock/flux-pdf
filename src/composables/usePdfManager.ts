@@ -12,8 +12,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 /**
  * In-memory storage for PDF blobs.
  * Keyed by sourceFileId.
- * 
- * TODO: Migrate to IndexedDB for large files
+ *
  */
 const pdfBlobStore = new Map<string, ArrayBuffer>()
 
@@ -51,18 +50,18 @@ export function usePdfManager() {
   async function loadPdfFile(file: File): Promise<FileUploadResult> {
     try {
       store.setLoading(true, `Loading ${file.name}...`)
-      
+
       // Read file as ArrayBuffer
       const arrayBuffer = await file.arrayBuffer()
-      
+
       // IMPORTANT: Store a copy of the buffer BEFORE passing to PDF.js
       // PDF.js transfers the buffer to a worker, which detaches the original
       const bufferCopy = arrayBuffer.slice(0)
-      
+
       // Parse with PDF.js (this may detach the original arrayBuffer)
       const loadingTask = pdfjs.getDocument({ data: arrayBuffer })
       const pdfDoc = await loadingTask.promise
-      
+
       // Generate source file entry
       const sourceFileId = generateId()
       const sourceFile: SourceFile = {
@@ -70,18 +69,18 @@ export function usePdfManager() {
         filename: file.name,
         pageCount: pdfDoc.numPages,
         fileSize: file.size,
-        addedAt: Date.now()
+        addedAt: Date.now(),
       }
-      
+
       // Store the COPY of the blob (not the potentially detached original)
       pdfBlobStore.set(sourceFileId, bufferCopy)
-      
+
       // Cache the parsed document
       pdfDocCache.set(sourceFileId, pdfDoc)
-      
+
       // Add to store
       store.addSourceFile(sourceFile)
-      
+
       // Create page references for all pages
       const pageRefs: PageReference[] = []
       for (let i = 0; i < pdfDoc.numPages; i++) {
@@ -89,18 +88,18 @@ export function usePdfManager() {
           id: generateId(),
           sourceFileId,
           sourcePageIndex: i,
-          rotation: 0
+          rotation: 0,
         })
       }
-      
+
       // Add pages to the document
       store.addPages(pageRefs)
-      
+
       store.setLoading(false)
-      
+
       return {
         success: true,
-        sourceFile
+        sourceFile,
       }
     } catch (error) {
       store.setLoading(false)
@@ -108,7 +107,7 @@ export function usePdfManager() {
       console.error('PDF load error:', error)
       return {
         success: false,
-        error: message
+        error: message,
       }
     }
   }
@@ -118,7 +117,7 @@ export function usePdfManager() {
    */
   async function loadPdfFiles(files: FileList | File[]): Promise<FileUploadResult[]> {
     const results: FileUploadResult[] = []
-    
+
     for (const file of Array.from(files)) {
       if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
         const result = await loadPdfFile(file)
@@ -126,11 +125,11 @@ export function usePdfManager() {
       } else {
         results.push({
           success: false,
-          error: `${file.name} is not a PDF file`
+          error: `${file.name} is not a PDF file`,
         })
       }
     }
-    
+
     return results
   }
 
@@ -142,17 +141,17 @@ export function usePdfManager() {
     if (pdfDocCache.has(sourceFileId)) {
       return pdfDocCache.get(sourceFileId)
     }
-    
+
     // Otherwise, load from blob store
     const arrayBuffer = pdfBlobStore.get(sourceFileId)
     if (!arrayBuffer) {
       throw new Error(`Source file ${sourceFileId} not found`)
     }
-    
+
     // Use a copy to prevent detachment issues
     const loadingTask = pdfjs.getDocument({ data: arrayBuffer.slice(0) })
     const pdfDoc = await loadingTask.promise
-    
+
     pdfDocCache.set(sourceFileId, pdfDoc)
     return pdfDoc
   }
@@ -170,6 +169,12 @@ export function usePdfManager() {
    * Remove a source file and clean up
    */
   function removeSourceFile(sourceFileId: string): void {
+    const doc = pdfDocCache.get(sourceFileId)
+    if (doc) {
+      doc.cleanup() // Cleans up rendering resources
+      doc.destroy() // Kills the worker thread for this doc
+    }
+
     pdfBlobStore.delete(sourceFileId)
     pdfDocCache.delete(sourceFileId)
     store.removeSourceFile(sourceFileId)
@@ -192,6 +197,6 @@ export function usePdfManager() {
     getPdfDocument,
     getPdfBlob,
     removeSourceFile,
-    clearAll
+    clearAll,
   }
 }

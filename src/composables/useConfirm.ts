@@ -1,0 +1,98 @@
+import { ref } from 'vue'
+
+export type ConfirmVariant = 'danger' | 'warning' | 'info'
+
+export interface ConfirmOptions {
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  variant?: ConfirmVariant
+}
+
+interface ConfirmState extends ConfirmOptions {
+  resolve: (value: boolean) => void
+}
+
+const isOpen = ref(false)
+const state = ref<ConfirmState | null>(null)
+
+/**
+ * Composable for showing confirmation dialogs
+ */
+export function useConfirm() {
+  /**
+   * Show a confirmation dialog and wait for user response
+   */
+  function confirm(options: ConfirmOptions): Promise<boolean> {
+    return new Promise((resolve) => {
+      state.value = {
+        ...options,
+        confirmText: options.confirmText ?? 'Confirm',
+        cancelText: options.cancelText ?? 'Cancel',
+        variant: options.variant ?? 'info',
+        resolve
+      }
+      isOpen.value = true
+    })
+  }
+
+  /**
+   * Handle user confirming
+   */
+  function handleConfirm(): void {
+    if (state.value) {
+      state.value.resolve(true)
+    }
+    close()
+  }
+
+  /**
+   * Handle user canceling
+   */
+  function handleCancel(): void {
+    if (state.value) {
+      state.value.resolve(false)
+    }
+    close()
+  }
+
+  /**
+   * Close the dialog
+   */
+  function close(): void {
+    isOpen.value = false
+    state.value = null
+  }
+
+  // Convenience methods for common confirmations
+  async function confirmDelete(itemCount: number, itemName = 'item'): Promise<boolean> {
+    const plural = itemCount > 1
+    return confirm({
+      title: `Delete ${itemCount} ${itemName}${plural ? 's' : ''}?`,
+      message: `This action cannot be undone. ${plural ? 'These' : 'This'} ${itemName}${plural ? 's' : ''} will be permanently removed.`,
+      confirmText: 'Delete',
+      variant: 'danger'
+    })
+  }
+
+  async function confirmDiscard(): Promise<boolean> {
+    return confirm({
+      title: 'Discard changes?',
+      message: 'You have unsaved changes that will be lost.',
+      confirmText: 'Discard',
+      variant: 'warning'
+    })
+  }
+
+  return {
+    isOpen,
+    state,
+    confirm,
+    handleConfirm,
+    handleCancel,
+    close,
+    confirmDelete,
+    confirmDiscard
+  }
+}

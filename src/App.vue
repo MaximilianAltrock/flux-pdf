@@ -3,38 +3,64 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from '@/composables/usePdfManager'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { DeletePagesCommand, RotatePagesCommand } from '@/commands'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import { useTheme } from '@/composables/useTheme'
+import { DeletePagesCommand, RotatePagesCommand, DuplicatePagesCommand } from '@/commands'
 import Toolbar from '@/components/Toolbar.vue'
 import FileDropzone from '@/components/FileDropzone.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import ExportModal from '@/components/ExportModal.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
+import PagePreviewModal from '@/components/PagePreviewModal.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
+import ToastContainer from '@/components/ToastContainer.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
+import ZoomControl from '@/components/ZoomControl.vue'
 import { FileText } from 'lucide-vue-next'
+import type { PageReference } from '@/types'
 
 const store = useDocumentStore()
 const pdfManager = usePdfManager()
 const { execute, undo, redo } = useCommandManager()
+const toast = useToast()
+const { confirmDelete } = useConfirm()
+
+// Initialize theme
+useTheme()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const errorMessage = ref<string | null>(null)
 const showExportModal = ref(false)
 const exportSelectedOnly = ref(false)
+const showPreviewModal = ref(false)
+const previewPageRef = ref<PageReference | null>(null)
+const showCommandPalette = ref(false)
 
 const hasPages = computed(() => store.pageCount > 0)
 
 async function handleFilesSelected(files: FileList) {
-  errorMessage.value = null
-
   const results = await pdfManager.loadPdfFiles(files)
 
-  // Check for errors
+  // Count successes and errors
+  const successes = results.filter((r) => r.success)
   const errors = results.filter((r) => !r.success)
+
+  // Show success toast
+  if (successes.length > 0) {
+    const totalPages = successes.reduce((sum, r) => sum + (r.pageCount ?? 0), 0)
+    toast.success(
+      `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
+      `${totalPages} page${totalPages > 1 ? 's' : ''} added to document`,
+    )
+  }
+
+  // Show error toast for failures
   if (errors.length > 0) {
-    errorMessage.value = errors.map((e) => e.error).join(', ')
-    // Clear error after 5 seconds
-    setTimeout(() => {
-      errorMessage.value = null
-    }, 5000)
+    toast.error(
+      `Failed to load ${errors.length} file${errors.length > 1 ? 's' : ''}`,
+      errors.map((e) => e.error).join(', '),
+    )
   }
 }
 
@@ -60,13 +86,136 @@ function handleExportSelected() {
   showExportModal.value = true
 }
 
-function handleRemoveSource(sourceId: string) {
-  pdfManager.removeSourceFile(sourceId)
+async function handleRemoveSource(sourceId: string) {
+  // Get source info for confirmation message
+  const source = store.sources.get(sourceId)
+  if (!source) return
+
+  // Count pages that will be removed
+  const pagesToRemove = store.pages.filter((p) => p.sourceFileId === sourceId).length
+
+  const confirmed = await confirmDelete(pagesToRemove, 'page')
+  if (confirmed) {
+    pdfManager.removeSourceFile(sourceId)
+    toast.success('File removed', `${pagesToRemove} page${pagesToRemove > 1 ? 's' : ''} removed`)
+  }
+}
+
+function handleExportSuccess() {
+  toast.success('PDF exported', 'Your file has been downloaded')
+}
+
+async function handleDeleteSelected() {
+  if (store.selectedCount === 0) return
+
+  const confirmed = await confirmDelete(store.selectedCount, 'page')
+  if (confirmed) {
+    const selectedIds = Array.from(store.selection.selectedIds)
+    execute(new DeletePagesCommand(selectedIds))
+    store.clearSelection()
+    toast.success(
+      'Pages deleted',
+      `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} removed`,
+    )
+  }
+}
+
+function handlePagePreview(pageRef: PageReference) {
+  previewPageRef.value = pageRef
+  showPreviewModal.value = true
+}
+
+function handlePreviewNavigate(pageRef: PageReference) {
+  previewPageRef.value = pageRef
+}
+
+function handleDuplicateSelected() {
+  if (store.selectedCount === 0) return
+
+  const selectedIds = Array.from(store.selection.selectedIds)
+  execute(new DuplicatePagesCommand(selectedIds))
+  toast.success(
+    'Pages duplicated',
+    `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} duplicated`,
+  )
+}
+
+function handleContextAction(action: string, pageRef: PageReference) {
+  // Ensure the page is selected
+  if (!store.selection.selectedIds.has(pageRef.id)) {
+    store.selectPage(pageRef.id, false)
+  }
+
+  switch (action) {
+    case 'preview':
+      handlePagePreview(pageRef)
+      break
+    case 'duplicate':
+      handleDuplicateSelected()
+      break
+    case 'rotate-left':
+      execute(new RotatePagesCommand(Array.from(store.selection.selectedIds), -90))
+      break
+    case 'rotate-right':
+      execute(new RotatePagesCommand(Array.from(store.selection.selectedIds), 90))
+      break
+    case 'select-all':
+      store.selectAll()
+      break
+    case 'export-selected':
+      handleExportSelected()
+      break
+    case 'delete':
+      handleDeleteSelected()
+      break
+  }
+}
+
+function handleCommandAction(action: string) {
+  showCommandPalette.value = false
+
+  switch (action) {
+    case 'add-files':
+      openFileDialog()
+      break
+    case 'export':
+      handleExport()
+      break
+    case 'export-selected':
+      handleExportSelected()
+      break
+    case 'delete':
+      handleDeleteSelected()
+      break
+    case 'duplicate':
+      handleDuplicateSelected()
+      break
+    case 'preview':
+      // Preview the first selected page
+      if (store.selectedCount === 1) {
+        const selectedId = Array.from(store.selection.selectedIds)[0]
+        const pageRef = store.pages.find((p) => p.id === selectedId)
+        if (pageRef) {
+          handlePagePreview(pageRef)
+        }
+      }
+      break
+  }
 }
 
 // Keyboard shortcuts
 function handleKeyDown(event: KeyboardEvent) {
   const isInput = (event.target as HTMLElement).tagName === 'INPUT'
+
+  // Ctrl/Cmd + K: Command palette
+  if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+    event.preventDefault()
+    showCommandPalette.value = !showCommandPalette.value
+    return
+  }
+
+  // Don't process other shortcuts if command palette is open
+  if (showCommandPalette.value) return
 
   // Ctrl/Cmd + Z: Undo
   if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
@@ -95,12 +244,21 @@ function handleKeyDown(event: KeyboardEvent) {
   // Don't process shortcuts below if in input field
   if (isInput) return
 
-  // Delete/Backspace: Delete selected
+  // Space: Preview selected page
+  if (event.key === ' ' && store.selectedCount === 1) {
+    event.preventDefault()
+    const selectedId = Array.from(store.selection.selectedIds)[0]
+    const pageRef = store.pages.find((p) => p.id === selectedId)
+    if (pageRef) {
+      handlePagePreview(pageRef)
+    }
+    return
+  }
+
+  // Delete/Backspace: Delete selected (with confirmation)
   if ((event.key === 'Delete' || event.key === 'Backspace') && store.selectedCount > 0) {
     event.preventDefault()
-    const selectedIds = Array.from(store.selection.selectedIds)
-    execute(new DeletePagesCommand(selectedIds))
-    store.clearSelection()
+    handleDeleteSelected()
     return
   }
 
@@ -113,9 +271,18 @@ function handleKeyDown(event: KeyboardEvent) {
     return
   }
 
-  // Escape: Clear selection or close modal
+  // D: Duplicate selected
+  if (event.key === 'd' && !event.metaKey && !event.ctrlKey && store.selectedCount > 0) {
+    event.preventDefault()
+    handleDuplicateSelected()
+    return
+  }
+
+  // Escape: Close modals or clear selection
   if (event.key === 'Escape') {
-    if (showExportModal.value) {
+    if (showPreviewModal.value) {
+      showPreviewModal.value = false
+    } else if (showExportModal.value) {
       showExportModal.value = false
     } else {
       store.clearSelection()
@@ -134,7 +301,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-gray-50">
+  <div class="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
     <!-- Hidden file input for toolbar -->
     <input
       ref="fileInputRef"
@@ -146,11 +313,14 @@ onUnmounted(() => {
     />
 
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200">
-      <div class="flex items-center gap-3 px-4 py-3">
-        <FileText class="w-8 h-8 text-flux-500" />
-        <h1 class="text-xl font-bold text-gray-900">FluxPDF</h1>
-        <span class="text-sm text-gray-400">Fast PDF Editor</span>
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <FileText class="w-8 h-8 text-flux-500" />
+          <h1 class="text-xl font-bold text-gray-900 dark:text-white">FluxPDF</h1>
+          <span class="text-sm text-gray-400 dark:text-gray-500">Fast PDF Editor</span>
+        </div>
+        <ThemeToggle />
       </div>
     </header>
 
@@ -159,23 +329,14 @@ onUnmounted(() => {
       @add-files="openFileDialog"
       @export="handleExport"
       @export-selected="handleExportSelected"
+      @delete-selected="handleDeleteSelected"
     />
-
-    <!-- Error toast -->
-    <Transition name="fade">
-      <div
-        v-if="errorMessage"
-        class="absolute top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-red-500 text-white rounded-lg shadow-lg"
-      >
-        {{ errorMessage }}
-      </div>
-    </Transition>
 
     <!-- Loading overlay -->
     <Transition name="fade">
       <div
         v-if="store.isLoading"
-        class="absolute inset-0 bg-white/80 flex items-center justify-center z-40"
+        class="absolute inset-0 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center z-40"
       >
         <div class="flex flex-col items-center gap-3">
           <svg class="w-10 h-10 text-flux-500 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -193,7 +354,7 @@ onUnmounted(() => {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span class="text-gray-600">{{ store.loadingMessage }}</span>
+          <span class="text-gray-600 dark:text-gray-300">{{ store.loadingMessage }}</span>
         </div>
       </div>
     </Transition>
@@ -206,28 +367,52 @@ onUnmounted(() => {
       <!-- Main content -->
       <main class="flex-1 overflow-hidden">
         <!-- Empty state: Show dropzone -->
-        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8">
+        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8 dark:bg-gray-900">
           <div class="max-w-lg w-full">
             <FileDropzone @files-selected="handleFilesSelected" />
 
             <div class="mt-8 text-center">
-              <h2 class="text-lg font-semibold text-gray-700 mb-2">Get started with FluxPDF</h2>
-              <ul class="text-sm text-gray-500 space-y-1">
+              <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                Get started with FluxPDF
+              </h2>
+              <ul class="text-sm text-gray-500 dark:text-gray-400 space-y-1">
                 <li>📄 Merge multiple PDFs into one</li>
                 <li>🔄 Reorder pages by dragging</li>
                 <li>🗑️ Remove unwanted pages</li>
                 <li>↻ Rotate pages</li>
               </ul>
 
-              <div class="mt-6 pt-6 border-t border-gray-200">
-                <h3 class="text-sm font-medium text-gray-600 mb-2">Keyboard shortcuts</h3>
-                <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-400">
-                  <span><kbd class="px-1.5 py-0.5 bg-gray-100 rounded">Ctrl+Z</kbd> Undo</span>
+              <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
+                  Keyboard shortcuts
+                </h3>
+                <div
+                  class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500"
+                >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 rounded">Ctrl+Shift+Z</kbd> Redo</span
+                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Ctrl+K</kbd>
+                    Commands</span
                   >
-                  <span><kbd class="px-1.5 py-0.5 bg-gray-100 rounded">R</kbd> Rotate</span>
-                  <span><kbd class="px-1.5 py-0.5 bg-gray-100 rounded">Del</kbd> Delete</span>
+                  <span
+                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Ctrl+Z</kbd>
+                    Undo</span
+                  >
+                  <span
+                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Space</kbd>
+                    Preview</span
+                  >
+                  <span
+                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">R</kbd>
+                    Rotate</span
+                  >
+                  <span
+                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">D</kbd>
+                    Duplicate</span
+                  >
+                  <span
+                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Del</kbd>
+                    Delete</span
+                  >
                 </div>
               </div>
             </div>
@@ -235,15 +420,34 @@ onUnmounted(() => {
         </div>
 
         <!-- Page grid -->
-        <PageGrid v-else />
+        <PageGrid
+          v-else
+          @files-dropped="handleFilesSelected"
+          @preview="handlePagePreview"
+          @context-action="handleContextAction"
+        />
       </main>
     </div>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 px-4 py-2">
-      <div class="flex items-center justify-between text-xs text-gray-400">
+    <footer
+      class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2"
+    >
+      <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
         <span>FluxPDF v1.0.0</span>
-        <span>All processing happens locally in your browser</span>
+        <div class="flex items-center gap-4">
+          <!-- Zoom control - only show when we have pages -->
+          <ZoomControl v-if="hasPages" />
+
+          <span class="hidden sm:inline">
+            <kbd
+              class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400"
+              >Ctrl+K</kbd
+            >
+            Command palette
+          </span>
+          <span class="hidden md:inline">All processing happens locally in your browser</span>
+        </div>
       </div>
     </footer>
 
@@ -252,7 +456,29 @@ onUnmounted(() => {
       :open="showExportModal"
       :export-selected="exportSelectedOnly"
       @close="showExportModal = false"
+      @success="handleExportSuccess"
     />
+
+    <!-- Page Preview Modal -->
+    <PagePreviewModal
+      :open="showPreviewModal"
+      :page-ref="previewPageRef"
+      @close="showPreviewModal = false"
+      @navigate="handlePreviewNavigate"
+    />
+
+    <!-- Command Palette -->
+    <CommandPalette
+      :open="showCommandPalette"
+      @close="showCommandPalette = false"
+      @action="handleCommandAction"
+    />
+
+    <!-- Toast Notifications -->
+    <ToastContainer />
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog />
   </div>
 </template>
 
