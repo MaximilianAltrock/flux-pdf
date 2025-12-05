@@ -22,7 +22,7 @@ function handleDragLeave(event: DragEvent) {
 function handleDrop(event: DragEvent) {
   event.preventDefault()
   isDragging.value = false
-  
+
   const files = event.dataTransfer?.files
   if (files && files.length > 0) {
     emit('filesSelected', files)
@@ -46,9 +46,9 @@ function openFileDialog() {
 <template>
   <div
     class="relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer"
-    :class="isDragging 
-      ? 'border-flux-500 bg-flux-50 dark:bg-flux-900/20 scale-[1.02]' 
-      : 'border-gray-300 dark:border-gray-600 hover:border-flux-400 hover:bg-gray-50 dark:hover:bg-gray-800'"
+    :class="isDragging
+      ? 'border-primary bg-primary/5 scale-[1.02]'
+      : 'border-border hover:border-primary/50 hover:bg-muted/5'"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
@@ -63,37 +63,37 @@ function openFileDialog() {
       class="hidden"
       @change="handleFileInputChange"
     />
-    
+
     <!-- Icon -->
-    <div 
+    <div
       class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors"
-      :class="isDragging ? 'bg-flux-100 dark:bg-flux-900/50 text-flux-600 dark:text-flux-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'"
+      :class="isDragging ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-text-muted'"
     >
       <Upload v-if="isDragging" class="w-8 h-8" />
       <FileText v-else class="w-8 h-8" />
     </div>
-    
+
     <!-- Text -->
-    <h3 
+    <h3
       class="text-lg font-semibold mb-2"
-      :class="isDragging ? 'text-flux-700 dark:text-flux-400' : 'text-gray-700 dark:text-gray-200'"
+      :class="isDragging ? 'text-primary' : 'text-text'"
     >
       {{ isDragging ? 'Drop your PDF here' : 'Upload PDF files' }}
     </h3>
-    
-    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+
+    <p class="text-sm text-text-muted mb-4">
       Drag & drop PDF files here, or click to browse
     </p>
-    
+
     <!-- Supported formats hint -->
-    <p class="text-xs text-gray-400 dark:text-gray-500">
+    <p class="text-xs text-text-muted">
       Supports: .pdf files
     </p>
-    
+
     <!-- Drag overlay animation -->
-    <div 
+    <div
       v-if="isDragging"
-      class="absolute inset-4 border-2 border-flux-400 rounded-lg pointer-events-none"
+      class="absolute inset-4 border-2 border-primary/50 rounded-lg pointer-events-none"
       style="animation: dropzone-pulse 1s ease-in-out infinite"
     />
   </div>

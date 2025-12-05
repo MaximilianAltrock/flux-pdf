@@ -28,63 +28,63 @@ function handleRemove(sourceId: string, event: Event) {
 </script>
 
 <template>
-  <aside class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+  <aside class="w-64 bg-surface border-r border-border flex flex-col">
     <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-      <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Source Files</h2>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+    <div class="px-4 py-3 border-b border-border">
+      <h2 class="text-sm font-semibold text-text">Source Files</h2>
+      <p class="text-xs text-text-muted mt-0.5">
         {{ sources.length }} file{{ sources.length === 1 ? '' : 's' }} loaded
       </p>
     </div>
-    
+
     <!-- File list -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="sources.length === 0" class="p-4 text-center">
-        <FileText class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-        <p class="text-sm text-gray-400 dark:text-gray-500">No files loaded</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Drop PDFs to get started</p>
+        <FileText class="w-10 h-10 text-text-muted/50 mx-auto mb-2" />
+        <p class="text-sm text-text-muted">No files loaded</p>
+        <p class="text-xs text-text-muted mt-1">Drop PDFs to get started</p>
       </div>
-      
+
       <ul v-else class="py-2">
         <li
           v-for="source in sources"
           :key="source.id"
-          class="group px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-default"
+          class="group px-3 py-2 hover:bg-muted/20 cursor-default"
         >
           <div class="flex items-start gap-3">
             <!-- Icon -->
-            <div class="flex-shrink-0 w-8 h-8 bg-flux-100 dark:bg-flux-900/30 rounded flex items-center justify-center">
-              <FileText class="w-4 h-4 text-flux-600 dark:text-flux-400" />
+            <div class="flex-shrink-0 w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
+              <FileText class="w-4 h-4 text-primary" />
             </div>
-            
+
             <!-- Info -->
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :title="source.filename">
+              <p class="text-sm font-medium text-text truncate" :title="source.filename">
                 {{ source.filename }}
               </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p class="text-xs text-text-muted mt-0.5">
                 {{ getPageCountForSource(source.id) }} of {{ source.pageCount }} pages
-                <span class="text-gray-300 dark:text-gray-600 mx-1">•</span>
+                <span class="text-text-muted/50 mx-1">•</span>
                 {{ formatFileSize(source.fileSize) }}
               </p>
             </div>
-            
+
             <!-- Remove button -->
             <button
-              class="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+              class="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted/30 transition-all"
               title="Remove file"
               @click="handleRemove(source.id, $event)"
             >
-              <X class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <X class="w-4 h-4 text-text-muted" />
             </button>
           </div>
         </li>
       </ul>
     </div>
-    
+
     <!-- Footer hint -->
-    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+    <div class="px-4 py-3 border-t border-border bg-muted/5">
+      <p class="text-xs text-text-muted">
         <ChevronRight class="w-3 h-3 inline -mt-0.5" />
         Drag pages in the grid to reorder
       </p>

@@ -2,7 +2,7 @@
 import { Sun, Moon, Monitor } from 'lucide-vue-next'
 import { useTheme } from '@/composables/useTheme'
 
-const { theme, isDark, setTheme } = useTheme()
+const { theme, setTheme } = useTheme()
 
 function cycleTheme() {
   if (theme.value === 'light') {
@@ -17,7 +17,7 @@ function cycleTheme() {
 
 <template>
   <button
-    class="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+    class="p-2 rounded-lg transition-colors hover:bg-muted/20"
     :title="`Theme: ${theme} (click to change)`"
     @click="cycleTheme"
   >

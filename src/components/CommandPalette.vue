@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { 
-  Search, 
-  RotateCw, 
-  RotateCcw, 
-  Trash2, 
-  Download, 
+import { ref, computed, watch, nextTick } from 'vue'
+import {
+  Search,
+  RotateCw,
+  RotateCcw,
+  Trash2,
+  Download,
   FilePlus,
   CheckSquare,
   XSquare,
@@ -73,7 +73,7 @@ const allCommands: CommandItem[] = [
     enabled: () => store.selectedCount > 0,
     category: 'File'
   },
-  
+
   // Edit actions
   {
     id: 'undo',
@@ -93,7 +93,7 @@ const allCommands: CommandItem[] = [
     enabled: () => canRedo.value,
     category: 'Edit'
   },
-  
+
   // Selection actions
   {
     id: 'select-all',
@@ -113,7 +113,7 @@ const allCommands: CommandItem[] = [
     enabled: () => store.selectedCount > 0,
     category: 'Selection'
   },
-  
+
   // Page actions
   {
     id: 'rotate-right',
@@ -174,18 +174,18 @@ const allCommands: CommandItem[] = [
 
 const filteredCommands = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
-  
+
   if (!query) {
     return allCommands.filter(cmd => cmd.enabled())
   }
-  
+
   return allCommands.filter(cmd => {
     if (!cmd.enabled()) return false
-    
+
     const labelMatch = cmd.label.toLowerCase().includes(query)
     const categoryMatch = cmd.category.toLowerCase().includes(query)
     const shortcutMatch = cmd.shortcut?.toLowerCase().includes(query)
-    
+
     return labelMatch || categoryMatch || shortcutMatch
   })
 })
@@ -193,14 +193,14 @@ const filteredCommands = computed(() => {
 // Group commands by category
 const groupedCommands = computed(() => {
   const groups: Record<string, CommandItem[]> = {}
-  
+
   for (const cmd of filteredCommands.value) {
     if (!groups[cmd.category]) {
       groups[cmd.category] = []
     }
     groups[cmd.category].push(cmd)
   }
-  
+
   return groups
 })
 
@@ -221,21 +221,21 @@ watch(() => props.open, async (isOpen) => {
 
 function handleKeydown(event: KeyboardEvent) {
   if (!props.open) return
-  
+
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
       selectedIndex.value = Math.min(
-        selectedIndex.value + 1, 
+        selectedIndex.value + 1,
         filteredCommands.value.length - 1
       )
       break
-      
+
     case 'ArrowUp':
       event.preventDefault()
       selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
       break
-      
+
     case 'Enter':
       event.preventDefault()
       const cmd = filteredCommands.value[selectedIndex.value]
@@ -243,7 +243,7 @@ function handleKeydown(event: KeyboardEvent) {
         cmd.action()
       }
       break
-      
+
     case 'Escape':
       event.preventDefault()
       emit('close')
@@ -270,73 +270,73 @@ function getGlobalIndex(category: string, localIndex: number): number {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div 
-        v-if="open" 
+      <div
+        v-if="open"
         class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
         @click.self="emit('close')"
         @keydown="handleKeydown"
       >
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50" @click="emit('close')" />
-        
+
         <!-- Palette -->
-        <div class="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+        <div class="relative w-full max-w-lg bg-surface rounded-xl shadow-2xl overflow-hidden">
           <!-- Search input -->
-          <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
-            <Search class="w-5 h-5 text-gray-400" />
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+            <Search class="w-5 h-5 text-text-muted/50" />
             <input
               ref="inputRef"
               v-model="searchQuery"
               type="text"
               placeholder="Type a command or search..."
-              class="flex-1 text-sm outline-none placeholder-gray-400"
+              class="flex-1 text-sm outline-none placeholder-text-muted/50 bg-transparent text-text"
             />
-            <kbd class="px-2 py-0.5 text-xs text-gray-400 bg-gray-100 rounded">
+            <kbd class="px-2 py-0.5 text-xs text-text-muted bg-muted/20 rounded">
               esc
             </kbd>
           </div>
-          
+
           <!-- Command list -->
           <div class="max-h-80 overflow-y-auto">
-            <div v-if="filteredCommands.length === 0" class="px-4 py-8 text-center text-gray-500">
+            <div v-if="filteredCommands.length === 0" class="px-4 py-8 text-center text-text-muted">
               No commands found
             </div>
-            
+
             <template v-else>
-              <div 
-                v-for="(commands, category) in groupedCommands" 
+              <div
+                v-for="(commands, category) in groupedCommands"
                 :key="category"
               >
                 <!-- Category header -->
-                <div class="px-4 py-2 text-xs font-medium text-gray-500 bg-gray-50">
+                <div class="px-4 py-2 text-xs font-medium text-text-muted bg-muted/10">
                   {{ category }}
                 </div>
-                
+
                 <!-- Commands -->
                 <button
                   v-for="(cmd, idx) in commands"
                   :key="cmd.id"
                   class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
-                  :class="getGlobalIndex(category, idx) === selectedIndex 
-                    ? 'bg-flux-50 text-flux-900' 
-                    : 'hover:bg-gray-50 text-gray-700'"
+                  :class="getGlobalIndex(category, idx) === selectedIndex
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted/10 text-text'"
                   @click="handleCommandClick(cmd)"
                   @mouseenter="selectedIndex = getGlobalIndex(category, idx)"
                 >
-                  <component 
-                    :is="cmd.icon" 
+                  <component
+                    :is="cmd.icon"
                     class="w-4 h-4"
-                    :class="getGlobalIndex(category, idx) === selectedIndex 
-                      ? 'text-flux-600' 
-                      : 'text-gray-400'"
+                    :class="getGlobalIndex(category, idx) === selectedIndex
+                      ? 'text-primary'
+                      : 'text-text-muted'"
                   />
                   <span class="flex-1 text-sm">{{ cmd.label }}</span>
-                  <kbd 
+                  <kbd
                     v-if="cmd.shortcut"
                     class="px-1.5 py-0.5 text-xs rounded"
-                    :class="getGlobalIndex(category, idx) === selectedIndex 
-                      ? 'bg-flux-100 text-flux-700' 
-                      : 'bg-gray-100 text-gray-500'"
+                    :class="getGlobalIndex(category, idx) === selectedIndex
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-muted/20 text-text-muted'"
                   >
                     {{ cmd.shortcut }}
                   </kbd>
@@ -344,13 +344,13 @@ function getGlobalIndex(category: string, localIndex: number): number {
               </div>
             </template>
           </div>
-          
+
           <!-- Footer hint -->
-          <div class="px-4 py-2 border-t border-gray-200 bg-gray-50">
-            <div class="flex items-center justify-center gap-4 text-xs text-gray-400">
-              <span><kbd class="px-1 bg-gray-200 rounded">↑↓</kbd> navigate</span>
-              <span><kbd class="px-1 bg-gray-200 rounded">↵</kbd> select</span>
-              <span><kbd class="px-1 bg-gray-200 rounded">esc</kbd> close</span>
+          <div class="px-4 py-2 border-t border-border bg-muted/5">
+            <div class="flex items-center justify-center gap-4 text-xs text-text-muted/50">
+              <span><kbd class="px-1 bg-muted/20 rounded">↑↓</kbd> navigate</span>
+              <span><kbd class="px-1 bg-muted/20 rounded">↵</kbd> select</span>
+              <span><kbd class="px-1 bg-muted/20 rounded">esc</kbd> close</span>
             </div>
           </div>
         </div>

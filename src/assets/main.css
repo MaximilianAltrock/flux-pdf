@@ -1,1 +1,64 @@
 @import 'tailwindcss';
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-danger: var(--danger);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0 }
+    to { height: var(--radix-accordion-content-height) }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height) }
+    to { height: 0 }
+  }
+}
+
+/*
+  The default theme (light mode)
+  colors are based on zinc-50 (surface), white (background), zinc-900 (text), etc.
+  primary is a standard blue-600: #2563eb
+*/
+:root {
+  --background: #ffffff;
+  --surface: #fafafa; /* zinc-50 */
+  --text: #09090b; /* zinc-950 */
+  --text-muted: #71717a; /* zinc-500 */
+  --border: #e4e4e7; /* zinc-200 */
+  --primary: #2563eb; /* blue-600 */
+  --primary-foreground: #ffffff;
+  --danger: #ef4444; /* red-500 */
+
+  --radius: 0.5rem;
+}
+
+/*
+  Dark mode overrides
+  colors are based on zinc-950 (background), zinc-900 (surface), zinc-50 (text)
+*/
+.dark {
+  --background: #09090b; /* zinc-950 */
+  --surface: #18181b; /* zinc-900 */
+  --text: #fafafa; /* zinc-50 */
+  --text-muted: #a1a1aa; /* zinc-400 */
+  --border: #27272a; /* zinc-800 */
+  --primary: #3b82f6; /* blue-500 (slightly lighter for dark mode) */
+  --primary-foreground: #ffffff;
+  --danger: #ef4444; /* red-500 */
+}
+
+/* Base styles to apply the theme globally */
+@layer base {
+  body {
+    @apply bg-background text-text transition-colors duration-300;
+  }
+}

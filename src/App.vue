@@ -48,7 +48,7 @@ async function handleFilesSelected(files: FileList) {
 
   // Show success toast
   if (successes.length > 0) {
-    const totalPages = successes.reduce((sum, r) => sum + (r.pageCount ?? 0), 0)
+    const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)
     toast.success(
       `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
       `${totalPages} page${totalPages > 1 ? 's' : ''} added to document`,
@@ -301,7 +301,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+  <div class="h-screen flex flex-col bg-background text-text">
     <!-- Hidden file input for toolbar -->
     <input
       ref="fileInputRef"
@@ -313,12 +313,12 @@ onUnmounted(() => {
     />
 
     <!-- Header -->
-    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <header class="bg-surface border-b border-border transition-colors duration-300">
       <div class="flex items-center justify-between px-4 py-3">
         <div class="flex items-center gap-3">
-          <FileText class="w-8 h-8 text-flux-500" />
-          <h1 class="text-xl font-bold text-gray-900 dark:text-white">FluxPDF</h1>
-          <span class="text-sm text-gray-400 dark:text-gray-500">Fast PDF Editor</span>
+          <FileText class="w-8 h-8 text-primary" />
+          <h1 class="text-xl font-bold text-text">FluxPDF</h1>
+          <span class="text-sm text-text-muted">Fast PDF Editor</span>
         </div>
         <ThemeToggle />
       </div>
@@ -336,10 +336,10 @@ onUnmounted(() => {
     <Transition name="fade">
       <div
         v-if="store.isLoading"
-        class="absolute inset-0 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center z-40"
+        class="absolute inset-0 bg-background/80 flex items-center justify-center z-40"
       >
         <div class="flex flex-col items-center gap-3">
-          <svg class="w-10 h-10 text-flux-500 animate-spin" fill="none" viewBox="0 0 24 24">
+          <svg class="w-10 h-10 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
             <circle
               class="opacity-25"
               cx="12"
@@ -354,7 +354,7 @@ onUnmounted(() => {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span class="text-gray-600 dark:text-gray-300">{{ store.loadingMessage }}</span>
+          <span class="text-text-muted">{{ store.loadingMessage }}</span>
         </div>
       </div>
     </Transition>
@@ -367,50 +367,50 @@ onUnmounted(() => {
       <!-- Main content -->
       <main class="flex-1 overflow-hidden">
         <!-- Empty state: Show dropzone -->
-        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8 dark:bg-gray-900">
+        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8 bg-background">
           <div class="max-w-lg w-full">
             <FileDropzone @files-selected="handleFilesSelected" />
 
             <div class="mt-8 text-center">
-              <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">
+              <h2 class="text-lg font-semibold text-text mb-2">
                 Get started with FluxPDF
               </h2>
-              <ul class="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+              <ul class="text-sm text-text-muted space-y-1">
                 <li>📄 Merge multiple PDFs into one</li>
                 <li>🔄 Reorder pages by dragging</li>
                 <li>🗑️ Remove unwanted pages</li>
                 <li>↻ Rotate pages</li>
               </ul>
 
-              <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
+              <div class="mt-6 pt-6 border-t border-border">
+                <h3 class="text-sm font-medium text-text-muted mb-2">
                   Keyboard shortcuts
                 </h3>
                 <div
-                  class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500"
+                  class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-muted"
                 >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Ctrl+K</kbd>
+                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Ctrl+K</kbd>
                     Commands</span
                   >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Ctrl+Z</kbd>
+                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Ctrl+Z</kbd>
                     Undo</span
                   >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Space</kbd>
+                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Space</kbd>
                     Preview</span
                   >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">R</kbd>
+                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">R</kbd>
                     Rotate</span
                   >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">D</kbd>
+                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">D</kbd>
                     Duplicate</span
                   >
                   <span
-                    ><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Del</kbd>
+                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Del</kbd>
                     Delete</span
                   >
                 </div>
@@ -431,9 +431,9 @@ onUnmounted(() => {
 
     <!-- Footer -->
     <footer
-      class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2"
+      class="bg-surface border-t border-border px-4 py-2"
     >
-      <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+      <div class="flex items-center justify-between text-xs text-muted">
         <span>FluxPDF v1.0.0</span>
         <div class="flex items-center gap-4">
           <!-- Zoom control - only show when we have pages -->
@@ -441,7 +441,7 @@ onUnmounted(() => {
 
           <span class="hidden sm:inline">
             <kbd
-              class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400"
+              class="px-1.5 py-0.5 bg-muted/20 rounded text-muted"
               >Ctrl+K</kbd
             >
             Command palette

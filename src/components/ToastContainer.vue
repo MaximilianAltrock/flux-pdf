@@ -13,28 +13,28 @@ const icons = {
 
 const styles = {
   success: {
-    bg: 'bg-green-50 border-green-200',
-    icon: 'text-green-500',
-    title: 'text-green-800',
-    message: 'text-green-700'
+    bg: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800', // Success usually keeps green
+    icon: 'text-green-500 dark:text-green-400',
+    title: 'text-green-800 dark:text-green-200',
+    message: 'text-green-700 dark:text-green-300'
   },
   error: {
-    bg: 'bg-red-50 border-red-200',
-    icon: 'text-red-500',
-    title: 'text-red-800',
-    message: 'text-red-700'
+    bg: 'bg-danger/10 border-danger/20',
+    icon: 'text-danger',
+    title: 'text-danger',
+    message: 'text-danger/80'
   },
   warning: {
-    bg: 'bg-amber-50 border-amber-200',
-    icon: 'text-amber-500',
-    title: 'text-amber-800',
-    message: 'text-amber-700'
+    bg: 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800', // Warning usually keeps amber
+    icon: 'text-amber-500 dark:text-amber-400',
+    title: 'text-amber-800 dark:text-amber-200',
+    message: 'text-amber-700 dark:text-amber-300'
   },
   info: {
-    bg: 'bg-blue-50 border-blue-200',
-    icon: 'text-blue-500',
-    title: 'text-blue-800',
-    message: 'text-blue-700'
+    bg: 'bg-surface border-border',
+    icon: 'text-primary',
+    title: 'text-text',
+    message: 'text-text-muted'
   }
 }
 </script>
@@ -46,7 +46,7 @@ const styles = {
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto w-80 border rounded-lg shadow-lg overflow-hidden"
+          class="pointer-events-auto w-80 border rounded-lg shadow-lg overflow-hidden bg-surface"
           :class="styles[toast.type].bg"
         >
           <div class="flex items-start gap-3 p-4">
@@ -56,16 +56,16 @@ const styles = {
               class="w-5 h-5 flex-shrink-0 mt-0.5"
               :class="styles[toast.type].icon"
             />
-            
+
             <!-- Content -->
             <div class="flex-1 min-w-0">
-              <p 
+              <p
                 class="text-sm font-medium"
                 :class="styles[toast.type].title"
               >
                 {{ toast.title }}
               </p>
-              <p 
+              <p
                 v-if="toast.message"
                 class="text-sm mt-1"
                 :class="styles[toast.type].message"
@@ -73,11 +73,11 @@ const styles = {
                 {{ toast.message }}
               </p>
             </div>
-            
+
             <!-- Dismiss button -->
             <button
               v-if="toast.dismissible"
-              class="flex-shrink-0 p-1 rounded hover:bg-black/5 transition-colors"
+              class="flex-shrink-0 p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               @click="dismiss(toast.id)"
             >
               <X class="w-4 h-4" :class="styles[toast.type].icon" />

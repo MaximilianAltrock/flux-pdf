@@ -35,7 +35,7 @@ const { stop: stopObserver } = useIntersectionObserver(
   containerRef,
   ([entry]) => {
     isVisible.value = entry?.isIntersecting ?? false
-    
+
     if (entry?.isIntersecting && !hasBeenVisible.value) {
       hasBeenVisible.value = true
       loadThumbnail()
@@ -49,10 +49,10 @@ const { stop: stopObserver } = useIntersectionObserver(
 
 async function loadThumbnail() {
   if (thumbnailUrl.value || isLoading.value) return
-  
+
   isLoading.value = true
   hasError.value = false
-  
+
   try {
     const url = await renderThumbnail(props.pageRef, thumbnailWidth.value)
     thumbnailUrl.value = url
@@ -113,70 +113,70 @@ function handleRetry() {
     ref="containerRef"
     class="page-thumbnail flex flex-col items-center gap-2 p-2 rounded-lg cursor-pointer select-none"
     :class="{
-      'bg-flux-50 dark:bg-flux-900/30 ring-2 ring-flux-500': selected,
-      'hover:bg-gray-50 dark:hover:bg-gray-800': !selected
+      'bg-primary/10 ring-2 ring-primary': selected,
+      'hover:bg-muted/20': !selected
     }"
     @click="handleClick"
     @dblclick="handleDoubleClick"
   >
     <!-- Thumbnail container -->
-    <div 
-      class="relative bg-white dark:bg-gray-700 rounded shadow-md overflow-hidden"
+    <div
+      class="relative bg-background rounded shadow-md overflow-hidden"
       :style="{ width: `${thumbnailWidth}px` }"
     >
       <!-- Placeholder for not-yet-visible items (maintains layout) -->
-      <div 
+      <div
         v-if="!hasBeenVisible"
-        class="aspect-[8.5/11] bg-gray-50 dark:bg-gray-700 flex items-center justify-center"
+        class="aspect-[8.5/11] bg-muted/20 flex items-center justify-center"
       >
-        <span class="text-gray-300 dark:text-gray-500 text-xs">{{ pageNumber }}</span>
+        <span class="text-text-muted/50 text-xs">{{ pageNumber }}</span>
       </div>
-      
+
       <!-- Loading skeleton -->
-      <div 
+      <div
         v-else-if="isLoading && !thumbnailUrl"
-        class="aspect-[8.5/11] bg-gray-100 dark:bg-gray-600 animate-pulse flex items-center justify-center"
+        class="aspect-[8.5/11] bg-muted/30 animate-pulse flex items-center justify-center"
       >
-        <svg 
-          class="w-8 h-8 text-gray-300 dark:text-gray-500 animate-spin" 
-          fill="none" 
+        <svg
+          class="w-8 h-8 text-text-muted/50 animate-spin"
+          fill="none"
           viewBox="0 0 24 24"
         >
-          <circle 
-            class="opacity-25" 
-            cx="12" 
-            cy="12" 
-            r="10" 
-            stroke="currentColor" 
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
             stroke-width="4"
           />
-          <path 
-            class="opacity-75" 
-            fill="currentColor" 
+          <path
+            class="opacity-75"
+            fill="currentColor"
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
       </div>
-      
+
       <!-- Error state -->
-      <div 
+      <div
         v-else-if="hasError"
-        class="aspect-[8.5/11] bg-red-50 flex flex-col items-center justify-center gap-2 text-red-500"
+        class="aspect-[8.5/11] bg-danger/10 flex flex-col items-center justify-center gap-2 text-danger"
       >
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <span class="text-xs">Failed to load</span>
-        <button 
+        <button
           class="text-xs underline hover:no-underline"
           @click.stop="handleRetry"
         >
           Retry
         </button>
       </div>
-      
+
       <!-- Rendered thumbnail -->
-      <img 
+      <img
         v-else-if="thumbnailUrl"
         :src="thumbnailUrl"
         :alt="`Page ${pageNumber}`"
@@ -185,43 +185,43 @@ function handleRetry() {
       />
 
       <!-- Selection indicator -->
-      <div 
+      <div
         v-if="selected"
-        class="absolute top-2 right-2 w-6 h-6 bg-flux-500 rounded-full flex items-center justify-center"
+        class="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center"
       >
         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      
+
       <!-- Loading overlay when re-rendering (e.g., after rotation) -->
-      <div 
+      <div
         v-if="isLoading && thumbnailUrl"
-        class="absolute inset-0 bg-white/50 flex items-center justify-center"
+        class="absolute inset-0 bg-background/50 flex items-center justify-center"
       >
-        <svg 
-          class="w-6 h-6 text-flux-500 animate-spin" 
-          fill="none" 
+        <svg
+          class="w-6 h-6 text-primary animate-spin"
+          fill="none"
           viewBox="0 0 24 24"
         >
-          <circle 
-            class="opacity-25" 
-            cx="12" 
-            cy="12" 
-            r="10" 
-            stroke="currentColor" 
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
             stroke-width="4"
           />
-          <path 
-            class="opacity-75" 
-            fill="currentColor" 
+          <path
+            class="opacity-75"
+            fill="currentColor"
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
       </div>
-      
+
       <!-- Preview hint on hover -->
-      <div 
+      <div
         v-if="thumbnailUrl && !isLoading"
         class="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-end justify-center pb-3 opacity-0 hover:opacity-100"
       >
@@ -230,11 +230,11 @@ function handleRetry() {
         </span>
       </div>
     </div>
-    
+
     <!-- Page number label -->
-    <span 
+    <span
       class="text-sm font-medium"
-      :class="selected ? 'text-flux-700 dark:text-flux-400' : 'text-gray-600 dark:text-gray-400'"
+      :class="selected ? 'text-primary' : 'text-text-muted'"
     >
       {{ pageNumber }}
     </span>

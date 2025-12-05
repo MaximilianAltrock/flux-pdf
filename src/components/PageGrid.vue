@@ -53,7 +53,7 @@ const gridStyle = computed(() => ({
 function handlePageClick(pageRef: PageReference, event: MouseEvent) {
   // Close context menu on click
   contextMenu.value.visible = false
-  
+
   if (event.metaKey || event.ctrlKey) {
     // Ctrl/Cmd + click: toggle selection
     store.togglePageSelection(pageRef.id)
@@ -73,12 +73,12 @@ function handlePageClick(pageRef: PageReference, event: MouseEvent) {
 
 function handlePageContextMenu(pageRef: PageReference, index: number, event: MouseEvent) {
   event.preventDefault()
-  
+
   // Select the page if not already selected
   if (!store.selection.selectedIds.has(pageRef.id)) {
     store.selectPage(pageRef.id, false)
   }
-  
+
   contextMenu.value = {
     visible: true,
     x: event.clientX,
@@ -115,24 +115,24 @@ function handleDragStart() {
 
 function handleDragEnd() {
   isDragging.value = false
-  
+
   // Check if order actually changed
   const orderChanged = localPages.value.some(
     (page, index) => page.id !== dragStartOrder.value[index]?.id
   )
-  
+
   if (orderChanged) {
     // Create and execute a reorder command
     execute(new ReorderPagesCommand(dragStartOrder.value, localPages.value))
   }
-  
+
   dragStartOrder.value = []
 }
 
 // File drop handling
 function handleFileDragOver(event: DragEvent) {
   event.preventDefault()
-  
+
   // Check if dragging files (not internal drag)
   if (event.dataTransfer?.types.includes('Files')) {
     isFileDragOver.value = true
@@ -147,7 +147,7 @@ function handleFileDragLeave(event: DragEvent) {
 function handleFileDrop(event: DragEvent) {
   event.preventDefault()
   isFileDragOver.value = false
-  
+
   const files = event.dataTransfer?.files
   if (files && files.length > 0) {
     emit('filesDropped', files)
@@ -156,25 +156,25 @@ function handleFileDrop(event: DragEvent) {
 </script>
 
 <template>
-  <div 
-    class="h-full overflow-auto p-6 relative dark:bg-gray-900"
+  <div
+    class="h-full overflow-auto p-6 relative bg-background"
     @dragover="handleFileDragOver"
     @dragleave="handleFileDragLeave"
     @drop="handleFileDrop"
   >
     <!-- File drop overlay -->
     <Transition name="fade">
-      <div 
+      <div
         v-if="isFileDragOver"
-        class="absolute inset-0 z-20 bg-flux-500/10 border-2 border-dashed border-flux-500 rounded-lg flex items-center justify-center pointer-events-none"
+        class="absolute inset-0 z-20 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none"
       >
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-4 text-center">
-          <p class="text-lg font-medium text-flux-700 dark:text-flux-400">Drop PDF files here</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Files will be added to the document</p>
+        <div class="bg-surface rounded-lg shadow-lg px-6 py-4 text-center">
+          <p class="text-lg font-medium text-primary">Drop PDF files here</p>
+          <p class="text-sm text-text-muted mt-1">Files will be added to the document</p>
         </div>
       </div>
     </Transition>
-    
+
     <VueDraggable
       v-model="localPages"
       :animation="200"
@@ -198,15 +198,15 @@ function handleFileDrop(event: DragEvent) {
         @contextmenu="handlePageContextMenu(pageRef, index, $event)"
       />
     </VueDraggable>
-    
+
     <!-- Help text -->
-    <p 
+    <p
       v-if="localPages.length > 0"
-      class="text-center text-sm text-gray-400 dark:text-gray-500 mt-6"
+      class="text-center text-sm text-text-muted mt-6"
     >
       Drag to reorder • Double-click to preview • Right-click for more options
     </p>
-    
+
     <!-- Context Menu -->
     <ContextMenu
       :visible="contextMenu.visible"

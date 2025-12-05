@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { AlertTriangle, Info, Trash2 } from 'lucide-vue-next'
 
@@ -13,7 +13,7 @@ const icons = {
 
 const styles = computed(() => {
   const variant = state.value?.variant ?? 'info'
-  
+
   return {
     danger: {
       iconBg: 'bg-red-100',
@@ -21,21 +21,21 @@ const styles = computed(() => {
       confirmBtn: 'bg-red-600 hover:bg-red-700 text-white'
     },
     warning: {
-      iconBg: 'bg-amber-100',
+      iconBg: 'bg-amber-100', // Keep specific warning colors or map to specific override vars if desired, defaulting to raw for alerts usually safer or define --warning
       icon: 'text-amber-600',
       confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white'
     },
     info: {
-      iconBg: 'bg-blue-100',
-      icon: 'text-blue-600',
-      confirmBtn: 'bg-flux-600 hover:bg-flux-700 text-white'
+      iconBg: 'bg-primary/10',
+      icon: 'text-primary',
+      confirmBtn: 'bg-primary hover:bg-primary/90 text-primary-foreground'
     }
   }[variant]
 })
 
 function handleKeydown(event: KeyboardEvent) {
   if (!isOpen.value) return
-  
+
   if (event.key === 'Escape') {
     handleCancel()
   } else if (event.key === 'Enter') {
@@ -55,22 +55,22 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div 
-        v-if="isOpen && state" 
+      <div
+        v-if="isOpen && state"
         class="fixed inset-0 z-[90] flex items-center justify-center"
       >
         <!-- Backdrop -->
-        <div 
+        <div
           class="absolute inset-0 bg-black/50"
           @click="handleCancel"
         />
-        
+
         <!-- Dialog -->
-        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="relative bg-surface rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
           <div class="p-6">
             <div class="flex items-start gap-4">
               <!-- Icon -->
-              <div 
+              <div
                 class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
                 :class="styles.iconBg"
               >
@@ -80,23 +80,23 @@ onUnmounted(() => {
                   :class="styles.icon"
                 />
               </div>
-              
+
               <!-- Content -->
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-900">
+                <h3 class="text-lg font-semibold text-text">
                   {{ state.title }}
                 </h3>
-                <p class="mt-2 text-sm text-gray-600">
+                <p class="mt-2 text-sm text-text-muted">
                   {{ state.message }}
                 </p>
               </div>
             </div>
           </div>
-          
+
           <!-- Actions -->
-          <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/5 border-t border-border">
             <button
-              class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              class="px-4 py-2 text-sm font-medium text-text hover:bg-muted/20 rounded-lg transition-colors"
               @click="handleCancel"
             >
               {{ state.cancelText }}

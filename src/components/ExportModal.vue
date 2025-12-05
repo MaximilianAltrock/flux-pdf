@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, reactive } from 'vue'
-import { X, Download, FileText, CheckCircle, AlertCircle, ChevronDown, Settings, FileType, Hash } from 'lucide-vue-next'
+import { X, Download, FileText, CheckCircle, AlertCircle, ChevronDown, Settings, FileType  } from 'lucide-vue-next'
 import { usePdfExport, validatePageRange, type PdfMetadata, type ExportOptions } from '@/composables/usePdfExport'
 import { useDocumentStore } from '@/stores/document'
 
@@ -15,10 +15,10 @@ const emit = defineEmits<{
 }>()
 
 const store = useDocumentStore()
-const { 
-  isExporting, 
-  exportProgress, 
-  exportError, 
+const {
+  isExporting,
+  exportProgress,
+  exportError,
   exportWithOptions,
   getSuggestedFilename,
   getEstimatedSize
@@ -54,24 +54,24 @@ watch(() => props.open, (isOpen) => {
     exportComplete.value = false
     activeTab.value = 'basic'
     showAdvanced.value = false
-    
+
     // Set page range mode based on prop
     if (props.exportSelected && store.selectedCount > 0) {
       pageRangeMode.value = 'selected'
     } else {
       pageRangeMode.value = 'all'
     }
-    
+
     customPageRange.value = ''
     pageRangeError.value = null
-    
+
     // Reset metadata
     metadata.title = ''
     metadata.author = ''
     metadata.subject = ''
     metadata.keywords = []
     keywordsInput.value = ''
-    
+
     compress.value = true
   }
 })
@@ -94,16 +94,16 @@ const pageCount = computed(() => {
 const canExport = computed(() => {
   if (!filename.value.trim()) return false
   if (isExporting.value || exportComplete.value) return false
-  
+
   if (pageRangeMode.value === 'custom') {
     const validation = validatePageRange(customPageRange.value, store.pageCount)
     if (!validation.valid) return false
   }
-  
+
   if (pageRangeMode.value === 'selected' && store.selectedCount === 0) {
     return false
   }
-  
+
   return true
 })
 
@@ -137,7 +137,7 @@ function buildExportOptions(): ExportOptions {
     filename: filename.value.trim(),
     compress: compress.value
   }
-  
+
   // Page range
   if (pageRangeMode.value === 'selected') {
     const selectedIndices = store.pages
@@ -147,7 +147,7 @@ function buildExportOptions(): ExportOptions {
   } else if (pageRangeMode.value === 'custom') {
     options.pageRange = customPageRange.value
   }
-  
+
   // Metadata (only include non-empty values)
   const meta: PdfMetadata = {}
   if (metadata.title?.trim()) meta.title = metadata.title.trim()
@@ -156,11 +156,11 @@ function buildExportOptions(): ExportOptions {
   if (keywordsInput.value.trim()) {
     meta.keywords = keywordsInput.value.split(',').map(k => k.trim()).filter(Boolean)
   }
-  
+
   if (Object.keys(meta).length > 0) {
     options.metadata = meta
   }
-  
+
   return options
 }
 
@@ -189,84 +189,84 @@ function resetError() {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div 
-        v-if="open" 
+      <div
+        v-if="open"
         class="fixed inset-0 z-50 flex items-center justify-center"
         @click.self="handleClose"
       >
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50" />
-        
+
         <!-- Modal -->
-        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        <div class="relative bg-surface rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Export PDF</h2>
+          <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 class="text-lg font-semibold text-text">Export PDF</h2>
             <button
-              class="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              class="p-1 rounded-lg hover:bg-muted/10 transition-colors"
               :disabled="isExporting"
               @click="handleClose"
             >
-              <X class="w-5 h-5 text-gray-500" />
+              <X class="w-5 h-5 text-text-muted" />
             </button>
           </div>
-          
+
           <!-- Content -->
           <div class="px-6 py-4 max-h-[60vh] overflow-y-auto">
             <!-- Export complete state -->
             <div v-if="exportComplete" class="text-center py-8">
               <CheckCircle class="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-gray-900 mb-2">Export Complete!</h3>
-              <p class="text-sm text-gray-500">
+              <h3 class="text-lg font-medium text-text mb-2">Export Complete!</h3>
+              <p class="text-sm text-text-muted">
                 Your PDF has been downloaded successfully.
               </p>
             </div>
-            
+
             <!-- Error state -->
             <div v-else-if="exportError" class="text-center py-8">
-              <AlertCircle class="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-gray-900 mb-2">Export Failed</h3>
-              <p class="text-sm text-red-600 mb-4">{{ exportError }}</p>
+              <AlertCircle class="w-16 h-16 text-danger mx-auto mb-4" />
+              <h3 class="text-lg font-medium text-text mb-2">Export Failed</h3>
+              <p class="text-sm text-danger mb-4">{{ exportError }}</p>
               <button
-                class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                class="px-4 py-2 text-sm bg-muted/10 hover:bg-muted/20 rounded-lg transition-colors"
                 @click="resetError"
               >
                 Try Again
               </button>
             </div>
-            
+
             <!-- Exporting state -->
             <div v-else-if="isExporting" class="py-8">
               <div class="flex items-center justify-center gap-3 mb-4">
-                <svg class="w-6 h-6 text-flux-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span class="text-gray-700 font-medium">Generating PDF...</span>
+                <span class="text-text font-medium">Generating PDF...</span>
               </div>
-              <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div 
-                  class="h-full bg-flux-500 transition-all duration-300 ease-out"
+              <div class="w-full bg-muted/20 rounded-full h-2 overflow-hidden">
+                <div
+                  class="h-full bg-primary transition-all duration-300 ease-out"
                   :style="{ width: `${exportProgress}%` }"
                 />
               </div>
-              <p class="text-center text-sm text-gray-500 mt-2">{{ exportProgress }}% complete</p>
+              <p class="text-center text-sm text-text-muted mt-2">{{ exportProgress }}% complete</p>
             </div>
-            
+
             <!-- Form -->
             <div v-else class="space-y-4">
               <!-- File info summary -->
-              <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <FileText class="w-8 h-8 text-flux-500 flex-shrink-0" />
+              <div class="flex items-center gap-3 p-3 bg-muted/5 rounded-lg">
+                <FileText class="w-8 h-8 text-primary flex-shrink-0" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900">{{ pageRangeDescription }}</p>
-                  <p class="text-xs text-gray-500">Estimated size: {{ getEstimatedSize() }}</p>
+                  <p class="text-sm font-medium text-text">{{ pageRangeDescription }}</p>
+                  <p class="text-xs text-text-muted">Estimated size: {{ getEstimatedSize() }}</p>
                 </div>
               </div>
-              
+
               <!-- Filename -->
               <div>
-                <label for="filename" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="filename" class="block text-sm font-medium text-text mb-1">
                   Filename
                 </label>
                 <div class="flex items-center gap-2">
@@ -274,175 +274,175 @@ function resetError() {
                     id="filename"
                     v-model="filename"
                     type="text"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flux-500 focus:border-flux-500 outline-none"
+                    class="flex-1 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
                     placeholder="Enter filename"
                   />
-                  <span class="text-gray-500 text-sm">.pdf</span>
+                  <span class="text-text-muted text-sm">.pdf</span>
                 </div>
               </div>
-              
+
               <!-- Page Range -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Pages to Export</label>
+                <label class="block text-sm font-medium text-text mb-2">Pages to Export</label>
                 <div class="space-y-2">
                   <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      v-model="pageRangeMode" 
-                      type="radio" 
+                    <input
+                      v-model="pageRangeMode"
+                      type="radio"
                       value="all"
-                      class="text-flux-500 focus:ring-flux-500"
+                      class="text-primary focus:ring-primary"
                     />
-                    <span class="text-sm text-gray-700">All pages ({{ store.pageCount }})</span>
+                    <span class="text-sm text-text">All pages ({{ store.pageCount }})</span>
                   </label>
-                  
-                  <label 
+
+                  <label
                     class="flex items-center gap-2"
                     :class="store.selectedCount > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'"
                   >
-                    <input 
-                      v-model="pageRangeMode" 
-                      type="radio" 
+                    <input
+                      v-model="pageRangeMode"
+                      type="radio"
                       value="selected"
                       :disabled="store.selectedCount === 0"
-                      class="text-flux-500 focus:ring-flux-500"
+                      class="text-primary focus:ring-primary"
                     />
-                    <span class="text-sm text-gray-700">
+                    <span class="text-sm text-text">
                       Selected pages ({{ store.selectedCount }})
                     </span>
                   </label>
-                  
+
                   <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      v-model="pageRangeMode" 
-                      type="radio" 
+                    <input
+                      v-model="pageRangeMode"
+                      type="radio"
                       value="custom"
-                      class="text-flux-500 focus:ring-flux-500"
+                      class="text-primary focus:ring-primary"
                     />
-                    <span class="text-sm text-gray-700">Custom range</span>
+                    <span class="text-sm text-text">Custom range</span>
                   </label>
-                  
+
                   <div v-if="pageRangeMode === 'custom'" class="pl-6">
                     <input
                       v-model="customPageRange"
                       type="text"
                       placeholder="e.g., 1-5, 8, 10-12"
-                      class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-flux-500 focus:border-flux-500 outline-none"
-                      :class="pageRangeError ? 'border-red-300' : 'border-gray-300'"
+                      class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
+                      :class="pageRangeError ? 'border-danger' : 'border-border'"
                     />
-                    <p v-if="pageRangeError" class="text-xs text-red-500 mt-1">{{ pageRangeError }}</p>
-                    <p v-else class="text-xs text-gray-400 mt-1">
+                    <p v-if="pageRangeError" class="text-xs text-danger mt-1">{{ pageRangeError }}</p>
+                    <p v-else class="text-xs text-text-muted mt-1">
                       Enter page numbers and/or ranges separated by commas
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <!-- Advanced Options Toggle -->
               <button
                 type="button"
-                class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                class="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors"
                 @click="showAdvanced = !showAdvanced"
               >
-                <ChevronDown 
-                  class="w-4 h-4 transition-transform" 
+                <ChevronDown
+                  class="w-4 h-4 transition-transform"
                   :class="showAdvanced ? 'rotate-180' : ''"
                 />
                 Advanced options
               </button>
-              
+
               <!-- Advanced Options -->
-              <div v-if="showAdvanced" class="space-y-4 pl-2 border-l-2 border-gray-200">
+              <div v-if="showAdvanced" class="space-y-4 pl-2 border-l-2 border-border">
                 <!-- Metadata Section -->
                 <div>
-                  <h4 class="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">
                     <FileType class="w-4 h-4" />
                     PDF Metadata
                   </h4>
                   <div class="space-y-3">
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Title</label>
+                      <label class="block text-xs text-text-muted mb-1">Title</label>
                       <input
                         v-model="metadata.title"
                         type="text"
                         placeholder="Document title"
-                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-flux-500 focus:border-flux-500 outline-none"
+                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Author</label>
+                      <label class="block text-xs text-text-muted mb-1">Author</label>
                       <input
                         v-model="metadata.author"
                         type="text"
                         placeholder="Author name"
-                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-flux-500 focus:border-flux-500 outline-none"
+                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Subject</label>
+                      <label class="block text-xs text-text-muted mb-1">Subject</label>
                       <input
                         v-model="metadata.subject"
                         type="text"
                         placeholder="Document subject"
-                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-flux-500 focus:border-flux-500 outline-none"
+                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">Keywords</label>
+                      <label class="block text-xs text-text-muted mb-1">Keywords</label>
                       <input
                         v-model="keywordsInput"
                         type="text"
                         placeholder="keyword1, keyword2, keyword3"
-                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-flux-500 focus:border-flux-500 outline-none"
+                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
                       />
-                      <p class="text-xs text-gray-400 mt-1">Separate with commas</p>
+                      <p class="text-xs text-text-muted mt-1">Separate with commas</p>
                     </div>
                   </div>
                 </div>
-                
+
                 <!-- Options Section -->
                 <div>
-                  <h4 class="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">
                     <Settings class="w-4 h-4" />
                     Export Options
                   </h4>
                   <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      v-model="compress" 
+                    <input
+                      v-model="compress"
                       type="checkbox"
-                      class="rounded text-flux-500 focus:ring-flux-500"
+                      class="rounded text-primary focus:ring-primary"
                     />
-                    <span class="text-sm text-gray-700">Optimize file size</span>
+                    <span class="text-sm text-text">Optimize file size</span>
                   </label>
-                  <p class="text-xs text-gray-400 mt-1 pl-6">
+                  <p class="text-xs text-text-muted mt-1 pl-6">
                     Uses object streams for smaller file size
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          
+
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/5 border-t border-border">
             <button
               v-if="!exportComplete && !exportError"
-              class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              class="px-4 py-2 text-sm text-text hover:bg-muted/20 rounded-lg transition-colors"
               :disabled="isExporting"
               @click="handleClose"
             >
               Cancel
             </button>
-            
+
             <button
               v-if="exportComplete"
-              class="flex items-center gap-2 px-4 py-2 text-sm bg-flux-500 text-white rounded-lg hover:bg-flux-600 transition-colors"
+              class="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               @click="handleClose"
             >
               Done
             </button>
-            
+
             <button
               v-else-if="!exportError"
-              class="flex items-center gap-2 px-4 py-2 text-sm bg-flux-500 text-white rounded-lg hover:bg-flux-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!canExport"
               @click="handleExport"
             >

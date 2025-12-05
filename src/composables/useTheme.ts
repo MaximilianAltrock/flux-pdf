@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -23,13 +23,13 @@ export function useTheme() {
   // Apply the current theme to the document
   function applyTheme() {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    
+
     if (theme.value === 'system') {
       isDark.value = prefersDark
     } else {
       isDark.value = theme.value === 'dark'
     }
-    
+
     // Update document class
     if (isDark.value) {
       document.documentElement.classList.add('dark')
@@ -53,14 +53,14 @@ export function useTheme() {
   // Watch for system theme changes
   onMounted(() => {
     initTheme()
-    
+
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = () => {
       if (theme.value === 'system') {
         applyTheme()
       }
     }
-    
+
     mediaQuery.addEventListener('change', handleChange)
   })
 
