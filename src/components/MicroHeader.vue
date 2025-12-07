@@ -7,13 +7,6 @@ import { useTheme } from '@/composables/useTheme'
 const store = useDocumentStore()
 const { isDark, toggleTheme } = useTheme()
 
-const emit = defineEmits<{
-  (e: 'command'): void
-  (e: 'export'): void
-  (e: 'zoom-in'): void
-  (e: 'zoom-out'): void
-}>()
-
 const isEditingTitle = ref(false)
 const titleInput = ref<HTMLInputElement | null>(null)
 
