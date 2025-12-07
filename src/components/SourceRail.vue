@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from '@/composables/usePdfManager'
-import { GripVertical, ChevronLeft, ChevronRight, FileUp } from 'lucide-vue-next'
+import { GripVertical, ChevronLeft, ChevronRight, FileUp, X } from 'lucide-vue-next'
 
 const store = useDocumentStore()
 const isCollapsed = ref(false)
@@ -16,10 +16,14 @@ function handleDragStart(event: DragEvent, sourceId: string) {
   }
 }
 
-// Emits can be used for actions like removing a source (to be implemented in UI)
-defineEmits<{
+const emit = defineEmits<{
   (e: 'remove-source', id: string): void
 }>()
+
+function handleRemove(fileId: string, event: Event) {
+  event.stopPropagation()
+  emit('remove-source', fileId)
+}
 
 const { loadPdfFiles } = usePdfManager()
 const isDragOver = ref(false)
@@ -104,7 +108,16 @@ async function handleDrop(e: DragEvent) {
                 <span class="text-xs text-text font-medium truncate leading-tight" :title="file.filename">
                   {{ file.filename }}
                 </span>
-                <GripVertical class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing" />
+                <div class="flex items-center gap-0.5">
+                  <button
+                    class="p-0.5 rounded text-text-muted opacity-0 group-hover:opacity-100 hover:text-danger hover:bg-danger/10 transition-all"
+                    title="Remove source file"
+                    @click="handleRemove(file.id, $event)"
+                  >
+                    <X class="w-3 h-3" />
+                  </button>
+                  <GripVertical class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing" />
+                </div>
                </div>
                <div class="flex items-center gap-2 text-[10px] text-text-muted font-mono">
                  <span>{{ file.pageCount }} pgs</span>

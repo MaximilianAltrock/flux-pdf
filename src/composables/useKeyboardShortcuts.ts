@@ -26,7 +26,7 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
     // Tools
     if (e.key === 'v') {
       store.currentTool = 'select'
-    } else if (e.key === 's') {
+    } else if (e.key === 'c') {
       store.currentTool = 'razor'
     }
 

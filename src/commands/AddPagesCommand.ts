@@ -34,9 +34,9 @@ export class AddPagesCommand implements Command {
     const pageIds = this.pages.map(p => p.id)
     this.store.removePages(pageIds)
 
-    // Remove source only if we added it (and it's not used by others? No, simple flag based)
+    // Remove source only if we added it (use removeSourceOnly to avoid double page removal)
     if (this.shouldAddSource) {
-         this.store.sources.delete(this.sourceFile.id)
+      this.store.removeSourceOnly(this.sourceFile.id)
     }
   }
 }

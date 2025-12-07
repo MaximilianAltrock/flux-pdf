@@ -104,7 +104,7 @@ function clearSelection() {
 
       <button
         class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'"
+        :class="hasSelection ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
         :disabled="!hasSelection"
         title="Clear Selection (Esc)"
         @click="clearSelection"
@@ -120,7 +120,7 @@ function clearSelection() {
     <div class="flex items-center gap-1">
       <button
         class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'"
+        :class="hasSelection ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
         :disabled="!hasSelection"
         title="Rotate Left (Shift+R)"
         @click="rotateSelected('ccw')"
@@ -130,7 +130,7 @@ function clearSelection() {
 
       <button
         class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'"
+        :class="hasSelection ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
         :disabled="!hasSelection"
         title="Rotate Right (R)"
         @click="rotateSelected('cw')"

@@ -90,6 +90,14 @@ export const useDocumentStore = defineStore('document', () => {
     pages.value = pages.value.filter((p) => p.sourceFileId !== sourceFileId)
   }
 
+  /**
+   * Remove only the source file entry (not pages).
+   * Used by command undo when pages are removed separately.
+   */
+  function removeSourceOnly(sourceFileId: string) {
+    sources.value.delete(sourceFileId)
+  }
+
   function addPages(newPages: PageReference[]) {
     pages.value.push(...newPages)
   }
@@ -302,6 +310,7 @@ export const useDocumentStore = defineStore('document', () => {
     // Actions
     addSourceFile,
     removeSourceFile,
+    removeSourceOnly,
     addPages,
     insertPages,
     removePage,

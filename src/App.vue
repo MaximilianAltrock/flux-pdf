@@ -7,7 +7,7 @@ import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
-import { DeletePagesCommand, RotatePagesCommand, DuplicatePagesCommand } from '@/commands'
+import { RotatePagesCommand, DuplicatePagesCommand } from '@/commands'
 import MicroHeader from '@/components/MicroHeader.vue'
 import SourceRail from '@/components/SourceRail.vue'
 import InspectorPanel from '@/components/InspectorPanel.vue'
@@ -121,16 +121,13 @@ function handleExportSuccess() {
 async function handleDeleteSelected() {
   if (store.selectedCount === 0) return
 
-  const confirmed = await confirmDelete(store.selectedCount, 'page')
-  if (confirmed) {
-    const selectedIds = Array.from(store.selection.selectedIds)
-    execute(new DeletePagesCommand(selectedIds))
-    store.clearSelection()
-    toast.success(
-      'Pages deleted',
-      `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} removed`,
-    )
-  }
+  const selectedIds = Array.from(store.selection.selectedIds)
+  store.softDeletePages(selectedIds)
+  store.clearSelection()
+  toast.success(
+    'Pages deleted',
+    `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} removed`,
+  )
 }
 
 function handlePagePreview(pageRef: PageReference) {

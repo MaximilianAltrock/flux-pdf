@@ -7,26 +7,27 @@ import type { PageReference } from '@/types'
  */
 export class DuplicatePagesCommand implements Command {
   readonly id = crypto.randomUUID()
-  readonly name = 'Duplicate Pages'
+  readonly name: string
 
+  private store = useDocumentStore()
   private pageIds: string[]
   private duplicatedPages: PageReference[] = []
   private insertIndices: number[] = []
 
   constructor(pageIds: string[]) {
     this.pageIds = pageIds
+    const count = pageIds.length
+    this.name = count === 1 ? 'Duplicate page' : `Duplicate ${count} pages`
   }
 
   execute(): void {
-    const store = useDocumentStore()
-
     // Find pages to duplicate and their indices
     const pagesToDuplicate: { page: PageReference; index: number }[] = []
 
     for (const id of this.pageIds) {
-      const index = store.pages.findIndex(p => p.id === id)
-      if (index !== -1 && store.pages[index]) {
-        pagesToDuplicate.push({ page: store.pages[index], index })
+      const index = this.store.pages.findIndex(p => p.id === id)
+      if (index !== -1 && this.store.pages[index]) {
+        pagesToDuplicate.push({ page: this.store.pages[index], index })
       }
     }
 
@@ -46,9 +47,9 @@ export class DuplicatePagesCommand implements Command {
         rotation: page.rotation
       }
 
-      // Insert after the original
+      // Insert after the original using store action
       const insertIndex = index + 1
-      store.pages.splice(insertIndex, 0, duplicate)
+      this.store.insertPages(insertIndex, [duplicate])
 
       this.duplicatedPages.push(duplicate)
       this.insertIndices.push(insertIndex)
@@ -60,16 +61,11 @@ export class DuplicatePagesCommand implements Command {
   }
 
   undo(): void {
-    const store = useDocumentStore()
-
-    // Remove the duplicated pages (in reverse order)
+    // Remove the duplicated pages (in reverse order) using store action
     for (let i = this.duplicatedPages.length - 1; i >= 0; i--) {
       const duplicate = this.duplicatedPages[i]
       if (!duplicate) continue
-      const index = store.pages.findIndex(p => p.id === duplicate.id)
-      if (index !== -1) {
-        store.pages.splice(index, 1)
-      }
+      this.store.removePage(duplicate.id)
     }
   }
 }
