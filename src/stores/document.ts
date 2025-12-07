@@ -39,13 +39,34 @@ export const useDocumentStore = defineStore('document', () => {
   const isLoading = ref(false)
   const loadingMessage = ref('')
 
+  /**
+   * View state
+   */
+  /**
+   * View state (thumbnail width in px)
+   */
+  const zoom = ref(220) // Default 220px
+  const MIN_ZOOM = 120
+  const MAX_ZOOM = 320
+  const ZOOM_STEP = 20
+
+  /**
+   * Tool state
+   */
+  const currentTool = ref<'select' | 'razor'>('select')
+
   // ============================================
   // Getters
   // ============================================
 
-  const pageCount = computed(() => pages.value.length)
+  const pageCount = computed(() => pages.value.filter(p => !p.deleted && !p.isDivider).length)
 
-  const hasPages = computed(() => pages.value.length > 0)
+  const zoomPercentage = computed(() => Math.round((zoom.value / 200) * 100))
+
+  const hasPages = computed(() => pageCount.value > 0)
+
+  // Get all pages including deleted ones (internal use)
+  const allPagesCount = computed(() => pages.value.length)
 
   const selectedPages = computed(() =>
     pages.value.filter((p) => selection.value.selectedIds.has(p.id)),
@@ -85,10 +106,87 @@ export const useDocumentStore = defineStore('document', () => {
     selection.value.selectedIds.delete(pageId)
   }
 
-  function removePages(pageIds: string[]) {
-    const idsToRemove = new Set(pageIds)
-    pages.value = pages.value.filter((p) => !idsToRemove.has(p.id))
-    pageIds.forEach((id) => selection.value.selectedIds.delete(id))
+  /**
+   * Soft delete pages (mark as deleted)
+   */
+  function softDeletePages(ids: string[]) {
+    const idsSet = new Set(ids)
+    for (const page of pages.value) {
+      if (idsSet.has(page.id)) {
+        page.deleted = true
+      }
+    }
+    // Deselect deleted pages
+    selection.value.selectedIds = new Set(
+      [...selection.value.selectedIds].filter(id => !idsSet.has(id))
+    )
+    if (selection.value.lastSelectedId && idsSet.has(selection.value.lastSelectedId)) {
+      selection.value.lastSelectedId = null
+    }
+  }
+
+  /**
+   * Restore soft-deleted pages
+   */
+  function restorePages(ids: string[]) {
+    const idsSet = new Set(ids)
+    for (const page of pages.value) {
+      if (idsSet.has(page.id)) {
+        page.deleted = false
+      }
+    }
+  }
+
+  /**
+   * Document Title State
+   */
+  const projectTitle = ref('Untitled Project')
+  const isTitleLocked = ref(false) // Locked after first import
+
+   /**
+   * Split group at index (Razor Tool)
+   * Inserts a "Divider Object" (virtual page) at the index
+   */
+  function splitGroup(pageIndex: number) {
+    if (pageIndex <= 0 || pageIndex >= pages.value.length) return
+
+    // Insert Divider Object
+    const divider: PageReference = {
+      id: crypto.randomUUID(),
+      sourceFileId: 'virtual-divider',
+      sourcePageIndex: -1,
+      rotation: 0,
+      isDivider: true,
+      groupId: crypto.randomUUID() // Divider starts a new group effectively
+    }
+
+    // Insert at index
+    pages.value.splice(pageIndex, 0, divider)
+  }
+
+  /**
+   * Permanently remove deleted pages ("Empty Trash")
+   */
+  function purgeDeletedPages() {
+    pages.value = pages.value.filter(p => !p.deleted)
+  }
+
+  /**
+   * Remove specific pages (Permanent)
+   * @deprecated logic updated to support soft delete if needed, but for now strict removal
+   */
+  function removePages(ids: string[]) {
+    // For backward compatibility or strict removal
+    const idsSet = new Set(ids)
+    pages.value = pages.value.filter((p) => !idsSet.has(p.id))
+
+    // Cleanup selection
+    selection.value.selectedIds = new Set(
+      [...selection.value.selectedIds].filter((id) => !idsSet.has(id))
+    )
+    if (selection.value.lastSelectedId && idsSet.has(selection.value.lastSelectedId)) {
+      selection.value.lastSelectedId = null
+    }
   }
 
   function reorderPages(newOrder: PageReference[]) {
@@ -138,7 +236,10 @@ export const useDocumentStore = defineStore('document', () => {
     const end = Math.max(fromIndex, toIndex)
 
     for (let i = start; i <= end; i++) {
-      selection.value.selectedIds.add(pages.value[i].id)
+      const page = pages.value[i]
+      if (page) {
+        selection.value.selectedIds.add(page.id)
+      }
     }
     selection.value.lastSelectedId = toId
   }
@@ -167,6 +268,18 @@ export const useDocumentStore = defineStore('document', () => {
     loadingMessage.value = ''
   }
 
+  function setZoom(level: number) {
+    zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
+  }
+
+  function zoomIn() {
+    setZoom(zoom.value + ZOOM_STEP)
+  }
+
+  function zoomOut() {
+    setZoom(zoom.value - ZOOM_STEP)
+  }
+
   return {
     // State
     sources,
@@ -174,10 +287,14 @@ export const useDocumentStore = defineStore('document', () => {
     selection,
     isLoading,
     loadingMessage,
+    zoom,
+    currentTool,
 
     // Getters
     pageCount,
+    zoomPercentage,
     hasPages,
+    allPagesCount,
     selectedPages,
     selectedCount,
     sourceFileList,
@@ -188,6 +305,13 @@ export const useDocumentStore = defineStore('document', () => {
     addPages,
     insertPages,
     removePage,
+    // Soft delete actions
+    softDeletePages,
+    restorePages,
+    splitGroup,
+    purgeDeletedPages,
+
+    // Legacy actions (updated internally)
     removePages,
     reorderPages,
     rotatePage,
@@ -199,5 +323,10 @@ export const useDocumentStore = defineStore('document', () => {
     clearSelection,
     setLoading,
     reset,
+    setZoom,
+    zoomIn,
+    zoomOut,
+    projectTitle,
+    isTitleLocked,
   }
 })

@@ -16,6 +16,8 @@ export interface SourceFile {
   fileSize: number
   /** Timestamp when file was added */
   addedAt: number
+  /** Color theme for this source (Tailwind color name) */
+  color: string
 }
 
 /**
@@ -27,6 +29,12 @@ export interface PageReference {
   sourceFileId: string
   sourcePageIndex: number // 0-based index in the original file
   rotation: 0 | 90 | 180 | 270
+
+  // New properties for  // Interaction
+  deleted?: boolean
+  // Grouping
+  groupId?: string // specific group/batch ID, defaults to sourceFileId
+  isDivider?: boolean
 }
 
 /**

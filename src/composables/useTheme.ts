@@ -1,42 +1,70 @@
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 
 type Theme = 'light' | 'dark' | 'system'
 
-const theme = ref<Theme>('system')
-const isDark = ref(false)
+const STORAGE_KEY = 'flux_theme_preference'
 
-const STORAGE_KEY = 'fluxpdf-theme'
+// Shared state across all components
+const theme = ref<Theme>('dark')
+const isDark = ref(true)
+let initialized = false
 
 /**
- * Composable for managing theme (light/dark mode)
+ * Initialize theme immediately (called once)
  */
-export function useTheme() {
-  // Initialize from localStorage
-  function initTheme() {
+function initTheme() {
+  if (initialized) return
+  initialized = true
+
+  // Check if light-theme was already applied by flash-prevention script
+  if (typeof document !== 'undefined') {
+    if (document.documentElement.classList.contains('light-theme')) {
+      isDark.value = false
+      theme.value = 'light'
+    }
+
+    // Check stored preference
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
     if (stored && ['light', 'dark', 'system'].includes(stored)) {
       theme.value = stored
-    }
-    applyTheme()
-  }
-
-  // Apply the current theme to the document
-  function applyTheme() {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-
-    if (theme.value === 'system') {
-      isDark.value = prefersDark
-    } else {
-      isDark.value = theme.value === 'dark'
-    }
-
-    // Update document class
-    if (isDark.value) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
+      applyTheme()
     }
   }
+}
+
+/**
+ * Apply the current theme to the document
+ */
+function applyTheme() {
+  if (typeof document === 'undefined') return
+
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+
+  if (theme.value === 'system') {
+    isDark.value = prefersDark
+  } else {
+    isDark.value = theme.value === 'dark'
+  }
+
+  console.log('[Theme] Applying theme:', theme.value, 'isDark:', isDark.value)
+
+  // Update html element class (light-theme class for light mode)
+  if (isDark.value) {
+    document.documentElement.classList.remove('light-theme')
+    console.log('[Theme] Removed light-theme class from html')
+  } else {
+    document.documentElement.classList.add('light-theme')
+    console.log('[Theme] Added light-theme class to html')
+  }
+}
+
+/**
+ * Composable for managing theme (light/dark mode)
+ * Uses body.light-theme class to toggle themes
+ */
+export function useTheme() {
+  // Initialize on first use
+  initTheme()
 
   // Set theme and persist
   function setTheme(newTheme: Theme) {
@@ -47,26 +75,20 @@ export function useTheme() {
 
   // Toggle between light and dark (not system)
   function toggleTheme() {
+    console.log('[Theme] Toggle called, current isDark:', isDark.value)
     setTheme(isDark.value ? 'light' : 'dark')
   }
 
-  // Watch for system theme changes
-  onMounted(() => {
-    initTheme()
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = () => {
-      if (theme.value === 'system') {
-        applyTheme()
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
+  // Computed for display
+  const themeLabel = computed(() => {
+    if (theme.value === 'system') return 'System'
+    return isDark.value ? 'Dark' : 'Light'
   })
 
   return {
     theme,
     isDark,
+    themeLabel,
     setTheme,
     toggleTheme
   }

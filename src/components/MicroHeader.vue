@@ -1,0 +1,171 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { Search, Download, MousePointer2, Scissors, Minus, Plus, Loader2, Sun, Moon } from 'lucide-vue-next'
+import { useDocumentStore } from '@/stores/document'
+import { useTheme } from '@/composables/useTheme'
+
+const store = useDocumentStore()
+const { isDark, toggleTheme } = useTheme()
+
+const emit = defineEmits<{
+  (e: 'command'): void
+  (e: 'export'): void
+  (e: 'zoom-in'): void
+  (e: 'zoom-out'): void
+}>()
+
+const isEditingTitle = ref(false)
+const titleInput = ref<HTMLInputElement | null>(null)
+
+// Computed for Title to handle store sync and validation
+const displayTitle = computed({
+  get: () => store.projectTitle,
+  set: (val) => {
+    store.projectTitle = val
+  }
+})
+
+function startEditing() {
+  isEditingTitle.value = true
+  setTimeout(() => titleInput.value?.focus(), 0)
+}
+
+function finishEditing() {
+  isEditingTitle.value = false
+  // Trim and validation rule
+  let val = store.projectTitle.trim()
+  if (!val) {
+    val = 'Untitled Project' // Revert to default if empty
+  }
+  // Strip illegal chars
+  val = val.replace(/[\/\\:]/g, '-')
+  store.projectTitle = val
+}
+
+// Export logic
+const canExport = computed(() => store.pageCount > 0)
+
+</script>
+
+<template>
+  <header class="h-[48px] bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-30 relative select-none">
+    <!-- Left: Context Zone -->
+    <div class="flex items-center gap-4 w-[280px]">
+      <!-- Logo -->
+      <div class="w-6 h-6 bg-primary/20 rounded-sm flex items-center justify-center">
+        <div class="w-3 h-3 bg-primary rounded-[1px]"></div>
+      </div>
+
+      <!-- Divider -->
+      <div class="h-4 w-px bg-border"></div>
+
+      <!-- Title -->
+      <div class="flex-1 min-w-0">
+        <div v-if="isEditingTitle" class="flex-1">
+          <input
+            ref="titleInput"
+            v-model="displayTitle"
+            @blur="finishEditing"
+            @keyup.enter="finishEditing"
+            class="bg-transparent border border-border-focus w-full px-1.5 py-0.5 rounded text-sm text-text-primary font-medium focus:outline-none placeholder-text-muted"
+          />
+        </div>
+        <div
+          v-else
+          @click="startEditing"
+          class="text-sm font-medium text-text-primary px-1.5 py-0.5 rounded cursor-text truncate transition-all border border-transparent"
+          :class="{'hover:border-border': !store.isTitleLocked}"
+          :title="store.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
+        >
+          {{ displayTitle }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Omnibar -->
+    <div class="flex-1 flex justify-center">
+      <div class="relative w-[400px] h-[28px]">
+         <!-- Progress Bar (Background) -->
+         <div
+            v-if="store.isLoading"
+            class="absolute inset-0 bg-primary/10 rounded overflow-hidden"
+          >
+            <div class="h-full bg-primary/20 w-full animate-pulse origin-left"></div>
+         </div>
+
+        <button
+          @click="$emit('command')"
+          :disabled="store.isLoading"
+          class="absolute inset-0 w-full h-full bg-transparent border border-border hover:border-selection/50 rounded flex items-center px-2 gap-2 transition-colors group cursor-text disabled:cursor-wait disabled:opacity-80"
+          :class="store.isLoading ? 'border-primary/30' : 'bg-background'"
+        >
+          <Loader2 v-if="store.isLoading" class="w-3.5 h-3.5 text-primary animate-spin" />
+          <Search v-else class="w-3.5 h-3.5 text-text-muted group-hover:text-text transition-colors" />
+
+          <span class="text-xs" :class="store.isLoading ? 'text-primary' : 'text-text-muted'">
+            {{ store.isLoading ? store.loadingMessage || 'Processing...' : 'Search commands... (Cmd+K)' }}
+          </span>
+
+          <div v-if="!store.isLoading" class="ml-auto">
+            <kbd class="hidden sm:inline-flex h-4 items-center gap-0.5 px-1 rounded bg-surface border border-border font-mono text-[10px] text-text-muted">⌘K</kbd>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Action Zone -->
+    <div class="flex items-center justify-end gap-4 w-[280px]">
+       <!-- Tool Switcher -->
+       <div class="flex items-center gap-1 bg-surface rounded p-0.5 border border-border">
+        <button
+          v-tooltip="'Select Tool (V)'"
+          class="p-1 rounded transition-colors"
+          :class="store.currentTool === 'select' ? 'bg-interactive text-text-primary' : 'text-text-muted hover:text-text hover:bg-interactive'"
+          @click="store.currentTool = 'select'"
+        >
+          <MousePointer2 class="w-3.5 h-3.5" />
+        </button>
+        <button
+          v-tooltip="'Razor Tool (C)'"
+          class="p-1 rounded transition-colors"
+          :class="store.currentTool === 'razor' ? 'bg-interactive text-text-primary' : 'text-text-muted hover:text-text hover:bg-interactive'"
+          @click="store.currentTool = 'razor'"
+        >
+          <Scissors class="w-3.5 h-3.5" />
+        </button>
+       </div>
+
+      <!-- Theme Toggle -->
+      <button
+        @click="() => { console.log('Theme button clicked!'); toggleTheme(); }"
+        class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors"
+        :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+      >
+        <Sun v-if="isDark" class="w-4 h-4" />
+        <Moon v-else class="w-4 h-4" />
+      </button>
+
+      <!-- Zoom -->
+      <div class="flex items-center gap-2">
+        <button @click="$emit('zoom-out')" class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors">
+          <Minus class="w-4 h-4" />
+        </button>
+        <span class="text-xs font-mono w-9 text-center text-text">{{ Math.round(store.zoomPercentage) }}%</span>
+        <button @click="$emit('zoom-in')" class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors">
+          <Plus class="w-4 h-4" />
+        </button>
+      </div>
+
+      <!-- Export CTA -->
+      <button
+        @click="$emit('export')"
+        :disabled="!canExport"
+        class="h-[28px] text-xs font-semibold px-3 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-muted"
+        :class="canExport ? 'bg-primary hover:bg-primary-hover text-white' : ''"
+      >
+        <Download class="w-3.5 h-3.5" />
+        <span>Export</span>
+      </button>
+    </div>
+  </header>
+</template>

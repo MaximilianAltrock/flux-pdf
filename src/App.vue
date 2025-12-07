@@ -1,34 +1,38 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from '@/composables/usePdfManager'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useTheme } from '@/composables/useTheme'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { DeletePagesCommand, RotatePagesCommand, DuplicatePagesCommand } from '@/commands'
-import Toolbar from '@/components/Toolbar.vue'
-import FileDropzone from '@/components/FileDropzone.vue'
+import MicroHeader from '@/components/MicroHeader.vue'
+import SourceRail from '@/components/SourceRail.vue'
+import InspectorPanel from '@/components/InspectorPanel.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import ExportModal from '@/components/ExportModal.vue'
-import SourceSidebar from '@/components/SourceSidebar.vue'
 import PagePreviewModal from '@/components/PagePreviewModal.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import ThemeToggle from '@/components/ThemeToggle.vue'
-import ZoomControl from '@/components/ZoomControl.vue'
-import { FileText } from 'lucide-vue-next'
+import FileDropzone from '@/components/FileDropzone.vue'
 import type { PageReference } from '@/types'
 
 const store = useDocumentStore()
 const pdfManager = usePdfManager()
-const { execute, undo, redo } = useCommandManager()
+const { execute } = useCommandManager()
 const toast = useToast()
 const { confirmDelete } = useConfirm()
 
 // Initialize theme
 useTheme()
+
+// Initialize global keyboard shortcuts
+useKeyboardShortcuts(() => {
+  showCommandPalette.value = !showCommandPalette.value
+})
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const showExportModal = ref(false)
@@ -37,7 +41,16 @@ const showPreviewModal = ref(false)
 const previewPageRef = ref<PageReference | null>(null)
 const showCommandPalette = ref(false)
 
+const documentTitle = ref('flux-pdf-export')
 const hasPages = computed(() => store.pageCount > 0)
+
+function zoomIn() {
+  store.zoomIn()
+}
+
+function zoomOut() {
+  store.zoomOut()
+}
 
 async function handleFilesSelected(files: FileList) {
   const results = await pdfManager.loadPdfFiles(files)
@@ -203,106 +216,12 @@ function handleCommandAction(action: string) {
   }
 }
 
-// Keyboard shortcuts
-function handleKeyDown(event: KeyboardEvent) {
-  const isInput = (event.target as HTMLElement).tagName === 'INPUT'
-
-  // Ctrl/Cmd + K: Command palette
-  if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-    event.preventDefault()
-    showCommandPalette.value = !showCommandPalette.value
-    return
-  }
-
-  // Don't process other shortcuts if command palette is open
-  if (showCommandPalette.value) return
-
-  // Ctrl/Cmd + Z: Undo
-  if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
-    event.preventDefault()
-    undo()
-    return
-  }
-
-  // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
-  if (
-    (event.metaKey || event.ctrlKey) &&
-    ((event.key === 'z' && event.shiftKey) || event.key === 'y')
-  ) {
-    event.preventDefault()
-    redo()
-    return
-  }
-
-  // Ctrl/Cmd + A: Select all
-  if ((event.metaKey || event.ctrlKey) && event.key === 'a' && hasPages.value) {
-    event.preventDefault()
-    store.selectAll()
-    return
-  }
-
-  // Don't process shortcuts below if in input field
-  if (isInput) return
-
-  // Space: Preview selected page
-  if (event.key === ' ' && store.selectedCount === 1) {
-    event.preventDefault()
-    const selectedId = Array.from(store.selection.selectedIds)[0]
-    const pageRef = store.pages.find((p) => p.id === selectedId)
-    if (pageRef) {
-      handlePagePreview(pageRef)
-    }
-    return
-  }
-
-  // Delete/Backspace: Delete selected (with confirmation)
-  if ((event.key === 'Delete' || event.key === 'Backspace') && store.selectedCount > 0) {
-    event.preventDefault()
-    handleDeleteSelected()
-    return
-  }
-
-  // R: Rotate right, Shift+R: Rotate left
-  if (event.key === 'r' && !event.metaKey && !event.ctrlKey && store.selectedCount > 0) {
-    event.preventDefault()
-    const selectedIds = Array.from(store.selection.selectedIds)
-    const degrees = event.shiftKey ? -90 : 90
-    execute(new RotatePagesCommand(selectedIds, degrees))
-    return
-  }
-
-  // D: Duplicate selected
-  if (event.key === 'd' && !event.metaKey && !event.ctrlKey && store.selectedCount > 0) {
-    event.preventDefault()
-    handleDuplicateSelected()
-    return
-  }
-
-  // Escape: Close modals or clear selection
-  if (event.key === 'Escape') {
-    if (showPreviewModal.value) {
-      showPreviewModal.value = false
-    } else if (showExportModal.value) {
-      showExportModal.value = false
-    } else {
-      store.clearSelection()
-    }
-    return
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
-})
+// Old keyboard shortcuts removed in favor of useKeyboardShortcuts composable
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-background text-text">
-    <!-- Hidden file input for toolbar -->
+  <div class="h-screen flex flex-col bg-background text-text overflow-hidden">
+    <!-- Hidden file input for file loading -->
     <input
       ref="fileInputRef"
       type="file"
@@ -312,108 +231,33 @@ onUnmounted(() => {
       @change="handleFileInputChange"
     />
 
-    <!-- Header -->
-    <header class="bg-surface border-b border-border transition-colors duration-300">
-      <div class="flex items-center justify-between px-4 py-3">
-        <div class="flex items-center gap-3">
-          <FileText class="w-8 h-8 text-primary" />
-          <h1 class="text-xl font-bold text-text">FluxPDF</h1>
-          <span class="text-sm text-text-muted">Fast PDF Editor</span>
-        </div>
-        <ThemeToggle />
-      </div>
-    </header>
-
-    <!-- Toolbar -->
-    <Toolbar
-      @add-files="openFileDialog"
+    <!-- Micro-Header -->
+    <MicroHeader
+      v-model:title="documentTitle"
+      @command="showCommandPalette = true"
       @export="handleExport"
-      @export-selected="handleExportSelected"
-      @delete-selected="handleDeleteSelected"
+      @zoom-in="zoomIn"
+      @zoom-out="zoomOut"
     />
 
-    <!-- Loading overlay -->
-    <Transition name="fade">
-      <div
-        v-if="store.isLoading"
-        class="absolute inset-0 bg-background/80 flex items-center justify-center z-40"
-      >
-        <div class="flex flex-col items-center gap-3">
-          <svg class="w-10 h-10 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <span class="text-text-muted">{{ store.loadingMessage }}</span>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Main content with sidebar -->
+    <!-- Main Workspace (The Workbench) -->
     <div class="flex-1 flex overflow-hidden">
-      <!-- Sidebar - only show when we have files -->
-      <SourceSidebar v-if="hasPages" @remove-source="handleRemoveSource" />
+      <!-- Left: Source Rail -->
+      <SourceRail
+        @remove-source="handleRemoveSource"
+      />
 
-      <!-- Main content -->
-      <main class="flex-1 overflow-hidden">
+      <!-- Center: Assembly Stage (Canvas) -->
+      <main class="flex-1 overflow-hidden relative flex flex-col bg-background">
         <!-- Empty state: Show dropzone -->
-        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8 bg-background">
+        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8">
           <div class="max-w-lg w-full">
             <FileDropzone @files-selected="handleFilesSelected" />
 
-            <div class="mt-8 text-center">
-              <h2 class="text-lg font-semibold text-text mb-2">
-                Get started with FluxPDF
-              </h2>
-              <ul class="text-sm text-text-muted space-y-1">
-                <li>📄 Merge multiple PDFs into one</li>
-                <li>🔄 Reorder pages by dragging</li>
-                <li>🗑️ Remove unwanted pages</li>
-                <li>↻ Rotate pages</li>
-              </ul>
-
-              <div class="mt-6 pt-6 border-t border-border">
-                <h3 class="text-sm font-medium text-text-muted mb-2">
-                  Keyboard shortcuts
-                </h3>
-                <div
-                  class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-muted"
-                >
-                  <span
-                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Ctrl+K</kbd>
-                    Commands</span
-                  >
-                  <span
-                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Ctrl+Z</kbd>
-                    Undo</span
-                  >
-                  <span
-                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Space</kbd>
-                    Preview</span
-                  >
-                  <span
-                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">R</kbd>
-                    Rotate</span
-                  >
-                  <span
-                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">D</kbd>
-                    Duplicate</span
-                  >
-                  <span
-                    ><kbd class="px-1.5 py-0.5 bg-surface rounded border border-border">Del</kbd>
-                    Delete</span
-                  >
-                </div>
+            <div class="mt-8 text-center text-text-muted">
+              <p class="mb-4">Or drag files from your desktop</p>
+              <div class="flex flex-wrap justify-center gap-2 text-xs opacity-70">
+                 <span class="px-2 py-1 bg-surface rounded">CMD+K for commands</span>
               </div>
             </div>
           </div>
@@ -426,32 +270,43 @@ onUnmounted(() => {
           @preview="handlePagePreview"
           @context-action="handleContextAction"
         />
+
+        <!-- Loading overlay -->
+        <Transition name="fade">
+          <div
+            v-if="store.isLoading"
+            class="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm"
+          >
+            <div class="flex flex-col items-center gap-3">
+              <svg class="w-10 h-10 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span class="text-text-muted font-medium">{{ store.loadingMessage }}</span>
+            </div>
+          </div>
+        </Transition>
       </main>
+
+      <!-- Right: Inspector & History -->
+      <InspectorPanel
+        @delete-selected="handleDeleteSelected"
+        @duplicate-selected="handleDuplicateSelected"
+      />
     </div>
 
-    <!-- Footer -->
-    <footer
-      class="bg-surface border-t border-border px-4 py-2"
-    >
-      <div class="flex items-center justify-between text-xs text-muted">
-        <span>FluxPDF v1.0.0</span>
-        <div class="flex items-center gap-4">
-          <!-- Zoom control - only show when we have pages -->
-          <ZoomControl v-if="hasPages" />
-
-          <span class="hidden sm:inline">
-            <kbd
-              class="px-1.5 py-0.5 bg-muted/20 rounded text-muted"
-              >Ctrl+K</kbd
-            >
-            Command palette
-          </span>
-          <span class="hidden md:inline">All processing happens locally in your browser</span>
-        </div>
-      </div>
-    </footer>
-
-    <!-- Export Modal -->
+    <!-- Modals -->
     <ExportModal
       :open="showExportModal"
       :export-selected="exportSelectedOnly"
@@ -459,7 +314,6 @@ onUnmounted(() => {
       @success="handleExportSuccess"
     />
 
-    <!-- Page Preview Modal -->
     <PagePreviewModal
       :open="showPreviewModal"
       :page-ref="previewPageRef"
@@ -467,17 +321,13 @@ onUnmounted(() => {
       @navigate="handlePreviewNavigate"
     />
 
-    <!-- Command Palette -->
     <CommandPalette
       :open="showCommandPalette"
       @close="showCommandPalette = false"
       @action="handleCommandAction"
     />
 
-    <!-- Toast Notifications -->
     <ToastContainer />
-
-    <!-- Confirmation Dialog -->
     <ConfirmDialog />
   </div>
 </template>

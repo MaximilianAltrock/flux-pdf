@@ -8,7 +8,7 @@ import { useDocumentStore } from '@/stores/document'
 export class DeletePagesCommand implements Command {
   readonly id: string
   readonly name: string
-  
+
   private pageIds: string[]
   private deletedPages: { page: PageReference; index: number }[] = []
   private store = useDocumentStore()
@@ -16,7 +16,7 @@ export class DeletePagesCommand implements Command {
   constructor(pageIds: string[]) {
     this.id = crypto.randomUUID()
     this.pageIds = [...pageIds]
-    
+
     const count = pageIds.length
     this.name = count === 1 ? 'Delete page' : `Delete ${count} pages`
   }
@@ -24,20 +24,23 @@ export class DeletePagesCommand implements Command {
   execute(): void {
     // Store pages and their indices before deletion (in reverse order for proper restoration)
     this.deletedPages = []
-    
+
     for (const pageId of this.pageIds) {
       const index = this.store.pages.findIndex(p => p.id === pageId)
       if (index !== -1) {
-        this.deletedPages.push({
-          page: { ...this.store.pages[index] },
-          index
-        })
+        const page = this.store.pages[index]
+        if (page) {
+          this.deletedPages.push({
+            page: { ...page },
+            index
+          })
+        }
       }
     }
-    
+
     // Sort by index descending so we delete from end first
     this.deletedPages.sort((a, b) => b.index - a.index)
-    
+
     // Perform deletion
     this.store.removePages(this.pageIds)
   }
@@ -45,7 +48,7 @@ export class DeletePagesCommand implements Command {
   undo(): void {
     // Restore pages in ascending index order
     const sorted = [...this.deletedPages].sort((a, b) => a.index - b.index)
-    
+
     for (const { page, index } of sorted) {
       this.store.insertPages(index, [page])
     }

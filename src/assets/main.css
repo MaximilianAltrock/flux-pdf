@@ -5,60 +5,135 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-interactive: var(--interactive);
   --color-border: var(--border);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-danger: var(--danger);
+  --color-selection: var(--selection);
+
+  --radius-sm: var(--radius-button);
+  --radius-md: var(--radius-button);
+  --radius-lg: var(--radius-button);
+  --radius-none: 0px;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
   @keyframes accordion-down {
-    from { height: 0 }
-    to { height: var(--radix-accordion-content-height) }
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
   }
   @keyframes accordion-up {
-    from { height: var(--radix-accordion-content-height) }
-    to { height: 0 }
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
   }
 }
 
 /*
-  The default theme (light mode)
-  colors are based on zinc-50 (surface), white (background), zinc-900 (text), etc.
-  primary is a standard blue-600: #2563eb
+  Technical Dark Mode Theme (Default)
 */
 :root {
-  --background: #ffffff;
-  --surface: #fafafa; /* zinc-50 */
-  --text: #09090b; /* zinc-950 */
-  --text-muted: #71717a; /* zinc-500 */
-  --border: #e4e4e7; /* zinc-200 */
-  --primary: #2563eb; /* blue-600 */
-  --primary-foreground: #ffffff;
-  --danger: #ef4444; /* red-500 */
+  /* Surface Hierarchy */
+  --background: #1E1E1E; /* Level 0: App Shell */
+  --surface: #252526;    /* Level 1: Panels */
+  --surface-hover: #2d2d30;
 
-  --radius: 0.5rem;
+  /* Borders & Separators */
+  --border: #3E3E42;     /* 1px solid separator */
+  --border-focus: #3B82F6; /* Focus state blue */
+
+  /* Interactive Elements (Level 2) */
+  --interactive: #333333;
+  --interactive-hover: #3e3e42;
+
+  /* Content (Level 3) */
+  --content: #FFFFFF;    /* PDF Pages only */
+
+  /* Text Colors */
+  --text: #CCCCCC;       /* Muted white for general UI */
+  --text-primary: #FFFFFF; /* High contrast headers/input */
+  --text-muted: #858585;   /* Secondary/Icons */
+
+  /* Accents */
+  --primary: #6366F1;    /* Electric Indigo */
+  --primary-hover: #4F46E5;
+  --primary-foreground: #FFFFFF;
+
+  --selection: #3B82F6;  /* Hollow Blue Border */
+  --selection-bg: rgba(59, 130, 246, 0.1);
+
+  --danger: #F43F5E;     /* Muted Coral */
+
+  /* Spacing System */
+  --radius-panel: 0px;
+  --radius-button: 4px;
+  --radius-page: 0px;
+
+  /* Paper Shadow */
+  --paper-shadow: 0 4px 6px rgba(0,0,0,0.5);
+  --paper-border: none;
 }
 
 /*
-  Dark mode overrides
-  colors are based on zinc-950 (background), zinc-900 (surface), zinc-50 (text)
+  Clinical Light Mode Theme
+  Applied via :root.light-theme (on html element)
 */
-.dark {
-  --background: #09090b; /* zinc-950 */
-  --surface: #18181b; /* zinc-900 */
-  --text: #fafafa; /* zinc-50 */
-  --text-muted: #a1a1aa; /* zinc-400 */
-  --border: #27272a; /* zinc-800 */
-  --primary: #3b82f6; /* blue-500 (slightly lighter for dark mode) */
-  --primary-foreground: #ffffff;
-  --danger: #ef4444; /* red-500 */
+:root.light-theme {
+  /* Surface Hierarchy */
+  --background: #F3F4F6 !important; /* Cool Grey canvas */
+  --surface: #FFFFFF !important;    /* Pure white panels */
+  --surface-hover: #F9FAFB !important;
+
+  /* Borders & Separators */
+  --border: #E5E7EB !important;     /* Subtle grey */
+  --border-focus: #3B82F6 !important;
+
+  /* Interactive Elements */
+  --interactive: #F3F4F6 !important;
+  --interactive-hover: #E5E7EB !important;
+
+  /* Content */
+  --content: #FFFFFF !important;
+
+  /* Text Colors */
+  --text: #374151 !important;         /* Dark grey for general UI */
+  --text-primary: #111827 !important; /* Near black for headings */
+  --text-muted: #6B7280 !important;   /* Slate grey for secondary */
+
+  /* Accents - slightly darker for WCAG AA contrast */
+  --primary: #4F46E5 !important;
+  --primary-hover: #4338CA !important;
+  --primary-foreground: #FFFFFF !important;
+
+  --selection: #3B82F6 !important;
+  --selection-bg: rgba(59, 130, 246, 0.15) !important;
+
+  --danger: #DC2626 !important;
+
+  /* Paper visibility in light mode */
+  --paper-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  --paper-border: 1px solid #E5E7EB !important;
 }
 
-/* Base styles to apply the theme globally */
 @layer base {
   body {
-    @apply bg-background text-text transition-colors duration-300;
+    @apply bg-background text-text transition-colors duration-300 antialiased font-sans;
+  }
+
+  /* For data/numbers */
+  .font-data {
+    @apply font-mono;
   }
 }

@@ -9,23 +9,34 @@ const MAX_HISTORY_SIZE = 50
 /**
  * Global command history state (singleton)
  */
-const history = ref<HistoryEntry[]>([])
-const historyPointer = ref(-1)
+// Initial "New Session" command
+const NEW_SESSION_COMMAND: Command = {
+  id: 'new-session',
+  name: "New Session",
+  execute: () => {},
+  undo: () => {}
+}
+
+const history = ref<HistoryEntry[]>([{
+  command: NEW_SESSION_COMMAND,
+  timestamp: Date.now()
+}])
+const historyPointer = ref(0)
 
 /**
  * Composable for managing command execution with undo/redo support
  */
 export function useCommandManager() {
   /**
-   * Whether undo is available
+   * Whether undo is available (cannot undo the New Session node 0)
    */
-  const canUndo = computed(() => historyPointer.value >= 0)
-  
+  const canUndo = computed(() => historyPointer.value > 0)
+
   /**
    * Whether redo is available
    */
   const canRedo = computed(() => historyPointer.value < history.value.length - 1)
-  
+
   /**
    * Get the name of the command that would be undone
    */
@@ -33,7 +44,7 @@ export function useCommandManager() {
     if (!canUndo.value) return null
     return history.value[historyPointer.value]?.command.name ?? null
   })
-  
+
   /**
    * Get the name of the command that would be redone
    */
@@ -41,7 +52,7 @@ export function useCommandManager() {
     if (!canRedo.value) return null
     return history.value[historyPointer.value + 1]?.command.name ?? null
   })
-  
+
   /**
    * Get the full history for display
    */
@@ -59,21 +70,21 @@ export function useCommandManager() {
     if (historyPointer.value < history.value.length - 1) {
       history.value = history.value.slice(0, historyPointer.value + 1)
     }
-    
+
     // Execute the command
     command.execute()
-    
+
     // Add to history
     history.value.push({
       command,
       timestamp: Date.now()
     })
-    
+
     // Trim history if too long
     if (history.value.length > MAX_HISTORY_SIZE) {
       history.value = history.value.slice(-MAX_HISTORY_SIZE)
     }
-    
+
     // Move pointer to end
     historyPointer.value = history.value.length - 1
   }
@@ -83,11 +94,12 @@ export function useCommandManager() {
    */
   function undo(): boolean {
     if (!canUndo.value) return false
-    
+
     const entry = history.value[historyPointer.value]
+    if (!entry) return false
     entry.command.undo()
     historyPointer.value--
-    
+
     return true
   }
 
@@ -96,11 +108,12 @@ export function useCommandManager() {
    */
   function redo(): boolean {
     if (!canRedo.value) return false
-    
+
     historyPointer.value++
     const entry = history.value[historyPointer.value]
+    if (!entry) return false
     entry.command.execute()
-    
+
     return true
   }
 
@@ -108,8 +121,11 @@ export function useCommandManager() {
    * Clear all history
    */
   function clearHistory(): void {
-    history.value = []
-    historyPointer.value = -1
+    history.value = [{
+      command: NEW_SESSION_COMMAND,
+      timestamp: Date.now()
+    }]
+    historyPointer.value = 0
   }
 
   /**
@@ -117,7 +133,7 @@ export function useCommandManager() {
    */
   function jumpTo(index: number): void {
     if (index < -1 || index >= history.value.length) return
-    
+
     // Undo or redo to reach the target
     while (historyPointer.value > index) {
       undo()

@@ -12,10 +12,13 @@ import {
   Undo2,
   Redo2,
   Copy,
-  Eye
+  Eye,
+  Sun,
+  Moon
 } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
+import { useTheme } from '@/composables/useTheme'
 import { RotatePagesCommand } from '@/commands'
 
 const props = defineProps<{
@@ -29,6 +32,7 @@ const emit = defineEmits<{
 
 const store = useDocumentStore()
 const { execute, undo, redo, canUndo, canRedo } = useCommandManager()
+const { isDark, toggleTheme } = useTheme()
 
 const searchQuery = ref('')
 const selectedIndex = ref(0)
@@ -169,6 +173,17 @@ const allCommands: CommandItem[] = [
     action: () => emit('action', 'preview'),
     enabled: () => store.selectedCount === 1,
     category: 'Page'
+  },
+
+  // Settings
+  {
+    id: 'toggle-theme',
+    label: computed(() => isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode').value,
+    shortcut: '',
+    icon: computed(() => isDark.value ? Sun : Moon).value,
+    action: () => { toggleTheme(); emit('close') },
+    enabled: () => true,
+    category: 'Settings'
   }
 ]
 
@@ -190,15 +205,38 @@ const filteredCommands = computed(() => {
   })
 })
 
+const lastUsedIds = ref<string[]>([])
+
+function handleCommandClick(cmd: CommandItem) {
+  // Move to top of recent
+  lastUsedIds.value = [cmd.id, ...lastUsedIds.value.filter(id => id !== cmd.id)].slice(0, 3)
+  cmd.action()
+}
+
 // Group commands by category
 const groupedCommands = computed(() => {
   const groups: Record<string, CommandItem[]> = {}
 
+  const query = searchQuery.value.toLowerCase().trim()
+
+  // 1. Last Used (only if no search query)
+  if (!query && lastUsedIds.value.length > 0) {
+    const recent = lastUsedIds.value
+      .map(id => allCommands.find(c => c.id === id))
+      .filter((c): c is CommandItem => !!c && c.enabled())
+
+    if (recent.length > 0) {
+      groups['Last Used'] = recent
+    }
+  }
+
+  // 2. All other commands
   for (const cmd of filteredCommands.value) {
+    // Skip if in Last Used (optional, but duplicate items might be confusing. Spec usually duplicates or separates. Let's keep them in categories too for discoverability)
     if (!groups[cmd.category]) {
       groups[cmd.category] = []
     }
-    groups[cmd.category].push(cmd)
+    groups[cmd.category]?.push(cmd)
   }
 
   return groups
@@ -251,10 +289,6 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-function handleCommandClick(cmd: CommandItem) {
-  cmd.action()
-}
-
 function getGlobalIndex(category: string, localIndex: number): number {
   let globalIndex = 0
   for (const [cat, cmds] of Object.entries(groupedCommands.value)) {
@@ -272,33 +306,33 @@ function getGlobalIndex(category: string, localIndex: number): number {
     <Transition name="modal">
       <div
         v-if="open"
-        class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
         @click.self="emit('close')"
         @keydown="handleKeydown"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50" @click="emit('close')" />
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="emit('close')" />
 
         <!-- Palette -->
-        <div class="relative w-full max-w-lg bg-surface rounded-xl shadow-2xl overflow-hidden">
+        <div class="relative w-full max-w-[600px] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
           <!-- Search input -->
-          <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
             <Search class="w-5 h-5 text-text-muted/50" />
             <input
               ref="inputRef"
               v-model="searchQuery"
               type="text"
               placeholder="Type a command or search..."
-              class="flex-1 text-sm outline-none placeholder-text-muted/50 bg-transparent text-text"
+              class="flex-1 text-sm outline-none placeholder-text-muted/50 bg-transparent text-text h-6"
             />
-            <kbd class="px-2 py-0.5 text-xs text-text-muted bg-muted/20 rounded">
+            <kbd class="px-1.5 py-0.5 text-[10px] uppercase font-bold text-text-muted bg-surface border border-border rounded shadow-sm">
               esc
             </kbd>
           </div>
 
           <!-- Command list -->
-          <div class="max-h-80 overflow-y-auto">
-            <div v-if="filteredCommands.length === 0" class="px-4 py-8 text-center text-text-muted">
+          <div class="flex-1 overflow-y-auto custom-scrollbar p-2">
+            <div v-if="Object.keys(groupedCommands).length === 0" class="px-4 py-12 text-center text-text-muted text-sm">
               No commands found
             </div>
 
@@ -306,9 +340,10 @@ function getGlobalIndex(category: string, localIndex: number): number {
               <div
                 v-for="(commands, category) in groupedCommands"
                 :key="category"
+                class="mb-2 last:mb-0"
               >
                 <!-- Category header -->
-                <div class="px-4 py-2 text-xs font-medium text-text-muted bg-muted/10">
+                <div class="px-3 py-1.5 text-[10px] uppercase font-bold text-text-muted/70 tracking-wider">
                   {{ category }}
                 </div>
 
@@ -316,41 +351,43 @@ function getGlobalIndex(category: string, localIndex: number): number {
                 <button
                   v-for="(cmd, idx) in commands"
                   :key="cmd.id"
-                  class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                  class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-all duration-75 group relative"
                   :class="getGlobalIndex(category, idx) === selectedIndex
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted/10 text-text'"
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-text hover:bg-surface'"
                   @click="handleCommandClick(cmd)"
                   @mouseenter="selectedIndex = getGlobalIndex(category, idx)"
                 >
                   <component
                     :is="cmd.icon"
-                    class="w-4 h-4"
+                    class="w-4 h-4 shrink-0 transition-colors"
                     :class="getGlobalIndex(category, idx) === selectedIndex
-                      ? 'text-primary'
-                      : 'text-text-muted'"
+                      ? 'text-white'
+                      : 'text-text-muted group-hover:text-text'"
                   />
-                  <span class="flex-1 text-sm">{{ cmd.label }}</span>
-                  <kbd
+
+                  <span class="flex-1 text-sm font-medium truncate">{{ cmd.label }}</span>
+
+                  <span
                     v-if="cmd.shortcut"
-                    class="px-1.5 py-0.5 text-xs rounded"
-                    :class="getGlobalIndex(category, idx) === selectedIndex
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-muted/20 text-text-muted'"
+                    class="text-[10px] font-mono opacity-60 flex items-center gap-1"
+                    :class="getGlobalIndex(category, idx) === selectedIndex ? 'text-white' : 'text-text-muted'"
                   >
                     {{ cmd.shortcut }}
-                  </kbd>
+                  </span>
                 </button>
               </div>
             </template>
           </div>
 
           <!-- Footer hint -->
-          <div class="px-4 py-2 border-t border-border bg-muted/5">
-            <div class="flex items-center justify-center gap-4 text-xs text-text-muted/50">
-              <span><kbd class="px-1 bg-muted/20 rounded">↑↓</kbd> navigate</span>
-              <span><kbd class="px-1 bg-muted/20 rounded">↵</kbd> select</span>
-              <span><kbd class="px-1 bg-muted/20 rounded">esc</kbd> close</span>
+          <div class="px-4 py-2 border-t border-border bg-surface/30 shrink-0">
+            <div class="flex items-center justify-between text-[10px] text-text-muted">
+              <span><strong>FluxPDF</strong> Command Palette</span>
+              <div class="flex gap-3">
+                 <span><kbd class="font-sans">↑↓</kbd> to navigate</span>
+                 <span><kbd class="font-sans">↵</kbd> to run</span>
+              </div>
             </div>
           </div>
         </div>

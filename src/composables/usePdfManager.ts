@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import type { SourceFile, PageReference, FileUploadResult } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 import * as pdfjs from 'pdfjs-dist'
+import { PDFDocument } from 'pdf-lib'
 
 // Import worker URL using Vite's ?url suffix
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -28,12 +29,32 @@ function generateId(): string {
   return crypto.randomUUID()
 }
 
+const PALETTE = [
+  '#3b82f6', // blue-500
+  '#22c55e', // green-500
+  '#a855f7', // purple-500
+  '#f97316', // orange-500
+  '#ec4899', // pink-500
+  '#06b6d4', // cyan-500
+  '#eab308', // yellow-500
+  '#6366f1', // indigo-500
+  '#ef4444', // red-500
+  '#14b8a6', // teal-500
+  '#84cc16', // lime-500
+  '#d946ef'  // fuchsia-500
+]
+
 /**
  * Composable for managing PDF files
  */
 export function usePdfManager() {
   const store = useDocumentStore()
   const isInitialized = ref(true) // Already initialized via static import
+
+  function getNextColor(): string {
+    const usedCount = store.sourceFileList.length
+    return PALETTE[usedCount % PALETTE.length] ?? 'blue'
+  }
 
   /**
    * Initialize PDF.js library
@@ -45,9 +66,21 @@ export function usePdfManager() {
   }
 
   /**
+   * Update project title on first import
+   */
+  function trySetProjectTitle(filename: string) {
+    if (!store.isTitleLocked) {
+      // Remove extension
+      const name = filename.replace(/\.[^/.]+$/, "")
+      store.projectTitle = name
+      store.isTitleLocked = true
+    }
+  }
+
+  /**
    * Load a PDF file and add it to the document
    */
-  async function loadPdfFile(file: File): Promise<FileUploadResult> {
+  async function loadPdfFile(file: File, autoAddPages = true): Promise<FileUploadResult> {
     try {
       store.setLoading(true, `Loading ${file.name}...`)
 
@@ -70,6 +103,7 @@ export function usePdfManager() {
         pageCount: pdfDoc.numPages,
         fileSize: file.size,
         addedAt: Date.now(),
+        color: getNextColor()
       }
 
       // Store the COPY of the blob (not the potentially detached original)
@@ -81,19 +115,27 @@ export function usePdfManager() {
       // Add to store
       store.addSourceFile(sourceFile)
 
-      // Create page references for all pages
-      const pageRefs: PageReference[] = []
-      for (let i = 0; i < pdfDoc.numPages; i++) {
-        pageRefs.push({
-          id: generateId(),
-          sourceFileId,
-          sourcePageIndex: i,
-          rotation: 0,
-        })
-      }
+      // Try to set title
+      trySetProjectTitle(file.name)
 
-      // Add pages to the document
-      store.addPages(pageRefs)
+      if (autoAddPages) {
+          // Create page references for all pages
+          const groupId = generateId() // Generate a unique group ID for this import batch (initially same as source usually, but distinct concept)
+
+          const pageRefs: PageReference[] = []
+          for (let i = 0; i < pdfDoc.numPages; i++) {
+            pageRefs.push({
+              id: generateId(),
+              sourceFileId,
+              sourcePageIndex: i,
+              rotation: 0,
+              groupId // All pages from this import get same group ID initially
+            })
+          }
+
+          // Add pages to the document
+          store.addPages(pageRefs)
+      }
 
       store.setLoading(false)
 
@@ -113,19 +155,80 @@ export function usePdfManager() {
   }
 
   /**
-   * Load multiple PDF files
+   /**
+   * Convert Image to PDF and load it
    */
-  async function loadPdfFiles(files: FileList | File[]): Promise<FileUploadResult[]> {
+  async function loadImageFile(file: File, autoAddPages = true): Promise<FileUploadResult> {
+     try {
+      store.setLoading(true, `Converting ${file.name}...`)
+
+      const arrayBuffer = await file.arrayBuffer()
+      const pdfDoc = await PDFDocument.create()
+
+      let image
+      if (file.type === 'image/jpeg' || file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) {
+        image = await pdfDoc.embedJpg(arrayBuffer)
+      } else if (file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')) {
+        image = await pdfDoc.embedPng(arrayBuffer)
+      } else {
+        throw new Error('Unsupported image format')
+      }
+
+      const page = pdfDoc.addPage([image.width, image.height])
+      page.drawImage(image, {
+        x: 0,
+        y: 0,
+        width: image.width,
+        height: image.height,
+      })
+
+      const pdfBytes = await pdfDoc.save()
+
+      // Convert back to File to reuse loadPdfFile logic (simpler than duplicating it)
+      const pdfFile = new File([pdfBytes as any], `${file.name}.pdf`, { type: 'application/pdf' })
+
+      // Load the generated PDF
+      const result = await loadPdfFile(pdfFile, autoAddPages)
+
+      // Override filename in result/source to show original image name if needed?
+      // User requirement: "If file is Image: Accept (convert to single page PDF internally)."
+      // Ideally we keep the original name. loadPdfFile uses file.name.
+      // We essentially just "converted" it. The Title Logic uses file.name.
+      // If we pass `${file.name}.pdf`, the title logic will strip .pdf and get `image.jpg`. Perfect.
+
+      return result
+
+     } catch (error) {
+       store.setLoading(false)
+       const message = error instanceof Error ? error.message : 'Failed to convert image'
+       console.error('Image load error:', error)
+       return {
+         success: false,
+         error: message
+       }
+     }
+  }
+
+  /**
+   * Load multiple files (PDFs or Images)
+   */
+  async function loadPdfFiles(files: FileList | File[], autoAddPages = true): Promise<FileUploadResult[]> {
     const results: FileUploadResult[] = []
 
     for (const file of Array.from(files)) {
-      if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-        const result = await loadPdfFile(file)
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name)
+
+      if (isPdf) {
+        const result = await loadPdfFile(file, autoAddPages)
+        results.push(result)
+      } else if (isImage) {
+        const result = await loadImageFile(file, autoAddPages)
         results.push(result)
       } else {
         results.push({
           success: false,
-          error: `${file.name} is not a PDF file`,
+          error: `${file.name} is not a supported file type`,
         })
       }
     }

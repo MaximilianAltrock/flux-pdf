@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from './usePdfManager'
+import JSZip from 'jszip'
 import type { PageReference } from '@/types'
 
 /**
@@ -43,6 +44,7 @@ export function parsePageRange(rangeStr: string, maxPages: number): number[] {
     if (part.includes('-')) {
       // Range: "1-5"
       const [startStr, endStr] = part.split('-').map((s) => s.trim())
+      if (!startStr || !endStr) continue
       const start = parseInt(startStr, 10)
       const end = parseInt(endStr, 10)
 
@@ -105,12 +107,33 @@ export function usePdfExport() {
 
     if (pageRange) {
       const indices = parsePageRange(pageRange, store.pages.length)
-      pagesToExport = indices.map((i) => store.pages[i]).filter(Boolean)
+      pagesToExport = indices
+        .map((i) => store.pages[i])
+        // Filter out deleted, but KEEP dividers to knowing where to split
+        .filter((p): p is PageReference => !!p && !p.deleted)
     } else {
-      pagesToExport = store.pages
+      pagesToExport = store.pages.filter(p => !p.deleted)
     }
 
-    if (pagesToExport.length === 0) {
+    // Group pages into segments
+    const segments: PageReference[][] = []
+    let currentSegment: PageReference[] = []
+
+    for (const page of pagesToExport) {
+        if (page.isDivider) {
+            if (currentSegment.length > 0) {
+                segments.push(currentSegment)
+                currentSegment = []
+            }
+        } else {
+            currentSegment.push(page)
+        }
+    }
+    if (currentSegment.length > 0) {
+        segments.push(currentSegment)
+    }
+
+    if (segments.length === 0) {
       throw new Error('No pages to export')
     }
 
@@ -119,6 +142,62 @@ export function usePdfExport() {
     exportError.value = null
 
     try {
+        if (segments.length > 1) {
+            // ZIP EXPORT
+            const zip = new JSZip()
+
+            for (let i = 0; i < segments.length; i++) {
+                const segmentPages = segments[i]
+                if (!segmentPages || segmentPages.length === 0) continue
+
+                // Generate PDF for this segment
+                const pdfBytes = await generatePdfBytes(segmentPages, pdfManager, metadata, compress, () => {
+                   // No detailed progress for individual Zip parts to keep it simple
+                })
+
+                zip.file(`${filename}-part${i + 1}.pdf`, pdfBytes)
+
+                // Simple progress update
+                exportProgress.value = Math.round(((i + 1) / segments.length) * 80)
+            }
+
+            exportProgress.value = 90
+            const zipContent = await zip.generateAsync({ type: 'uint8array' })
+            exportProgress.value = 100
+
+            downloadFile(zipContent, `${filename}.zip`, 'application/zip')
+
+        } else {
+            // SINGLE PDF EXPORT (Segment 0)
+            const segmentPages = segments[0]
+            if (segmentPages) {
+                const pdfBytes = await generatePdfBytes(segmentPages, pdfManager, metadata, compress, (val) => {
+                     exportProgress.value = val
+                })
+
+                 // Trigger download
+                downloadFile(pdfBytes, `${filename}.pdf`, 'application/pdf')
+            }
+        }
+
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed'
+      exportError.value = message
+      console.error('PDF export error:', error)
+      throw error
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  // Helper to generate PDF bytes for a list of pages
+  async function generatePdfBytes(
+    pages: PageReference[],
+    pdfManager: any,
+    metadata: PdfMetadata | undefined,
+    compress: boolean | undefined,
+    onProgress: (percent: number) => void
+  ): Promise<Uint8Array> {
       // Create a new PDF document
       const finalPdf = await PDFDocument.create()
 
@@ -142,15 +221,15 @@ export function usePdfExport() {
 
       // Track progress
       let processedPages = 0
-      const totalPages = pagesToExport.length
+      const totalPages = pages.length
 
       // Process pages in their virtual order
-      for (const pageRef of pagesToExport) {
+      for (const pageRef of pages) {
         // Get or load the source PDF
         let sourcePdf = loadedPdfs.get(pageRef.sourceFileId)
 
         if (!sourcePdf) {
-          const sourceBuffer = await pdfManager.getPdfData(pageRef.sourceFileId)
+          const sourceBuffer = await pdfManager.getPdfBlob(pageRef.sourceFileId)
           if (!sourceBuffer) {
             throw new Error(`Source file not found: ${pageRef.sourceFileId}`)
           }
@@ -159,6 +238,10 @@ export function usePdfExport() {
         }
 
         const [copiedPage] = await finalPdf.copyPages(sourcePdf, [pageRef.sourcePageIndex])
+
+        if (!copiedPage) {
+          throw new Error('Failed to copy page')
+        }
 
         // Apply rotation
         if (pageRef.rotation !== 0) {
@@ -169,31 +252,16 @@ export function usePdfExport() {
         finalPdf.addPage(copiedPage)
 
         processedPages++
-        exportProgress.value = Math.round((processedPages / totalPages) * 90) // Reserve 10% for saving
+        onProgress(Math.round((processedPages / totalPages) * 90))
 
         await new Promise((resolve) => setTimeout(resolve, 0))
       }
 
       // Generate the final PDF bytes
-      // Note: pdf-lib doesn't have built-in compression, but we can use objectsPerTick
-      // to balance memory usage. For actual compression, we'd need a different library.
-      const pdfBytes = await finalPdf.save({
+      return await finalPdf.save({
         useObjectStreams: compress ?? true,
         addDefaultPage: false,
       })
-
-      exportProgress.value = 100
-
-      // Trigger download
-      downloadPdf(pdfBytes, `${filename}.pdf`)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Export failed'
-      exportError.value = message
-      console.error('PDF export error:', error)
-      throw error
-    } finally {
-      isExporting.value = false
-    }
   }
 
   /**
@@ -223,8 +291,12 @@ export function usePdfExport() {
   /**
    * Trigger a browser download for the PDF
    */
-  function downloadPdf(data: Uint8Array, filename: string): void {
-    const blob = new Blob([data], { type: 'application/pdf' })
+  /**
+   * Trigger a browser download
+   */
+  function downloadFile(data: Uint8Array, filename: string, mimeType = 'application/pdf'): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blob = new Blob([data as any], { type: mimeType })
     const url = URL.createObjectURL(blob)
 
     const link = document.createElement('a')
@@ -248,7 +320,7 @@ export function usePdfExport() {
       return 'document'
     }
 
-    if (sources.length === 1) {
+    if (sources.length === 1 && sources[0]) {
       // Use the original filename without extension
       const name = sources[0].filename.replace(/\.pdf$/i, '')
       return `${name}-edited`
