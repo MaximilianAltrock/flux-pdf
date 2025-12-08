@@ -1,7 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch, reactive } from 'vue'
-import { X, Download, FileText, CheckCircle, AlertCircle, ChevronDown, Settings, FileType  } from 'lucide-vue-next'
-import { usePdfExport, validatePageRange, type PdfMetadata, type ExportOptions } from '@/composables/usePdfExport'
+import {
+  X,
+  Download,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  ChevronDown,
+  Settings,
+  FileType,
+} from 'lucide-vue-next'
+import {
+  usePdfExport,
+  validatePageRange,
+  type PdfMetadata,
+  type ExportOptions,
+} from '@/composables/usePdfExport'
 import { useDocumentStore } from '@/stores/document'
 
 const props = defineProps<{
@@ -11,7 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  success: []
+  success: [filename: string, sizeKB: number, durationMs: number]
 }>()
 
 const store = useDocumentStore()
@@ -21,7 +35,7 @@ const {
   exportError,
   exportWithOptions,
   getSuggestedFilename,
-  getEstimatedSize
+  getEstimatedSize,
 } = usePdfExport()
 
 // Form state
@@ -29,6 +43,9 @@ const filename = ref('')
 const exportComplete = ref(false)
 const activeTab = ref<'basic' | 'pages' | 'metadata' | 'options'>('basic')
 const showAdvanced = ref(false)
+
+// Export stats for the success toast
+const exportStats = ref<{ filename: string; sizeKB: number; durationMs: number } | null>(null)
 
 // Page range
 const pageRangeMode = ref<'all' | 'selected' | 'custom'>('all')
@@ -40,7 +57,7 @@ const metadata = reactive<PdfMetadata>({
   title: '',
   author: '',
   subject: '',
-  keywords: []
+  keywords: [],
 })
 const keywordsInput = ref('')
 
@@ -48,33 +65,37 @@ const keywordsInput = ref('')
 const compress = ref(true)
 
 // Reset state when modal opens
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    filename.value = getSuggestedFilename()
-    exportComplete.value = false
-    activeTab.value = 'basic'
-    showAdvanced.value = false
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      filename.value = getSuggestedFilename()
+      exportComplete.value = false
+      activeTab.value = 'basic'
+      showAdvanced.value = false
+      exportStats.value = null
 
-    // Set page range mode based on prop
-    if (props.exportSelected && store.selectedCount > 0) {
-      pageRangeMode.value = 'selected'
-    } else {
-      pageRangeMode.value = 'all'
+      // Set page range mode based on prop
+      if (props.exportSelected && store.selectedCount > 0) {
+        pageRangeMode.value = 'selected'
+      } else {
+        pageRangeMode.value = 'all'
+      }
+
+      customPageRange.value = ''
+      pageRangeError.value = null
+
+      // Reset metadata
+      metadata.title = ''
+      metadata.author = ''
+      metadata.subject = ''
+      metadata.keywords = []
+      keywordsInput.value = ''
+
+      compress.value = true
     }
-
-    customPageRange.value = ''
-    pageRangeError.value = null
-
-    // Reset metadata
-    metadata.title = ''
-    metadata.author = ''
-    metadata.subject = ''
-    metadata.keywords = []
-    keywordsInput.value = ''
-
-    compress.value = true
-  }
-})
+  },
+)
 
 // Computed
 const pageCount = computed(() => {
@@ -135,13 +156,13 @@ watch(customPageRange, (value) => {
 function buildExportOptions(): ExportOptions {
   const options: ExportOptions = {
     filename: filename.value.trim(),
-    compress: compress.value
+    compress: compress.value,
   }
 
   // Page range
   if (pageRangeMode.value === 'selected') {
     const selectedIndices = store.pages
-      .map((p, i) => store.selection.selectedIds.has(p.id) ? i + 1 : null)
+      .map((p, i) => (store.selection.selectedIds.has(p.id) ? i + 1 : null))
       .filter((i): i is number => i !== null)
     options.pageRange = selectedIndices.join(', ')
   } else if (pageRangeMode.value === 'custom') {
@@ -154,7 +175,10 @@ function buildExportOptions(): ExportOptions {
   if (metadata.author?.trim()) meta.author = metadata.author.trim()
   if (metadata.subject?.trim()) meta.subject = metadata.subject.trim()
   if (keywordsInput.value.trim()) {
-    meta.keywords = keywordsInput.value.split(',').map(k => k.trim()).filter(Boolean)
+    meta.keywords = keywordsInput.value
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean)
   }
 
   if (Object.keys(meta).length > 0) {
@@ -165,11 +189,36 @@ function buildExportOptions(): ExportOptions {
 }
 
 async function handleExport() {
+  const startTime = performance.now()
+
   try {
     const options = buildExportOptions()
     await exportWithOptions(options)
+
+    const endTime = performance.now()
+    const durationMs = Math.round(endTime - startTime)
+
+    // Estimate file size (rough approximation based on source files)
+    let totalSize = 0
+    for (const source of store.sourceFileList) {
+      totalSize += source.fileSize
+    }
+    const avgPageSize = totalSize / Math.max(1, store.pages.length)
+    const estimatedSizeKB = Math.round((avgPageSize * pageCount.value) / 1024)
+
+    exportStats.value = {
+      filename: `${options.filename}.pdf`,
+      sizeKB: estimatedSizeKB,
+      durationMs,
+    }
+
     exportComplete.value = true
-    emit('success')
+    emit(
+      'success',
+      exportStats.value.filename,
+      exportStats.value.sizeKB,
+      exportStats.value.durationMs,
+    )
   } catch (error) {
     // Error is handled in composable
   }
@@ -215,10 +264,11 @@ function resetError() {
           <div class="px-6 py-4 max-h-[60vh] overflow-y-auto">
             <!-- Export complete state -->
             <div v-if="exportComplete" class="text-center py-8">
-              <CheckCircle class="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <CheckCircle class="w-16 h-16 text-[#10B981] mx-auto mb-4" />
               <h3 class="text-lg font-medium text-text mb-2">Export Complete!</h3>
-              <p class="text-sm text-text-muted">
-                Your PDF has been downloaded successfully.
+              <p class="text-sm text-text-muted">Your PDF has been downloaded successfully.</p>
+              <p v-if="exportStats" class="text-xs font-mono text-[#10B981] mt-2">
+                {{ exportStats.filename }} • {{ exportStats.durationMs }}ms
               </p>
             </div>
 
@@ -239,8 +289,19 @@ function resetError() {
             <div v-else-if="isExporting" class="py-8">
               <div class="flex items-center justify-center gap-3 mb-4">
                 <svg class="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  />
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 <span class="text-text font-medium">Generating PDF...</span>
               </div>
@@ -297,7 +358,9 @@ function resetError() {
 
                   <label
                     class="flex items-center gap-2"
-                    :class="store.selectedCount > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'"
+                    :class="
+                      store.selectedCount > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
+                    "
                   >
                     <input
                       v-model="pageRangeMode"
@@ -329,7 +392,9 @@ function resetError() {
                       class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
                       :class="pageRangeError ? 'border-danger' : 'border-border'"
                     />
-                    <p v-if="pageRangeError" class="text-xs text-danger mt-1">{{ pageRangeError }}</p>
+                    <p v-if="pageRangeError" class="text-xs text-danger mt-1">
+                      {{ pageRangeError }}
+                    </p>
                     <p v-else class="text-xs text-text-muted mt-1">
                       Enter page numbers and/or ranges separated by commas
                     </p>
@@ -422,7 +487,9 @@ function resetError() {
           </div>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/5 border-t border-border">
+          <div
+            class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/5 border-t border-border"
+          >
             <button
               v-if="!exportComplete && !exportError"
               class="px-4 py-2 text-sm text-text hover:bg-muted/20 rounded-lg transition-colors"

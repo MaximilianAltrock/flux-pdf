@@ -31,7 +31,7 @@ export function useConfirm() {
         confirmText: options.confirmText ?? 'Confirm',
         cancelText: options.cancelText ?? 'Cancel',
         variant: options.variant ?? 'info',
-        resolve
+        resolve,
       }
       isOpen.value = true
     })
@@ -72,7 +72,7 @@ export function useConfirm() {
       title: `Delete ${itemCount} ${itemName}${plural ? 's' : ''}?`,
       message: `This action cannot be undone. ${plural ? 'These' : 'This'} ${itemName}${plural ? 's' : ''} will be permanently removed.`,
       confirmText: 'Delete',
-      variant: 'danger'
+      variant: 'danger',
     })
   }
 
@@ -81,7 +81,16 @@ export function useConfirm() {
       title: 'Discard changes?',
       message: 'You have unsaved changes that will be lost.',
       confirmText: 'Discard',
-      variant: 'warning'
+      variant: 'warning',
+    })
+  }
+
+  async function confirmClearWorkspace(): Promise<boolean> {
+    return confirm({
+      title: 'Clear Workspace?',
+      message: 'This will remove all files and history. This action cannot be undone.',
+      confirmText: 'Clear & Start New',
+      variant: 'danger',
     })
   }
 
@@ -93,6 +102,7 @@ export function useConfirm() {
     handleCancel,
     close,
     confirmDelete,
-    confirmDiscard
+    confirmDiscard,
+    confirmClearWorkspace,
   }
 }

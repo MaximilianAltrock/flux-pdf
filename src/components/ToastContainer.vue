@@ -1,87 +1,175 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useToast } from '@/composables/useToast'
-import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-vue-next'
+import { Check, Trash2, AlertTriangle, RefreshCw, X } from 'lucide-vue-next'
 
 const { toasts, dismiss } = useToast()
 
+// Icons per type
 const icons = {
-  success: CheckCircle,
-  error: XCircle,
+  success: Check,
+  destructive: Trash2,
   warning: AlertTriangle,
-  info: Info
+  info: RefreshCw,
 }
 
-const styles = {
+// Colors per type (from spec)
+const typeStyles = {
   success: {
-    bg: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800', // Success usually keeps green
-    icon: 'text-green-500 dark:text-green-400',
-    title: 'text-green-800 dark:text-green-200',
-    message: 'text-green-700 dark:text-green-300'
+    strip: '#10B981', // Neon Green
+    icon: 'text-[#10B981]',
+    action: 'text-[#10B981] hover:text-[#34D399]',
   },
-  error: {
-    bg: 'bg-danger/10 border-danger/20',
-    icon: 'text-danger',
-    title: 'text-danger',
-    message: 'text-danger/80'
+  destructive: {
+    strip: '#F43F5E', // Muted Coral
+    icon: 'text-[#F43F5E]',
+    action: 'text-[#F43F5E] hover:text-[#FB7185]',
   },
   warning: {
-    bg: 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800', // Warning usually keeps amber
-    icon: 'text-amber-500 dark:text-amber-400',
-    title: 'text-amber-800 dark:text-amber-200',
-    message: 'text-amber-700 dark:text-amber-300'
+    strip: '#F59E0B', // Amber
+    icon: 'text-[#F59E0B]',
+    action: 'text-[#F59E0B] hover:text-[#FBBF24]',
   },
   info: {
-    bg: 'bg-surface border-border',
-    icon: 'text-primary',
-    title: 'text-text',
-    message: 'text-text-muted'
+    strip: '#6366F1', // Electric Indigo
+    icon: 'text-[#6366F1]',
+    action: 'text-[#6366F1] hover:text-[#818CF8]',
+  },
+}
+
+// Swipe to dismiss logic
+const swipeStates = ref<Map<string, { startX: number; currentX: number; swiping: boolean }>>(
+  new Map(),
+)
+
+function handleTouchStart(id: string, event: TouchEvent) {
+  const touch = event.touches[0]
+  if (touch) {
+    swipeStates.value.set(id, {
+      startX: touch.clientX,
+      currentX: touch.clientX,
+      swiping: false,
+    })
   }
+}
+
+function handleTouchMove(id: string, event: TouchEvent) {
+  const state = swipeStates.value.get(id)
+  const touch = event.touches[0]
+  if (state && touch) {
+    const deltaX = touch.clientX - state.startX
+    // Only allow swiping right (positive delta)
+    if (deltaX > 10) {
+      state.swiping = true
+      state.currentX = touch.clientX
+    }
+  }
+}
+
+function handleTouchEnd(id: string) {
+  const state = swipeStates.value.get(id)
+  if (state && state.swiping) {
+    const deltaX = state.currentX - state.startX
+    // If swiped more than 100px, dismiss
+    if (deltaX > 100) {
+      dismiss(id)
+    }
+  }
+  swipeStates.value.delete(id)
+}
+
+function getSwipeTransform(id: string): string {
+  const state = swipeStates.value.get(id)
+  if (state && state.swiping) {
+    const deltaX = Math.max(0, state.currentX - state.startX)
+    return `translateX(${deltaX}px)`
+  }
+  return ''
+}
+
+function getSwipeOpacity(id: string): number {
+  const state = swipeStates.value.get(id)
+  if (state && state.swiping) {
+    const deltaX = Math.max(0, state.currentX - state.startX)
+    return Math.max(0, 1 - deltaX / 200)
+  }
+  return 1
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+    <!-- Container: Bottom right, 32px from edges -->
+    <div
+      class="fixed bottom-8 right-8 z-[9999] flex flex-col-reverse gap-3 pointer-events-none max-sm:bottom-4 max-sm:right-4 max-sm:left-4"
+      role="region"
+      aria-label="Notifications"
+    >
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto w-80 border rounded-lg shadow-lg overflow-hidden bg-surface"
-          :class="styles[toast.type].bg"
+          class="toast-card pointer-events-auto w-80 max-sm:w-full bg-[#252526] border border-[#3E3E42] rounded shadow-toast overflow-hidden flex"
+          :role="toast.type === 'warning' ? 'alert' : 'status'"
+          :aria-live="toast.type === 'warning' ? 'assertive' : 'polite'"
+          :style="{
+            transform: getSwipeTransform(toast.id),
+            opacity: getSwipeOpacity(toast.id),
+          }"
+          @touchstart="handleTouchStart(toast.id, $event)"
+          @touchmove="handleTouchMove(toast.id, $event)"
+          @touchend="handleTouchEnd(toast.id)"
         >
-          <div class="flex items-start gap-3 p-4">
-            <!-- Icon -->
-            <component
-              :is="icons[toast.type]"
-              class="w-5 h-5 flex-shrink-0 mt-0.5"
-              :class="styles[toast.type].icon"
-            />
+          <!-- Status Strip (4px left edge) -->
+          <div class="w-1 shrink-0" :style="{ backgroundColor: typeStyles[toast.type].strip }" />
 
-            <!-- Content -->
+          <!-- Content -->
+          <div class="flex items-start gap-3 p-3 flex-1 min-w-0">
+            <!-- Icon -->
+            <div class="shrink-0 mt-0.5">
+              <component
+                :is="icons[toast.type]"
+                class="w-4 h-4"
+                :class="typeStyles[toast.type].icon"
+              />
+            </div>
+
+            <!-- Message Body -->
             <div class="flex-1 min-w-0">
-              <p
-                class="text-sm font-medium"
-                :class="styles[toast.type].title"
-              >
+              <p class="text-[13px] font-semibold text-white leading-tight">
                 {{ toast.title }}
               </p>
               <p
-                v-if="toast.message"
-                class="text-sm mt-1"
-                :class="styles[toast.type].message"
+                v-if="toast.detail"
+                class="text-[11px] font-mono text-[#A1A1AA] mt-0.5 truncate"
+                :title="toast.detail"
               >
-                {{ toast.message }}
+                {{ toast.detail }}
               </p>
             </div>
 
-            <!-- Dismiss button -->
-            <button
-              v-if="toast.dismissible"
-              class="flex-shrink-0 p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              @click="dismiss(toast.id)"
-            >
-              <X class="w-4 h-4" :class="styles[toast.type].icon" />
-            </button>
+            <!-- Action Button -->
+            <div class="shrink-0 flex items-center gap-1">
+              <button
+                v-if="toast.action"
+                class="text-[11px] font-bold tracking-wide transition-colors px-2 py-1 rounded hover:bg-white/5"
+                :class="typeStyles[toast.type].action"
+                @click="toast.action.onClick"
+              >
+                {{ toast.action.label }}
+              </button>
+
+              <!-- Dismiss button (for warnings/errors or as fallback) -->
+              <button
+                v-if="toast.duration === 0 || toast.type === 'warning'"
+                class="p-1 rounded hover:bg-white/10 transition-colors"
+                :class="typeStyles[toast.type].icon"
+                @click="dismiss(toast.id)"
+                title="Dismiss"
+              >
+                <X class="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </TransitionGroup>
@@ -90,25 +178,41 @@ const styles = {
 </template>
 
 <style scoped>
+/* High lift shadow from spec */
+.shadow-toast {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Entrance: Slide in from right with spring effect */
 .toast-enter-active {
-  transition: all 0.3s ease-out;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Exit: Fade out */
 .toast-leave-active {
-  transition: all 0.2s ease-in;
+  transition: all 0.2s linear;
 }
 
+/* Entrance from */
 .toast-enter-from {
   opacity: 0;
-  transform: translateX(100%);
+  transform: translateX(20px);
 }
 
+/* Exit to */
 .toast-leave-to {
   opacity: 0;
-  transform: translateX(100%);
 }
 
+/* Smooth repositioning when toasts are added/removed */
 .toast-move {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mobile: slide from bottom */
+@media (max-width: 640px) {
+  .toast-enter-from {
+    transform: translateY(20px);
+  }
 }
 </style>

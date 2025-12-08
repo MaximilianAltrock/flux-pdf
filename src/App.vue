@@ -22,9 +22,9 @@ import type { PageReference } from '@/types'
 
 const store = useDocumentStore()
 const pdfManager = usePdfManager()
-const { execute } = useCommandManager()
+const { execute, clearHistory } = useCommandManager()
 const toast = useToast()
-const { confirmDelete } = useConfirm()
+const { confirmDelete, confirmClearWorkspace } = useConfirm()
 
 // Initialize theme
 useTheme()
@@ -59,21 +59,21 @@ async function handleFilesSelected(files: FileList) {
   const successes = results.filter((r) => r.success)
   const errors = results.filter((r) => !r.success)
 
-  // Show success toast
+  // Show success toast (Type A: Efficiency Flex)
   if (successes.length > 0) {
     const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)
+    const fileNames = successes.map((r) => r.sourceFile?.filename).join(', ')
     toast.success(
       `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
-      `${totalPages} page${totalPages > 1 ? 's' : ''} added to document`,
+      `${totalPages} page${totalPages > 1 ? 's' : ''} from "${fileNames}"`,
     )
   }
 
-  // Show error toast for failures
+  // Show error toast (Type C: System Alert - requires manual dismiss)
   if (errors.length > 0) {
-    toast.error(
-      `Failed to load ${errors.length} file${errors.length > 1 ? 's' : ''}`,
-      errors.map((e) => e.error).join(', '),
-    )
+    for (const err of errors) {
+      toast.warning('Import Failed', err.error || 'Unknown error')
+    }
   }
 }
 
@@ -109,25 +109,58 @@ async function handleRemoveSource(sourceId: string) {
 
   const confirmed = await confirmDelete(pagesToRemove, 'page')
   if (confirmed) {
+    // Store pages for undo
+    const removedPages = store.pages
+      .filter((p) => p.sourceFileId === sourceId)
+      .map((p) => ({ ...p }))
+    const sourceBackup = { ...source }
+
     pdfManager.removeSourceFile(sourceId)
-    toast.success('File removed', `${pagesToRemove} page${pagesToRemove > 1 ? 's' : ''} removed`)
+
+    // Type B: Safety Net toast with UNDO
+    toast.destructive(
+      `Removed "${source.filename}"`,
+      `${pagesToRemove} page${pagesToRemove > 1 ? 's' : ''} deleted`,
+      () => {
+        // Undo: restore source and pages
+        store.addSourceFile(sourceBackup)
+        store.addPages(removedPages)
+      },
+    )
   }
 }
 
-function handleExportSuccess() {
-  toast.success('PDF exported', 'Your file has been downloaded')
+function handleExportSuccess(filename?: string, sizeKB?: number, durationMs?: number) {
+  // Type A: Efficiency Flex - show speed to prove local-first USP
+  const detail = filename
+    ? `"${filename}" ${sizeKB ? `(${(sizeKB / 1024).toFixed(1)} MB)` : ''} ${durationMs ? `• ${durationMs}ms` : ''}`
+    : undefined
+
+  toast.success('Export Successful', detail)
 }
 
 async function handleDeleteSelected() {
   if (store.selectedCount === 0) return
 
   const selectedIds = Array.from(store.selection.selectedIds)
+  const count = selectedIds.length
+
+  // Store pages for undo before deleting
+  const deletedPages = store.pages.filter((p) => selectedIds.includes(p.id)).map((p) => ({ ...p }))
+
+  // Get source name for detail
+  const sourceId = deletedPages[0]?.sourceFileId
+  const source = sourceId ? store.sources.get(sourceId) : null
+  const sourceDetail = source ? `From "${source.filename}"` : undefined
+
   store.softDeletePages(selectedIds)
   store.clearSelection()
-  toast.success(
-    'Pages deleted',
-    `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} removed`,
-  )
+
+  // Type B: Safety Net toast with UNDO
+  toast.destructive(`Deleted ${count} Page${count > 1 ? 's' : ''}`, sourceDetail, () => {
+    // Undo: restore the soft-deleted pages
+    store.restorePages(selectedIds)
+  })
 }
 
 function handlePagePreview(pageRef: PageReference) {
@@ -144,9 +177,11 @@ function handleDuplicateSelected() {
 
   const selectedIds = Array.from(store.selection.selectedIds)
   execute(new DuplicatePagesCommand(selectedIds))
-  toast.success(
-    'Pages duplicated',
-    `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} duplicated`,
+
+  // Type D: Info toast (no undo needed - use command history)
+  toast.info(
+    'Pages Duplicated',
+    `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} copied`,
   )
 }
 
@@ -181,6 +216,37 @@ function handleContextAction(action: string, pageRef: PageReference) {
   }
 }
 
+async function handleNewProject() {
+  // If workspace is empty, reset immediately
+  if (store.pageCount === 0 && store.sources.size === 0) {
+    performReset()
+    return
+  }
+
+  // Otherwise, show confirmation
+  const confirmed = await confirmClearWorkspace()
+  if (confirmed) {
+    performReset()
+  }
+}
+
+function performReset() {
+  // Clear all PDF data and caches
+  pdfManager.clearAll()
+  // Clear command history
+  clearHistory()
+  // Reset title lock so next import sets the title
+  store.isTitleLocked = false
+  store.projectTitle = 'Untitled Project'
+  // Type D: Info toast
+  toast.info('Workspace Cleared', 'Ready for a new project')
+}
+
+function handleShowHelp() {
+  // Open command palette - it shows keyboard shortcuts
+  showCommandPalette.value = true
+}
+
 function handleCommandAction(action: string) {
   showCommandPalette.value = false
 
@@ -210,6 +276,9 @@ function handleCommandAction(action: string) {
         }
       }
       break
+    case 'new-project':
+      handleNewProject()
+      break
   }
 }
 
@@ -235,14 +304,14 @@ function handleCommandAction(action: string) {
       @export="handleExport"
       @zoom-in="zoomIn"
       @zoom-out="zoomOut"
+      @new-project="handleNewProject"
+      @show-help="handleShowHelp"
     />
 
     <!-- Main Workspace (The Workbench) -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Left: Source Rail -->
-      <SourceRail
-        @remove-source="handleRemoveSource"
-      />
+      <SourceRail @remove-source="handleRemoveSource" />
 
       <!-- Center: Assembly Stage (Canvas) -->
       <main class="flex-1 overflow-hidden relative flex flex-col bg-background">
@@ -254,7 +323,7 @@ function handleCommandAction(action: string) {
             <div class="mt-8 text-center text-text-muted">
               <p class="mb-4">Or drag files from your desktop</p>
               <div class="flex flex-wrap justify-center gap-2 text-xs opacity-70">
-                 <span class="px-2 py-1 bg-surface rounded">CMD+K for commands</span>
+                <span class="px-2 py-1 bg-surface rounded">CMD+K for commands</span>
               </div>
             </div>
           </div>

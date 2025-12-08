@@ -14,7 +14,8 @@ import {
   Copy,
   Eye,
   Sun,
-  Moon
+  Moon,
+  FolderPlus,
 } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
@@ -46,10 +47,21 @@ interface CommandItem {
   action: () => void
   enabled: () => boolean
   category: string
+  keywords?: string[] // Additional search keywords
 }
 
 const allCommands: CommandItem[] = [
   // File actions
+  {
+    id: 'new-project',
+    label: 'New Project',
+    shortcut: '',
+    icon: FolderPlus,
+    action: () => emit('action', 'new-project'),
+    enabled: () => true,
+    category: 'File',
+    keywords: ['clear', 'reset', 'workspace', 'start over'],
+  },
   {
     id: 'add-files',
     label: 'Add PDF files',
@@ -57,7 +69,7 @@ const allCommands: CommandItem[] = [
     icon: FilePlus,
     action: () => emit('action', 'add-files'),
     enabled: () => true,
-    category: 'File'
+    category: 'File',
   },
   {
     id: 'export',
@@ -66,7 +78,7 @@ const allCommands: CommandItem[] = [
     icon: Download,
     action: () => emit('action', 'export'),
     enabled: () => store.pageCount > 0,
-    category: 'File'
+    category: 'File',
   },
   {
     id: 'export-selected',
@@ -75,7 +87,7 @@ const allCommands: CommandItem[] = [
     icon: Download,
     action: () => emit('action', 'export-selected'),
     enabled: () => store.selectedCount > 0,
-    category: 'File'
+    category: 'File',
   },
 
   // Edit actions
@@ -84,18 +96,24 @@ const allCommands: CommandItem[] = [
     label: 'Undo',
     shortcut: 'Ctrl+Z',
     icon: Undo2,
-    action: () => { undo(); emit('close') },
+    action: () => {
+      undo()
+      emit('close')
+    },
     enabled: () => canUndo.value,
-    category: 'Edit'
+    category: 'Edit',
   },
   {
     id: 'redo',
     label: 'Redo',
     shortcut: 'Ctrl+Shift+Z',
     icon: Redo2,
-    action: () => { redo(); emit('close') },
+    action: () => {
+      redo()
+      emit('close')
+    },
     enabled: () => canRedo.value,
-    category: 'Edit'
+    category: 'Edit',
   },
 
   // Selection actions
@@ -104,18 +122,24 @@ const allCommands: CommandItem[] = [
     label: 'Select all pages',
     shortcut: 'Ctrl+A',
     icon: CheckSquare,
-    action: () => { store.selectAll(); emit('close') },
+    action: () => {
+      store.selectAll()
+      emit('close')
+    },
     enabled: () => store.pageCount > 0,
-    category: 'Selection'
+    category: 'Selection',
   },
   {
     id: 'clear-selection',
     label: 'Clear selection',
     shortcut: 'Esc',
     icon: XSquare,
-    action: () => { store.clearSelection(); emit('close') },
+    action: () => {
+      store.clearSelection()
+      emit('close')
+    },
     enabled: () => store.selectedCount > 0,
-    category: 'Selection'
+    category: 'Selection',
   },
 
   // Page actions
@@ -130,7 +154,7 @@ const allCommands: CommandItem[] = [
       emit('close')
     },
     enabled: () => store.selectedCount > 0,
-    category: 'Page'
+    category: 'Page',
   },
   {
     id: 'rotate-left',
@@ -143,7 +167,7 @@ const allCommands: CommandItem[] = [
       emit('close')
     },
     enabled: () => store.selectedCount > 0,
-    category: 'Page'
+    category: 'Page',
   },
   {
     id: 'delete',
@@ -154,7 +178,7 @@ const allCommands: CommandItem[] = [
       emit('action', 'delete')
     },
     enabled: () => store.selectedCount > 0,
-    category: 'Page'
+    category: 'Page',
   },
   {
     id: 'duplicate',
@@ -163,7 +187,7 @@ const allCommands: CommandItem[] = [
     icon: Copy,
     action: () => emit('action', 'duplicate'),
     enabled: () => store.selectedCount > 0,
-    category: 'Page'
+    category: 'Page',
   },
   {
     id: 'preview',
@@ -172,36 +196,40 @@ const allCommands: CommandItem[] = [
     icon: Eye,
     action: () => emit('action', 'preview'),
     enabled: () => store.selectedCount === 1,
-    category: 'Page'
+    category: 'Page',
   },
 
   // Settings
   {
     id: 'toggle-theme',
-    label: computed(() => isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode').value,
+    label: computed(() => (isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode')).value,
     shortcut: '',
-    icon: computed(() => isDark.value ? Sun : Moon).value,
-    action: () => { toggleTheme(); emit('close') },
+    icon: computed(() => (isDark.value ? Sun : Moon)).value,
+    action: () => {
+      toggleTheme()
+      emit('close')
+    },
     enabled: () => true,
-    category: 'Settings'
-  }
+    category: 'Settings',
+  },
 ]
 
 const filteredCommands = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
 
   if (!query) {
-    return allCommands.filter(cmd => cmd.enabled())
+    return allCommands.filter((cmd) => cmd.enabled())
   }
 
-  return allCommands.filter(cmd => {
+  return allCommands.filter((cmd) => {
     if (!cmd.enabled()) return false
 
     const labelMatch = cmd.label.toLowerCase().includes(query)
     const categoryMatch = cmd.category.toLowerCase().includes(query)
     const shortcutMatch = cmd.shortcut?.toLowerCase().includes(query)
+    const keywordMatch = cmd.keywords?.some((kw) => kw.toLowerCase().includes(query))
 
-    return labelMatch || categoryMatch || shortcutMatch
+    return labelMatch || categoryMatch || shortcutMatch || keywordMatch
   })
 })
 
@@ -209,7 +237,7 @@ const lastUsedIds = ref<string[]>([])
 
 function handleCommandClick(cmd: CommandItem) {
   // Move to top of recent
-  lastUsedIds.value = [cmd.id, ...lastUsedIds.value.filter(id => id !== cmd.id)].slice(0, 3)
+  lastUsedIds.value = [cmd.id, ...lastUsedIds.value.filter((id) => id !== cmd.id)].slice(0, 3)
   cmd.action()
 }
 
@@ -222,7 +250,7 @@ const groupedCommands = computed(() => {
   // 1. Last Used (only if no search query)
   if (!query && lastUsedIds.value.length > 0) {
     const recent = lastUsedIds.value
-      .map(id => allCommands.find(c => c.id === id))
+      .map((id) => allCommands.find((c) => c.id === id))
       .filter((c): c is CommandItem => !!c && c.enabled())
 
     if (recent.length > 0) {
@@ -248,14 +276,17 @@ watch(searchQuery, () => {
 })
 
 // Focus input when opened
-watch(() => props.open, async (isOpen) => {
-  if (isOpen) {
-    searchQuery.value = ''
-    selectedIndex.value = 0
-    await nextTick()
-    inputRef.value?.focus()
-  }
-})
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (isOpen) {
+      searchQuery.value = ''
+      selectedIndex.value = 0
+      await nextTick()
+      inputRef.value?.focus()
+    }
+  },
+)
 
 function handleKeydown(event: KeyboardEvent) {
   if (!props.open) return
@@ -263,10 +294,7 @@ function handleKeydown(event: KeyboardEvent) {
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
-      selectedIndex.value = Math.min(
-        selectedIndex.value + 1,
-        filteredCommands.value.length - 1
-      )
+      selectedIndex.value = Math.min(selectedIndex.value + 1, filteredCommands.value.length - 1)
       break
 
     case 'ArrowUp':
@@ -314,7 +342,9 @@ function getGlobalIndex(category: string, localIndex: number): number {
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="emit('close')" />
 
         <!-- Palette -->
-        <div class="relative w-full max-w-[600px] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        <div
+          class="relative w-full max-w-[600px] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        >
           <!-- Search input -->
           <div class="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
             <Search class="w-5 h-5 text-text-muted/50" />
@@ -325,14 +355,19 @@ function getGlobalIndex(category: string, localIndex: number): number {
               placeholder="Type a command or search..."
               class="flex-1 text-sm outline-none placeholder-text-muted/50 bg-transparent text-text h-6"
             />
-            <kbd class="px-1.5 py-0.5 text-[10px] uppercase font-bold text-text-muted bg-surface border border-border rounded shadow-sm">
+            <kbd
+              class="px-1.5 py-0.5 text-[10px] uppercase font-bold text-text-muted bg-surface border border-border rounded shadow-sm"
+            >
               esc
             </kbd>
           </div>
 
           <!-- Command list -->
           <div class="flex-1 overflow-y-auto custom-scrollbar p-2">
-            <div v-if="Object.keys(groupedCommands).length === 0" class="px-4 py-12 text-center text-text-muted text-sm">
+            <div
+              v-if="Object.keys(groupedCommands).length === 0"
+              class="px-4 py-12 text-center text-text-muted text-sm"
+            >
               No commands found
             </div>
 
@@ -343,7 +378,9 @@ function getGlobalIndex(category: string, localIndex: number): number {
                 class="mb-2 last:mb-0"
               >
                 <!-- Category header -->
-                <div class="px-3 py-1.5 text-[10px] uppercase font-bold text-text-muted/70 tracking-wider">
+                <div
+                  class="px-3 py-1.5 text-[10px] uppercase font-bold text-text-muted/70 tracking-wider"
+                >
                   {{ category }}
                 </div>
 
@@ -352,18 +389,22 @@ function getGlobalIndex(category: string, localIndex: number): number {
                   v-for="(cmd, idx) in commands"
                   :key="cmd.id"
                   class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-all duration-75 group relative"
-                  :class="getGlobalIndex(category, idx) === selectedIndex
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-text hover:bg-surface'"
+                  :class="
+                    getGlobalIndex(category, idx) === selectedIndex
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-text hover:bg-surface'
+                  "
                   @click="handleCommandClick(cmd)"
                   @mouseenter="selectedIndex = getGlobalIndex(category, idx)"
                 >
                   <component
                     :is="cmd.icon"
                     class="w-4 h-4 shrink-0 transition-colors"
-                    :class="getGlobalIndex(category, idx) === selectedIndex
-                      ? 'text-white'
-                      : 'text-text-muted group-hover:text-text'"
+                    :class="
+                      getGlobalIndex(category, idx) === selectedIndex
+                        ? 'text-white'
+                        : 'text-text-muted group-hover:text-text'
+                    "
                   />
 
                   <span class="flex-1 text-sm font-medium truncate">{{ cmd.label }}</span>
@@ -371,7 +412,11 @@ function getGlobalIndex(category: string, localIndex: number): number {
                   <span
                     v-if="cmd.shortcut"
                     class="text-[10px] font-mono opacity-60 flex items-center gap-1"
-                    :class="getGlobalIndex(category, idx) === selectedIndex ? 'text-white' : 'text-text-muted'"
+                    :class="
+                      getGlobalIndex(category, idx) === selectedIndex
+                        ? 'text-white'
+                        : 'text-text-muted'
+                    "
                   >
                     {{ cmd.shortcut }}
                   </span>
@@ -385,8 +430,8 @@ function getGlobalIndex(category: string, localIndex: number): number {
             <div class="flex items-center justify-between text-[10px] text-text-muted">
               <span><strong>FluxPDF</strong> Command Palette</span>
               <div class="flex gap-3">
-                 <span><kbd class="font-sans">↑↓</kbd> to navigate</span>
-                 <span><kbd class="font-sans">↵</kbd> to run</span>
+                <span><kbd class="font-sans">↑↓</kbd> to navigate</span>
+                <span><kbd class="font-sans">↵</kbd> to run</span>
               </div>
             </div>
           </div>
