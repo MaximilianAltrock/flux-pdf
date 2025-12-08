@@ -160,8 +160,10 @@ async function handleMobileExport() {
     }
 
     const pdfBytes = await finalPdf.save({ useObjectStreams: true })
+    // Re-wrap to ensure the underlying buffer is a plain ArrayBuffer for File constructor
+    const exportBytes = new Uint8Array(pdfBytes)
     const filename = `${store.projectTitle || 'document'}.pdf`
-    const file = new File([pdfBytes.buffer], filename, { type: 'application/pdf' })
+    const file = new File([exportBytes], filename, { type: 'application/pdf' })
 
     store.setLoading(false)
 
