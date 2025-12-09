@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { Scissors, ArrowDown } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
@@ -7,7 +7,7 @@ import { useCommandManager } from '@/composables/useCommandManager'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import { ReorderPagesCommand } from '@/commands'
-import { UserAction } from '@/types/actions'
+import { UserAction } from '../types/actions'
 import PdfThumbnail from './PdfThumbnail.vue'
 import type { PageReference } from '@/types'
 
@@ -15,17 +15,18 @@ const props = defineProps<{
   selectionMode: boolean
 }>()
 
+// FIX: defineEmits cannot use computed keys. Use string literal.
 const emit = defineEmits<{
   enterSelection: []
   exitSelection: []
-  [UserAction.PREVIEW]: [pageRef: PageReference] // Using Enum for consistency
+  preview: [pageRef: PageReference]
 }>()
 
 const { execute } = useCommandManager()
 const { haptic, screenWidth } = useMobile()
 const { localPages, isDragging, isSelected, store } = useGridLogic()
 
-// Local state for drag tracking (specific to this component's logic)
+// Local state for drag tracking
 const dragStartOrder = ref<PageReference[]>([])
 
 // Mobile-specific state
@@ -38,7 +39,7 @@ const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const longPressPageId = ref<string | null>(null)
 const LONG_PRESS_MS = 400
 
-// Jump mode - for moving pages long distances
+// Jump mode
 const jumpModeActive = ref(false)
 
 // Pinch zoom tracking
@@ -46,9 +47,6 @@ const pinchStartDist = ref(0)
 const isPinching = ref(false)
 
 // Exit jump mode when exiting selection mode
-// Note: We watch props.selectionMode here as it comes from parent
-// We don't need to watch store.pages syncing because useGridLogic handles it
-import { watch } from 'vue'
 watch(
   () => props.selectionMode,
   (active) => {
@@ -242,25 +240,21 @@ function getVisiblePageNumber(pageRef: PageReference): number {
   return count
 }
 
-// Check if we should show a jump target before this index
 function shouldShowJumpTarget(index: number): boolean {
   if (!jumpModeActive.value) return false
 
   const page = localPages.value[index]
   if (!page || page.deleted || page.isDivider) return false
 
-  // Don't show target if this page is selected
   if (isSelected(page.id)) return false
 
-  // Don't show target if previous visible page is selected
   for (let i = index - 1; i >= 0; i--) {
     const prev = localPages.value[i]
     if (!prev || prev.deleted || prev.isDivider) continue
-    // Found previous visible page
     return !isSelected(prev.id)
   }
 
-  return true // First visible page
+  return true
 }
 
 function preventContextMenu(e: Event) {
@@ -287,7 +281,6 @@ onUnmounted(() => {
     class="h-full overflow-y-auto overflow-x-hidden bg-background grid-touch-area no-scrollbar"
     @contextmenu="preventContextMenu"
   >
-    <!-- Jump Mode Header -->
     <Transition name="slide-down">
       <div
         v-if="jumpModeActive"
@@ -302,7 +295,6 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- Draggable Grid -->
     <VueDraggable
       v-model="localPages"
       :animation="200"
@@ -319,7 +311,6 @@ onUnmounted(() => {
       @end="handleDragEnd"
     >
       <template v-for="(pageRef, index) in localPages" :key="pageRef.id">
-        <!-- Jump Target (before page) -->
         <button
           v-if="shouldShowJumpTarget(index)"
           class="col-span-full h-14 -my-1 border-2 border-dashed border-primary/60 rounded-xl flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
@@ -329,7 +320,6 @@ onUnmounted(() => {
           <span>Move here</span>
         </button>
 
-        <!-- DIVIDER OBJECT -->
         <div v-if="pageRef.isDivider" class="col-span-full h-6 flex items-center gap-3 my-2">
           <div class="h-px flex-1 bg-border" />
           <div
@@ -341,10 +331,8 @@ onUnmounted(() => {
           <div class="h-px flex-1 bg-border" />
         </div>
 
-        <!-- Deleted page (hidden placeholder) -->
         <div v-else-if="pageRef.deleted" class="hidden" />
 
-        <!-- Normal Page Thumbnail -->
         <div
           v-else
           class="relative"
@@ -354,7 +342,6 @@ onUnmounted(() => {
           @touchend="handleTouchEnd"
           @click="handlePageTap(pageRef, $event)"
         >
-          <!-- Selection checkmark -->
           <Transition name="pop">
             <div
               v-if="props.selectionMode && isSelected(pageRef.id)"
@@ -372,7 +359,6 @@ onUnmounted(() => {
             </div>
           </Transition>
 
-          <!-- Long press feedback -->
           <Transition name="fade">
             <div
               v-if="longPressPageId === pageRef.id"
@@ -393,7 +379,6 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <!-- Final Jump Target -->
       <button
         v-if="jumpModeActive"
         class="col-span-full h-14 border-2 border-dashed border-primary/60 rounded-xl flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
@@ -404,7 +389,6 @@ onUnmounted(() => {
       </button>
     </VueDraggable>
 
-    <!-- Jump Mode Activation Button -->
     <Transition name="fade">
       <div
         v-if="props.selectionMode && store.selectedCount > 0 && !jumpModeActive && !isDragging"
@@ -419,7 +403,6 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- Help text -->
     <p
       v-if="visiblePagesList.length > 0 && !jumpModeActive"
       class="text-center text-xs text-text-muted py-4 px-6"
@@ -431,7 +414,6 @@ onUnmounted(() => {
       }}
     </p>
 
-    <!-- Empty state -->
     <div
       v-if="visiblePagesList.length === 0"
       class="absolute inset-0 flex items-center justify-center p-8"
@@ -496,19 +478,16 @@ onUnmounted(() => {
 }
 
 .grid-touch-area {
-  /* Allows scrolling (pan-y) but BLOCKS pinch and horizontal swipe at CSS level */
   touch-action: pan-y;
-  /* Extra safety for scroll bounce on Android */
   overscroll-behavior: contain;
 }
 
-/* Hide Scrollbar (Native Feel) */
 .no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
 }
 </style>
