@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { Scissors, ArrowDown } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
-import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useMobile } from '@/composables/useMobile'
+import { useGridLogic } from '@/composables/useGridLogic'
 import { ReorderPagesCommand } from '@/commands'
+import { UserAction } from '@/types/actions'
 import PdfThumbnail from './PdfThumbnail.vue'
 import type { PageReference } from '@/types'
 
@@ -17,16 +18,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   enterSelection: []
   exitSelection: []
-  preview: [pageRef: PageReference]
+  [UserAction.PREVIEW]: [pageRef: PageReference] // Using Enum for consistency
 }>()
 
-const store = useDocumentStore()
 const { execute } = useCommandManager()
 const { haptic, screenWidth } = useMobile()
+const { localPages, isDragging, isSelected, store } = useGridLogic()
 
-// Local copy for drag operations (same pattern as PageGrid.vue)
-const localPages = ref<PageReference[]>([])
-const isDragging = ref(false)
+// Local state for drag tracking (specific to this component's logic)
 const dragStartOrder = ref<PageReference[]>([])
 
 // Mobile-specific state
@@ -46,18 +45,10 @@ const jumpModeActive = ref(false)
 const pinchStartDist = ref(0)
 const isPinching = ref(false)
 
-// Sync local pages with store (same pattern as PageGrid.vue)
-watch(
-  () => store.pages,
-  (newPages) => {
-    if (!isDragging.value) {
-      localPages.value = [...newPages]
-    }
-  },
-  { deep: true, immediate: true },
-)
-
 // Exit jump mode when exiting selection mode
+// Note: We watch props.selectionMode here as it comes from parent
+// We don't need to watch store.pages syncing because useGridLogic handles it
+import { watch } from 'vue'
 watch(
   () => props.selectionMode,
   (active) => {
@@ -81,7 +72,7 @@ const thumbnailWidth = computed(() => {
 })
 
 // Visible pages (non-deleted, non-divider) for page numbering
-const visiblePages = computed(() => localPages.value.filter((p) => !p.deleted && !p.isDivider))
+const visiblePagesList = computed(() => localPages.value.filter((p) => !p.deleted && !p.isDivider))
 
 // === Touch Handlers ===
 
@@ -132,7 +123,7 @@ function handlePageTap(pageRef: PageReference, event: Event) {
     }
   } else {
     // Open preview (Focus View)
-    emit('preview', pageRef)
+    emit(UserAction.PREVIEW, pageRef)
   }
 }
 
@@ -177,7 +168,7 @@ function cancelJumpMode() {
   jumpModeActive.value = false
 }
 
-// === Drag Handlers (same pattern as PageGrid.vue) ===
+// === Drag Handlers ===
 
 function handleDragStart() {
   isDragging.value = true
@@ -241,10 +232,6 @@ function handlePinchEnd() {
 
 // === Helpers ===
 
-function isSelected(pageRef: PageReference): boolean {
-  return store.selection.selectedIds.has(pageRef.id)
-}
-
 function getVisiblePageNumber(pageRef: PageReference): number {
   let count = 0
   for (const p of localPages.value) {
@@ -263,14 +250,14 @@ function shouldShowJumpTarget(index: number): boolean {
   if (!page || page.deleted || page.isDivider) return false
 
   // Don't show target if this page is selected
-  if (isSelected(page)) return false
+  if (isSelected(page.id)) return false
 
   // Don't show target if previous visible page is selected
   for (let i = index - 1; i >= 0; i--) {
     const prev = localPages.value[i]
     if (!prev || prev.deleted || prev.isDivider) continue
     // Found previous visible page
-    return !isSelected(prev)
+    return !isSelected(prev.id)
   }
 
   return true // First visible page
@@ -361,7 +348,7 @@ onUnmounted(() => {
         <div
           v-else
           class="relative"
-          :class="{ 'opacity-40': jumpModeActive && isSelected(pageRef) }"
+          :class="{ 'opacity-40': jumpModeActive && isSelected(pageRef.id) }"
           @touchstart="handleTouchStart(pageRef)"
           @touchmove="handleTouchMove"
           @touchend="handleTouchEnd"
@@ -370,7 +357,7 @@ onUnmounted(() => {
           <!-- Selection checkmark -->
           <Transition name="pop">
             <div
-              v-if="props.selectionMode && isSelected(pageRef)"
+              v-if="props.selectionMode && isSelected(pageRef.id)"
               class="absolute -top-1 -right-1 z-10 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg"
             >
               <svg
@@ -396,7 +383,7 @@ onUnmounted(() => {
           <PdfThumbnail
             :page-ref="pageRef"
             :page-number="getVisiblePageNumber(pageRef)"
-            :selected="props.selectionMode && isSelected(pageRef)"
+            :selected="props.selectionMode && isSelected(pageRef.id)"
             :width="thumbnailWidth"
             :is-start-of-file="false"
             :is-razor-active="false"
@@ -434,7 +421,7 @@ onUnmounted(() => {
 
     <!-- Help text -->
     <p
-      v-if="visiblePages.length > 0 && !jumpModeActive"
+      v-if="visiblePagesList.length > 0 && !jumpModeActive"
       class="text-center text-xs text-text-muted py-4 px-6"
     >
       {{
@@ -446,7 +433,7 @@ onUnmounted(() => {
 
     <!-- Empty state -->
     <div
-      v-if="visiblePages.length === 0"
+      v-if="visiblePagesList.length === 0"
       class="absolute inset-0 flex items-center justify-center p-8"
     >
       <div class="text-center text-text-muted">

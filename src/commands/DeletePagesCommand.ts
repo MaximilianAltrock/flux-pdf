@@ -2,9 +2,6 @@ import type { Command } from './types'
 import type { PageReference } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
-/**
- * Command to delete one or more pages
- */
 export class DeletePagesCommand implements Command {
   readonly id: string
   readonly name: string
@@ -16,37 +13,33 @@ export class DeletePagesCommand implements Command {
   constructor(pageIds: string[]) {
     this.id = crypto.randomUUID()
     this.pageIds = [...pageIds]
-
     const count = pageIds.length
     this.name = count === 1 ? 'Delete page' : `Delete ${count} pages`
   }
 
   execute(): void {
-    // Store pages and their indices before deletion (in reverse order for proper restoration)
+    // 1. Capture state before deletion
     this.deletedPages = []
 
-    for (const pageId of this.pageIds) {
-      const index = this.store.pages.findIndex(p => p.id === pageId)
-      if (index !== -1) {
-        const page = this.store.pages[index]
-        if (page) {
-          this.deletedPages.push({
-            page: { ...page },
-            index
-          })
-        }
+    // We iterate store pages to find indices.
+    // Important: We must capture the exact object state.
+    this.store.pages.forEach((page, index) => {
+      if (this.pageIds.includes(page.id)) {
+        this.deletedPages.push({
+          page: { ...page },
+          index,
+        })
       }
-    }
+    })
 
-    // Sort by index descending so we delete from end first
-    this.deletedPages.sort((a, b) => b.index - a.index)
-
-    // Perform deletion
-    this.store.removePages(this.pageIds)
+    // 2. Perform Hard Delete in Store
+    this.store.deletePages(this.pageIds)
   }
 
   undo(): void {
-    // Restore pages in ascending index order
+    // 3. Restore in correct order (Ascending Index)
+    // If we insert index 5, then index 10, the relative order is preserved
+    // provided we sort by index ascending.
     const sorted = [...this.deletedPages].sort((a, b) => a.index - b.index)
 
     for (const { page, index } of sorted) {

@@ -28,6 +28,15 @@ export interface ExportOptions {
 }
 
 /**
+ * Options for the raw generator
+ */
+export interface GeneratorOptions {
+  metadata?: PdfMetadata
+  compress?: boolean
+  onProgress?: (percent: number) => void
+}
+
+/**
  * Parse a page range string into an array of 0-based indices
  * e.g., "1-5, 8, 10-12" => [0, 1, 2, 3, 4, 7, 9, 10, 11]
  */
@@ -97,7 +106,87 @@ export function usePdfExport() {
   const exportError = ref<string | null>(null)
 
   /**
-   * Export with full options
+   * Core Generator Function (Exposed)
+   * Generates a Uint8Array PDF from a list of PageReferences
+   */
+  async function generateRawPdf(
+    pages: PageReference[],
+    options: GeneratorOptions = {},
+  ): Promise<Uint8Array> {
+    const { metadata, compress, onProgress } = options
+
+    // Create a new PDF document
+    const finalPdf = await PDFDocument.create()
+
+    // Set metadata if provided
+    if (metadata) {
+      if (metadata.title) finalPdf.setTitle(metadata.title)
+      if (metadata.author) finalPdf.setAuthor(metadata.author)
+      if (metadata.subject) finalPdf.setSubject(metadata.subject)
+      if (metadata.keywords) finalPdf.setKeywords(metadata.keywords)
+      if (metadata.creator) finalPdf.setCreator(metadata.creator)
+      finalPdf.setProducer(metadata.producer ?? 'FluxPDF')
+      finalPdf.setCreationDate(new Date())
+      finalPdf.setModificationDate(new Date())
+    } else {
+      finalPdf.setProducer('FluxPDF')
+      finalPdf.setCreationDate(new Date())
+    }
+
+    // Cache loaded PDFs to avoid reloading
+    const loadedPdfs = new Map<string, any>()
+
+    // Track progress
+    let processedPages = 0
+    const totalPages = pages.length
+
+    // Process pages in their virtual order
+    for (const pageRef of pages) {
+      // Get or load the source PDF
+      let sourcePdf = loadedPdfs.get(pageRef.sourceFileId)
+
+      if (!sourcePdf) {
+        const sourceBuffer = await pdfManager.getPdfBlob(pageRef.sourceFileId)
+        if (!sourceBuffer) {
+          throw new Error(`Source file not found: ${pageRef.sourceFileId}`)
+        }
+        sourcePdf = await PDFDocument.load(sourceBuffer)
+        loadedPdfs.set(pageRef.sourceFileId, sourcePdf)
+      }
+
+      const [copiedPage] = await finalPdf.copyPages(sourcePdf, [pageRef.sourcePageIndex])
+
+      if (!copiedPage) {
+        throw new Error('Failed to copy page')
+      }
+
+      // Apply rotation
+      if (pageRef.rotation !== 0) {
+        const currentRotation = copiedPage.getRotation().angle
+        copiedPage.setRotation(degrees(currentRotation + pageRef.rotation))
+      }
+
+      finalPdf.addPage(copiedPage)
+
+      processedPages++
+
+      if (onProgress) {
+        onProgress(Math.round((processedPages / totalPages) * 90))
+      }
+
+      // Allow UI updates
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    // Generate the final PDF bytes
+    return await finalPdf.save({
+      useObjectStreams: compress ?? true,
+      addDefaultPage: false,
+    })
+  }
+
+  /**
+   * Export with full options (Handles ZIP splitting and Downloads)
    */
   async function exportWithOptions(options: ExportOptions): Promise<void> {
     const { filename, pageRange, metadata, compress } = options
@@ -109,28 +198,28 @@ export function usePdfExport() {
       const indices = parsePageRange(pageRange, store.pages.length)
       pagesToExport = indices
         .map((i) => store.pages[i])
-        // Filter out deleted, but KEEP dividers to knowing where to split
+        // Filter out deleted, but KEEP dividers to know where to split
         .filter((p): p is PageReference => !!p && !p.deleted)
     } else {
-      pagesToExport = store.pages.filter(p => !p.deleted)
+      pagesToExport = store.pages.filter((p) => !p.deleted)
     }
 
-    // Group pages into segments
+    // Group pages into segments based on Dividers
     const segments: PageReference[][] = []
     let currentSegment: PageReference[] = []
 
     for (const page of pagesToExport) {
-        if (page.isDivider) {
-            if (currentSegment.length > 0) {
-                segments.push(currentSegment)
-                currentSegment = []
-            }
-        } else {
-            currentSegment.push(page)
+      if (page.isDivider) {
+        if (currentSegment.length > 0) {
+          segments.push(currentSegment)
+          currentSegment = []
         }
+      } else {
+        currentSegment.push(page)
+      }
     }
     if (currentSegment.length > 0) {
-        segments.push(currentSegment)
+      segments.push(currentSegment)
     }
 
     if (segments.length === 0) {
@@ -142,44 +231,49 @@ export function usePdfExport() {
     exportError.value = null
 
     try {
-        if (segments.length > 1) {
-            // ZIP EXPORT
-            const zip = new JSZip()
+      if (segments.length > 1) {
+        // ZIP EXPORT
+        const zip = new JSZip()
 
-            for (let i = 0; i < segments.length; i++) {
-                const segmentPages = segments[i]
-                if (!segmentPages || segmentPages.length === 0) continue
+        for (let i = 0; i < segments.length; i++) {
+          const segmentPages = segments[i]
+          if (!segmentPages || segmentPages.length === 0) continue
 
-                // Generate PDF for this segment
-                const pdfBytes = await generatePdfBytes(segmentPages, pdfManager, metadata, compress, () => {
-                   // No detailed progress for individual Zip parts to keep it simple
-                })
+          // Generate PDF for this segment using the raw generator
+          const pdfBytes = await generateRawPdf(segmentPages, {
+            metadata,
+            compress,
+            // We don't track detailed progress for individual zip parts to keep UI simple
+            onProgress: undefined,
+          })
 
-                zip.file(`${filename}-part${i + 1}.pdf`, pdfBytes)
+          zip.file(`${filename}-part${i + 1}.pdf`, pdfBytes)
 
-                // Simple progress update
-                exportProgress.value = Math.round(((i + 1) / segments.length) * 80)
-            }
-
-            exportProgress.value = 90
-            const zipContent = await zip.generateAsync({ type: 'uint8array' })
-            exportProgress.value = 100
-
-            downloadFile(zipContent, `${filename}.zip`, 'application/zip')
-
-        } else {
-            // SINGLE PDF EXPORT (Segment 0)
-            const segmentPages = segments[0]
-            if (segmentPages) {
-                const pdfBytes = await generatePdfBytes(segmentPages, pdfManager, metadata, compress, (val) => {
-                     exportProgress.value = val
-                })
-
-                 // Trigger download
-                downloadFile(pdfBytes, `${filename}.pdf`, 'application/pdf')
-            }
+          // Simple progress update based on segments done
+          exportProgress.value = Math.round(((i + 1) / segments.length) * 80)
         }
 
+        exportProgress.value = 90
+        const zipContent = await zip.generateAsync({ type: 'uint8array' })
+        exportProgress.value = 100
+
+        downloadFile(zipContent, `${filename}.zip`, 'application/zip')
+      } else {
+        // SINGLE PDF EXPORT (Segment 0)
+        const segmentPages = segments[0]
+        if (segmentPages) {
+          const pdfBytes = await generateRawPdf(segmentPages, {
+            metadata,
+            compress,
+            onProgress: (val) => {
+              exportProgress.value = val
+            },
+          })
+
+          // Trigger download
+          downloadFile(pdfBytes, `${filename}.pdf`, 'application/pdf')
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Export failed'
       exportError.value = message
@@ -190,89 +284,15 @@ export function usePdfExport() {
     }
   }
 
-  // Helper to generate PDF bytes for a list of pages
-  async function generatePdfBytes(
-    pages: PageReference[],
-    pdfManager: any,
-    metadata: PdfMetadata | undefined,
-    compress: boolean | undefined,
-    onProgress: (percent: number) => void
-  ): Promise<Uint8Array> {
-      // Create a new PDF document
-      const finalPdf = await PDFDocument.create()
-
-      // Set metadata if provided
-      if (metadata) {
-        if (metadata.title) finalPdf.setTitle(metadata.title)
-        if (metadata.author) finalPdf.setAuthor(metadata.author)
-        if (metadata.subject) finalPdf.setSubject(metadata.subject)
-        if (metadata.keywords) finalPdf.setKeywords(metadata.keywords)
-        if (metadata.creator) finalPdf.setCreator(metadata.creator)
-        finalPdf.setProducer(metadata.producer ?? 'FluxPDF')
-        finalPdf.setCreationDate(new Date())
-        finalPdf.setModificationDate(new Date())
-      } else {
-        finalPdf.setProducer('FluxPDF')
-        finalPdf.setCreationDate(new Date())
-      }
-
-      // Cache loaded PDFs to avoid reloading
-      const loadedPdfs = new Map<string, any>()
-
-      // Track progress
-      let processedPages = 0
-      const totalPages = pages.length
-
-      // Process pages in their virtual order
-      for (const pageRef of pages) {
-        // Get or load the source PDF
-        let sourcePdf = loadedPdfs.get(pageRef.sourceFileId)
-
-        if (!sourcePdf) {
-          const sourceBuffer = await pdfManager.getPdfBlob(pageRef.sourceFileId)
-          if (!sourceBuffer) {
-            throw new Error(`Source file not found: ${pageRef.sourceFileId}`)
-          }
-          sourcePdf = await PDFDocument.load(sourceBuffer)
-          loadedPdfs.set(pageRef.sourceFileId, sourcePdf)
-        }
-
-        const [copiedPage] = await finalPdf.copyPages(sourcePdf, [pageRef.sourcePageIndex])
-
-        if (!copiedPage) {
-          throw new Error('Failed to copy page')
-        }
-
-        // Apply rotation
-        if (pageRef.rotation !== 0) {
-          const currentRotation = copiedPage.getRotation().angle
-          copiedPage.setRotation(degrees(currentRotation + pageRef.rotation))
-        }
-
-        finalPdf.addPage(copiedPage)
-
-        processedPages++
-        onProgress(Math.round((processedPages / totalPages) * 90))
-
-        await new Promise((resolve) => setTimeout(resolve, 0))
-      }
-
-      // Generate the final PDF bytes
-      return await finalPdf.save({
-        useObjectStreams: compress ?? true,
-        addDefaultPage: false,
-      })
-  }
-
   /**
-   * Simple export (backward compatible)
+   * Simple export wrapper
    */
   async function exportPdf(filename = 'document'): Promise<void> {
     return exportWithOptions({ filename })
   }
 
   /**
-   * Export only selected pages
+   * Export only selected pages wrapper
    */
   async function exportSelectedPages(filename = 'selected-pages'): Promise<void> {
     if (store.selectedCount === 0) {
@@ -289,9 +309,6 @@ export function usePdfExport() {
   }
 
   /**
-   * Trigger a browser download for the PDF
-   */
-  /**
    * Trigger a browser download
    */
   function downloadFile(data: Uint8Array, filename: string, mimeType = 'application/pdf'): void {
@@ -306,7 +323,6 @@ export function usePdfExport() {
     link.click()
     document.body.removeChild(link)
 
-    // Clean up the blob URL after a short delay
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
@@ -321,12 +337,10 @@ export function usePdfExport() {
     }
 
     if (sources.length === 1 && sources[0]) {
-      // Use the original filename without extension
       const name = sources[0].filename.replace(/\.pdf$/i, '')
       return `${name}-edited`
     }
 
-    // Multiple sources - use generic name
     return 'merged-document'
   }
 
@@ -339,7 +353,6 @@ export function usePdfExport() {
       totalSize += source.fileSize
     }
 
-    // Very rough estimate - actual size depends on many factors
     const avgPageSize = totalSize / Math.max(1, store.pages.length)
     const estimatedSize = avgPageSize * store.pages.length
 
@@ -352,6 +365,7 @@ export function usePdfExport() {
     isExporting,
     exportProgress,
     exportError,
+    generateRawPdf,
     exportPdf,
     exportWithOptions,
     exportSelectedPages,
