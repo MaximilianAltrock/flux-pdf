@@ -296,7 +296,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-full overflow-auto bg-background grid-touch-area" @contextmenu="preventContextMenu">
+  <div
+    class="h-full overflow-y-auto overflow-x-hidden bg-background grid-touch-area no-scrollbar"
+    @contextmenu="preventContextMenu"
+  >
     <!-- Jump Mode Header -->
     <Transition name="slide-down">
       <div
@@ -510,5 +513,15 @@ onUnmounted(() => {
   touch-action: pan-y;
   /* Extra safety for scroll bounce on Android */
   overscroll-behavior: contain;
+}
+
+/* Hide Scrollbar (Native Feel) */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 </style>

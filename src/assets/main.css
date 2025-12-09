@@ -153,6 +153,10 @@
     -webkit-user-select: none; /* Kill text selection */
     user-select: none;
     -webkit-tap-highlight-color: transparent; /* Kill blue tap box */
+
+    /* Reinforce scroll behavior on body too */
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
   }
 
   /* Re-enable text selection ONLY for inputs */
