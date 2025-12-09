@@ -12,7 +12,10 @@ const files = computed(() => store.sourceFileList)
 function handleDragStart(event: DragEvent, sourceId: string) {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData('application/json', JSON.stringify({ type: 'source-file', sourceId }))
+    event.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({ type: 'source-file', sourceId }),
+    )
   }
 }
 
@@ -62,7 +65,7 @@ async function handleDrop(e: DragEvent) {
     // Pass autoAddPages: false
     // We need to update loadPdfFiles signature first, or pass option object
     // Assuming we'll update usePdfManager next
-    await loadPdfFiles(droppedFiles, false)
+    await loadPdfFiles(droppedFiles)
   }
 }
 </script>
@@ -78,7 +81,9 @@ async function handleDrop(e: DragEvent) {
   >
     <!-- Header -->
     <div class="h-12 border-b border-border flex items-center justify-between px-3 shrink-0">
-      <h2 v-if="!isCollapsed" class="text-xs font-bold text-text-muted uppercase tracking-wider">Sources</h2>
+      <h2 v-if="!isCollapsed" class="text-xs font-bold text-text-muted uppercase tracking-wider">
+        Sources
+      </h2>
       <div v-if="isCollapsed" class="w-full flex justify-center">
         <FileUp class="w-5 h-5 text-text-muted" />
       </div>
@@ -104,8 +109,11 @@ async function handleDrop(e: DragEvent) {
             </div>
 
             <div v-else class="flex-1 min-w-0 pl-2 py-2">
-               <div class="flex items-center justify-between gap-1 mb-0.5">
-                <span class="text-xs text-text font-medium truncate leading-tight" :title="file.filename">
+              <div class="flex items-center justify-between gap-1 mb-0.5">
+                <span
+                  class="text-xs text-text font-medium truncate leading-tight"
+                  :title="file.filename"
+                >
                   {{ file.filename }}
                 </span>
                 <div class="flex items-center gap-0.5">
@@ -116,20 +124,25 @@ async function handleDrop(e: DragEvent) {
                   >
                     <X class="w-3 h-3" />
                   </button>
-                  <GripVertical class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing" />
+                  <GripVertical
+                    class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+                  />
                 </div>
-               </div>
-               <div class="flex items-center gap-2 text-[10px] text-text-muted font-mono">
-                 <span>{{ file.pageCount }} pgs</span>
-                 <span>{{ (file.fileSize / 1024 / 1024).toFixed(1) }} MB</span>
-               </div>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-text-muted font-mono">
+                <span>{{ file.pageCount }} pgs</span>
+                <span>{{ (file.fileSize / 1024 / 1024).toFixed(1) }} MB</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-if="files.length === 0 && !isCollapsed" class="border-2 border-dashed border-border rounded-lg p-4 text-center mt-4">
+      <div
+        v-if="files.length === 0 && !isCollapsed"
+        class="border-2 border-dashed border-border rounded-lg p-4 text-center mt-4"
+      >
         <p class="text-xs text-text-muted mb-1">No files imported</p>
         <p class="text-[10px] text-text-muted opacity-60">Drop PDFs here</p>
       </div>
