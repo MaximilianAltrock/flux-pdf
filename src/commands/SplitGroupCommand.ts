@@ -19,7 +19,7 @@ export class SplitGroupCommand implements Command {
       sourcePageIndex: -1,
       rotation: 0,
       isDivider: true,
-      groupId: crypto.randomUUID()
+      groupId: crypto.randomUUID(),
     }
   }
 
@@ -30,6 +30,6 @@ export class SplitGroupCommand implements Command {
 
   undo(): void {
     // Remove the divider by ID using store action
-    this.store.removePage(this.divider.id)
+    this.store.deletePages([this.divider.id])
   }
 }

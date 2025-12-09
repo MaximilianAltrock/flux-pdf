@@ -1,7 +1,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { RotatePagesCommand } from '@/commands'
+import { DeletePagesCommand, RotatePagesCommand } from '@/commands'
 
 export function useKeyboardShortcuts(emitCommandPalette: () => void) {
   const store = useDocumentStore()
@@ -9,7 +9,10 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
 
   function handleKeydown(e: KeyboardEvent) {
     // Ignore if typing in an input
-    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+    if (
+      (e.target as HTMLElement).tagName === 'INPUT' ||
+      (e.target as HTMLElement).tagName === 'TEXTAREA'
+    ) {
       return
     }
 
@@ -45,7 +48,9 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
     if (e.key === 'Backspace' || e.key === 'Delete') {
       if (store.selectedCount > 0) {
         e.preventDefault()
-        store.softDeletePages(Array.from(store.selection.selectedIds))
+        // FIX: Use Command instead of store.softDeletePages
+        const selectedIds = Array.from(store.selection.selectedIds)
+        execute(new DeletePagesCommand(selectedIds))
       }
       return
     }
@@ -66,9 +71,9 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
     // Rotation
     if (e.key.toLowerCase() === 'r') {
       if (store.selectedCount > 0) {
-         e.preventDefault()
-         const degrees = isShift ? -90 : 90
-         execute(new RotatePagesCommand(Array.from(store.selection.selectedIds), degrees))
+        e.preventDefault()
+        const degrees = isShift ? -90 : 90
+        execute(new RotatePagesCommand(Array.from(store.selection.selectedIds), degrees))
       }
     }
 
@@ -78,7 +83,7 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
     if (['ArrowLeft', 'ArrowRight'].includes(e.key) && store.selection.lastSelectedId) {
       e.preventDefault()
       const allPages = store.pages // This includes deleted ones? store.pages is all.
-      const index = allPages.findIndex(p => p.id === store.selection.lastSelectedId)
+      const index = allPages.findIndex((p) => p.id === store.selection.lastSelectedId)
 
       if (index === -1) return
 
@@ -89,9 +94,9 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
       const newPage = allPages[newIndex]
       if (newPage) {
         if (isShift) {
-           store.selectRange(store.selection.lastSelectedId, newPage.id)
+          store.selectRange(store.selection.lastSelectedId, newPage.id)
         } else {
-           store.selectPage(newPage.id, false)
+          store.selectPage(newPage.id, false)
         }
       }
     }

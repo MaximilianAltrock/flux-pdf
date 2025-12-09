@@ -25,7 +25,7 @@ export class DuplicatePagesCommand implements Command {
     const pagesToDuplicate: { page: PageReference; index: number }[] = []
 
     for (const id of this.pageIds) {
-      const index = this.store.pages.findIndex(p => p.id === id)
+      const index = this.store.pages.findIndex((p) => p.id === id)
       if (index !== -1 && this.store.pages[index]) {
         pagesToDuplicate.push({ page: this.store.pages[index], index })
       }
@@ -44,7 +44,7 @@ export class DuplicatePagesCommand implements Command {
         id: crypto.randomUUID(),
         sourceFileId: page.sourceFileId,
         sourcePageIndex: page.sourcePageIndex,
-        rotation: page.rotation
+        rotation: page.rotation,
       }
 
       // Insert after the original using store action
@@ -59,13 +59,14 @@ export class DuplicatePagesCommand implements Command {
     this.duplicatedPages.reverse()
     this.insertIndices.reverse()
   }
-
   undo(): void {
-    // Remove the duplicated pages (in reverse order) using store action
+    // Remove the duplicated pages
+    const idsToRemove: string[] = []
     for (let i = this.duplicatedPages.length - 1; i >= 0; i--) {
       const duplicate = this.duplicatedPages[i]
       if (!duplicate) continue
-      this.store.removePage(duplicate.id)
+      idsToRemove.push(duplicate.id)
     }
+    this.store.deletePages(idsToRemove)
   }
 }

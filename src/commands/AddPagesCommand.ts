@@ -33,7 +33,7 @@ export class AddPagesCommand implements Command {
   undo(): void {
     // Remove the pages
     const pageIds = this.pages.map((p) => p.id)
-    this.store.removePages(pageIds)
+    this.store.deletePages(pageIds)
 
     // Remove source only if we added it (use removeSourceOnly to avoid double page removal)
     if (this.shouldAddSource) {
