@@ -46,35 +46,35 @@
 */
 :root {
   /* Surface Hierarchy */
-  --background: #1E1E1E; /* Level 0: App Shell */
-  --surface: #252526;    /* Level 1: Panels */
+  --background: #1e1e1e; /* Level 0: App Shell */
+  --surface: #252526; /* Level 1: Panels */
   --surface-hover: #2d2d30;
 
   /* Borders & Separators */
-  --border: #3E3E42;     /* 1px solid separator */
-  --border-focus: #3B82F6; /* Focus state blue */
+  --border: #3e3e42; /* 1px solid separator */
+  --border-focus: #3b82f6; /* Focus state blue */
 
   /* Interactive Elements (Level 2) */
   --interactive: #333333;
   --interactive-hover: #3e3e42;
 
   /* Content (Level 3) */
-  --content: #FFFFFF;    /* PDF Pages only */
+  --content: #ffffff; /* PDF Pages only */
 
   /* Text Colors */
-  --text: #CCCCCC;       /* Muted white for general UI */
-  --text-primary: #FFFFFF; /* High contrast headers/input */
-  --text-muted: #858585;   /* Secondary/Icons */
+  --text: #cccccc; /* Muted white for general UI */
+  --text-primary: #ffffff; /* High contrast headers/input */
+  --text-muted: #858585; /* Secondary/Icons */
 
   /* Accents */
-  --primary: #6366F1;    /* Electric Indigo */
-  --primary-hover: #4F46E5;
-  --primary-foreground: #FFFFFF;
+  --primary: #6366f1; /* Electric Indigo */
+  --primary-hover: #4f46e5;
+  --primary-foreground: #ffffff;
 
-  --selection: #3B82F6;  /* Hollow Blue Border */
+  --selection: #3b82f6; /* Hollow Blue Border */
   --selection-bg: rgba(59, 130, 246, 0.1);
 
-  --danger: #F43F5E;     /* Muted Coral */
+  --danger: #f43f5e; /* Muted Coral */
 
   /* Spacing System */
   --radius-panel: 0px;
@@ -82,7 +82,7 @@
   --radius-page: 0px;
 
   /* Paper Shadow */
-  --paper-shadow: 0 4px 6px rgba(0,0,0,0.5);
+  --paper-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
   --paper-border: none;
 }
 
@@ -92,44 +92,80 @@
 */
 :root.light-theme {
   /* Surface Hierarchy */
-  --background: #F3F4F6 !important; /* Cool Grey canvas */
-  --surface: #FFFFFF !important;    /* Pure white panels */
-  --surface-hover: #F9FAFB !important;
+  --background: #f3f4f6 !important; /* Cool Grey canvas */
+  --surface: #ffffff !important; /* Pure white panels */
+  --surface-hover: #f9fafb !important;
 
   /* Borders & Separators */
-  --border: #E5E7EB !important;     /* Subtle grey */
-  --border-focus: #3B82F6 !important;
+  --border: #e5e7eb !important; /* Subtle grey */
+  --border-focus: #3b82f6 !important;
 
   /* Interactive Elements */
-  --interactive: #F3F4F6 !important;
-  --interactive-hover: #E5E7EB !important;
+  --interactive: #f3f4f6 !important;
+  --interactive-hover: #e5e7eb !important;
 
   /* Content */
-  --content: #FFFFFF !important;
+  --content: #ffffff !important;
 
   /* Text Colors */
-  --text: #374151 !important;         /* Dark grey for general UI */
+  --text: #374151 !important; /* Dark grey for general UI */
   --text-primary: #111827 !important; /* Near black for headings */
-  --text-muted: #6B7280 !important;   /* Slate grey for secondary */
+  --text-muted: #6b7280 !important; /* Slate grey for secondary */
 
   /* Accents - slightly darker for WCAG AA contrast */
-  --primary: #4F46E5 !important;
-  --primary-hover: #4338CA !important;
-  --primary-foreground: #FFFFFF !important;
+  --primary: #4f46e5 !important;
+  --primary-hover: #4338ca !important;
+  --primary-foreground: #ffffff !important;
 
-  --selection: #3B82F6 !important;
+  --selection: #3b82f6 !important;
   --selection-bg: rgba(59, 130, 246, 0.15) !important;
 
-  --danger: #DC2626 !important;
+  --danger: #dc2626 !important;
 
   /* Paper visibility in light mode */
-  --paper-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-  --paper-border: 1px solid #E5E7EB !important;
+  --paper-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  --paper-border: 1px solid #e5e7eb !important;
 }
 
 @layer base {
+  /* === MOBILE NATIVE RESET === */
+  html {
+    /* iOS 15+ fix: Forces height to match the visible screen exactly, ignoring address bar */
+    height: -webkit-fill-available;
+    /* Disable pull-to-refresh on the root */
+    overscroll-behavior-y: none;
+  }
+
   body {
     @apply bg-background text-text transition-colors duration-300 antialiased font-sans;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    height: 100dvh;
+
+    /* Prevent the whole app from bouncing */
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+
+    /* Disable Native Gestures & Selection */
+    touch-action: manipulation; /* Kill double-tap zoom */
+    -webkit-touch-callout: none; /* Kill "Save Image" popup */
+    -webkit-user-select: none; /* Kill text selection */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent; /* Kill blue tap box */
+  }
+
+  /* Re-enable text selection ONLY for inputs */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Prevent dragging images (ghost image effect) */
+  img {
+    -webkit-user-drag: none;
+    pointer-events: none;
   }
 
   /* For data/numbers */

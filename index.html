@@ -3,7 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <!-- Colors the browser chrome (Address bar/Status bar) -->
+    <meta name="theme-color" content="#1E1E1E" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F3F4F6" media="(prefers-color-scheme: light)" />
+
+    <!-- iOS specific capability -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Vite App</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,13 +25,13 @@
   <body>
     <!-- Flash prevention: apply theme before first paint -->
     <script>
-      (function() {
-        const saved = localStorage.getItem('flux_theme_preference');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      ;(function () {
+        const saved = localStorage.getItem('flux_theme_preference')
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
         if (saved === 'light' || (!saved && !systemDark)) {
-          document.documentElement.classList.add('light-theme');
+          document.documentElement.classList.add('light-theme')
         }
-      })();
+      })()
     </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>

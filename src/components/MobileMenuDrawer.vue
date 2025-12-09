@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
+import { useScrollLock } from '@vueuse/core'
 import { X, FileText, Clock, Sun, Moon, Trash2, ChevronRight, Info } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useTheme } from '@/composables/useTheme'
 import { useMobile } from '@/composables/useMobile'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
 }>()
 
@@ -14,6 +15,8 @@ const emit = defineEmits<{
   close: []
   removeSource: [sourceId: string]
 }>()
+
+const { onBackButton } = useMobile()
 
 const store = useDocumentStore()
 const { historyList, jumpTo } = useCommandManager()
@@ -57,6 +60,22 @@ function handleHistoryJump(index: number) {
   haptic('light')
   jumpTo(index)
 }
+
+// LOCK THE BODY SCROLL
+const isLocked = useScrollLock(document.body)
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    isLocked.value = isOpen
+  },
+  { immediate: true },
+)
+
+onBackButton(
+  computed(() => props.open),
+  () => emit('close'),
+)
 </script>
 
 <template>
@@ -67,7 +86,9 @@ function handleHistoryJump(index: number) {
         <div class="absolute inset-0 bg-black/60" @click="emit('close')" />
 
         <!-- Drawer -->
-        <div class="absolute top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-surface flex flex-col">
+        <div
+          class="absolute top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-surface flex flex-col pt-[env(safe-area-inset-top)]"
+        >
           <!-- Header -->
           <div class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
             <div class="flex items-center gap-3">

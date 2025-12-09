@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useScrollLock, useSwipe } from '@vueuse/core'
 import { RotateCw, RotateCcw, Copy, Trash2, Download, X } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   selectedCount: number
 }>()
@@ -17,16 +18,44 @@ const emit = defineEmits<{
   exportSelected: []
 }>()
 
+const { onBackButton } = useMobile()
+
 const { haptic } = useMobile()
 
-// Drag to dismiss
-const dragStartY = ref(0)
-const dragCurrentY = ref(0)
-const isDragging = ref(false)
+// 1. LOCK BODY SCROLL
+// Prevents the background grid from moving while sheet is open
+const isLocked = useScrollLock(document.body)
 
+watch(
+  () => props.open,
+  (isOpen) => {
+    isLocked.value = isOpen
+  },
+  { immediate: true },
+)
+
+// 2. SWIPE LOGIC (VueUse)
+const sheetRef = ref<HTMLElement | null>(null)
+
+const { lengthY, isSwiping } = useSwipe(sheetRef, {
+  // passive: false allows us to prevent native browser scrolling while dragging
+  passive: false,
+  onSwipeEnd(e, direction) {
+    // lengthY is negative when dragging DOWN (Start Y - End Y)
+    // If dragged down more than 100px, close
+    if (lengthY.value < -100) {
+      emit('close')
+    }
+  },
+})
+
+// Calculate transform for the animation
 const dragOffset = computed(() => {
-  if (!isDragging.value) return 0
-  return Math.max(0, dragCurrentY.value - dragStartY.value)
+  // Snap back to 0 if not currently swiping
+  if (!isSwiping.value) return 0
+  // Convert negative lengthY to positive translate pixels
+  // Math.max(0) ensures we can't drag it UPWARDS past the start
+  return Math.max(0, -lengthY.value)
 })
 
 function handleAction(action: string) {
@@ -35,33 +64,10 @@ function handleAction(action: string) {
   emit('close')
 }
 
-function handleTouchStart(event: TouchEvent) {
-  const touch = event.touches[0]
-  if (touch) {
-    dragStartY.value = touch.clientY
-    dragCurrentY.value = touch.clientY
-    isDragging.value = true
-  }
-}
-
-function handleTouchMove(event: TouchEvent) {
-  if (!isDragging.value) return
-  const touch = event.touches[0]
-  if (touch) {
-    dragCurrentY.value = touch.clientY
-  }
-}
-
-function handleTouchEnd() {
-  if (!isDragging.value) return
-  isDragging.value = false
-
-  if (dragCurrentY.value - dragStartY.value > 80) {
-    emit('close')
-  }
-
-  dragCurrentY.value = dragStartY.value
-}
+onBackButton(
+  computed(() => props.open),
+  () => emit('close'),
+)
 </script>
 
 <template>
@@ -71,16 +77,18 @@ function handleTouchEnd() {
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/60" @click="emit('close')" />
 
-        <!-- Sheet -->
+        <!-- Sheet Container -->
+        <!--
+             1. ref="sheetRef" binds VueUse logic
+             2. class="touch-none" prevents browser gestures
+        -->
         <div
-          class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden"
+          ref="sheetRef"
+          class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden touch-none"
           :style="{ transform: `translateY(${dragOffset}px)` }"
-          @touchstart="handleTouchStart"
-          @touchmove="handleTouchMove"
-          @touchend="handleTouchEnd"
         >
           <!-- Drag Handle -->
-          <div class="flex justify-center py-3">
+          <div class="flex justify-center py-3 pointer-events-none">
             <div class="w-10 h-1 bg-text-muted/30 rounded-full" />
           </div>
 
@@ -157,6 +165,11 @@ function handleTouchEnd() {
 </template>
 
 <style scoped>
+/* Critical: Stops browser from handling swipes (scrolling background) */
+.touch-none {
+  touch-action: none;
+}
+
 .sheet-enter-active {
   transition: opacity 0.2s ease;
 }

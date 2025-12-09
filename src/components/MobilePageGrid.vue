@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { Scissors, ArrowDown } from 'lucide-vue-next'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useDocumentStore } from '@/stores/document'
@@ -213,6 +214,8 @@ function handlePinchStart(event: TouchEvent) {
 function handlePinchMove(event: TouchEvent) {
   if (!isPinching.value || event.touches.length !== 2) return
 
+  if (event.cancelable) event.preventDefault()
+
   const t1 = event.touches[0]!
   const t2 = event.touches[1]!
   const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
@@ -273,19 +276,19 @@ function shouldShowJumpTarget(index: number): boolean {
   return true // First visible page
 }
 
+function preventContextMenu(e: Event) {
+  e.preventDefault()
+}
+
 // === Lifecycle ===
 
 onMounted(() => {
-  document.addEventListener('touchstart', handlePinchStart, { passive: true })
-  document.addEventListener('touchmove', handlePinchMove, { passive: true })
-  document.addEventListener('touchend', handlePinchEnd)
+  useEventListener(document, 'touchstart', handlePinchStart, { passive: false })
+  useEventListener(document, 'touchmove', handlePinchMove, { passive: false })
+  useEventListener(document, 'touchend', handlePinchEnd)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('touchstart', handlePinchStart)
-  document.removeEventListener('touchmove', handlePinchMove)
-  document.removeEventListener('touchend', handlePinchEnd)
-
   if (longPressTimer.value) {
     clearTimeout(longPressTimer.value)
   }
@@ -293,7 +296,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-full overflow-auto bg-background">
+  <div class="h-full overflow-auto bg-background grid-touch-area" @contextmenu="preventContextMenu">
     <!-- Jump Mode Header -->
     <Transition name="slide-down">
       <div
@@ -500,5 +503,12 @@ onUnmounted(() => {
 
 .mobile-chosen {
   opacity: 0.8;
+}
+
+.grid-touch-area {
+  /* Allows scrolling (pan-y) but BLOCKS pinch and horizontal swipe at CSS level */
+  touch-action: pan-y;
+  /* Extra safety for scroll bounce on Android */
+  overscroll-behavior: contain;
 }
 </style>

@@ -17,6 +17,7 @@ import {
   type ExportOptions,
 } from '@/composables/usePdfExport'
 import { useDocumentStore } from '@/stores/document'
+import { useMobile } from '@/composables'
 
 const props = defineProps<{
   open: boolean
@@ -37,6 +38,8 @@ const {
   getSuggestedFilename,
   getEstimatedSize,
 } = usePdfExport()
+
+const { isMobile, onBackButton } = useMobile()
 
 // Form state
 const filename = ref('')
@@ -232,6 +235,13 @@ function handleClose() {
 
 function resetError() {
   exportError.value = null
+}
+
+if (isMobile.value) {
+  onBackButton(
+    computed(() => props.open),
+    () => emit('close'),
+  )
 }
 </script>
 

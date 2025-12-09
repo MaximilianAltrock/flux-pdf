@@ -8,7 +8,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useMobile } from '@/composables/useMobile'
-import { RotatePagesCommand, DuplicatePagesCommand } from '@/commands'
+import { RotatePagesCommand, DuplicatePagesCommand, AddPagesCommand } from '@/commands'
 
 // Desktop Components
 import MicroHeader from '@/components/MicroHeader.vue'
@@ -38,7 +38,7 @@ import type { PageReference } from '@/types'
 
 const store = useDocumentStore()
 const pdfManager = usePdfManager()
-const { execute } = useCommandManager()
+const { execute, clearHistory } = useCommandManager()
 const toast = useToast()
 const { confirmDelete } = useConfirm()
 const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
@@ -86,19 +86,32 @@ function handleFileInputChange(event: Event) {
 }
 
 async function handleFilesSelected(files: FileList) {
+  // 1. Load blobs into memory (Pure IO, no store mutation yet)
   const results = await pdfManager.loadPdfFiles(files)
 
   const successes = results.filter((r) => r.success)
   const errors = results.filter((r) => !r.success)
 
+  // 2. Execute Command for each successful file
+  // This ensures the Source File AND Pages are added via the Command System (Undo/Redo compatible)
   if (successes.length > 0) {
+    for (const result of successes) {
+      if (result.sourceFile && result.pageRefs) {
+        // Param 3 (true) = "Add this source file to the store logic too"
+        // because loadPdfFiles no longer does it automatically.
+        execute(new AddPagesCommand(result.sourceFile, result.pageRefs, true))
+      }
+    }
+
     const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)
+
     toast.success(
       `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
       `${totalPages} page${totalPages > 1 ? 's' : ''} added`,
     )
   }
 
+  // 3. Handle Errors
   if (errors.length > 0) {
     toast.error(
       `Failed to load ${errors.length} file${errors.length > 1 ? 's' : ''}`,
@@ -267,6 +280,20 @@ async function handleRemoveSource(sourceId: string) {
   toast.success('File removed', `${pagesToRemove} page${pagesToRemove > 1 ? 's' : ''} removed`)
 }
 
+async function handleNewProject() {
+  const confirmed = await useConfirm().confirmClearWorkspace()
+  if (!confirmed) return
+
+  // 1. Reset Store
+  store.reset()
+  // 2. Reset History Stack
+  clearHistory()
+  // 3. Reset PDF Manager (Memory Blobs)
+  pdfManager.clearAll()
+
+  toast.info('Workspace Cleared', 'Ready for new project')
+}
+
 // === Desktop Context Actions ===
 function handleContextAction(action: string, pageRef: PageReference) {
   if (!store.selection.selectedIds.has(pageRef.id)) {
@@ -317,6 +344,9 @@ function handleCommandAction(action: string) {
       break
     case 'duplicate':
       handleDuplicateSelected()
+      break
+    case 'new-project':
+      handleNewProject()
       break
     case 'preview':
       if (store.selectedCount === 1) {
@@ -369,7 +399,9 @@ function zoomOut() {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-background text-text overflow-hidden">
+  <div
+    class="h-[100dvh] w-screen flex flex-col bg-background text-text overflow-hidden supports-[height:100dvh]:h-[100dvh]"
+  >
     <!-- Hidden file input -->
     <input
       ref="fileInputRef"
@@ -385,13 +417,15 @@ function zoomOut() {
     <!-- ============================================ -->
     <template v-if="isMobile">
       <!-- Top Bar -->
-      <MobileTopBar
-        :selection-mode="mobileSelectionMode"
-        :selected-count="store.selectedCount"
-        @menu="showMenuDrawer = true"
-        @exit-selection="handleMobileExitSelection"
-        @edit-title="showTitleSheet = true"
-      />
+      <div class="pt-[env(safe-area-inset-top)]">
+        <MobileTopBar
+          :selection-mode="mobileSelectionMode"
+          :selected-count="store.selectedCount"
+          @menu="showMenuDrawer = true"
+          @exit-selection="handleMobileExitSelection"
+          @edit-title="showTitleSheet = true"
+        />
+      </div>
 
       <!-- Main Content -->
       <main class="flex-1 overflow-hidden relative">
@@ -452,16 +486,18 @@ function zoomOut() {
       </main>
 
       <!-- Bottom Bar -->
-      <MobileBottomBar
-        :selection-mode="mobileSelectionMode"
-        :selected-count="store.selectedCount"
-        :has-pages="hasPages"
-        @rotate-left="handleRotateSelected(-90)"
-        @rotate-right="handleRotateSelected(90)"
-        @delete="handleDeleteSelected"
-        @duplicate="handleDuplicateSelected"
-        @export="handleExport"
-      />
+      <div class="pb-[env(safe-area-inset-bottom)]">
+        <MobileBottomBar
+          :selection-mode="mobileSelectionMode"
+          :selected-count="store.selectedCount"
+          :has-pages="hasPages"
+          @rotate-left="handleRotateSelected(-90)"
+          @rotate-right="handleRotateSelected(90)"
+          @delete="handleDeleteSelected"
+          @duplicate="handleDuplicateSelected"
+          @export="handleExport"
+        />
+      </div>
 
       <!-- FAB -->
       <MobileFAB
@@ -510,6 +546,7 @@ function zoomOut() {
         @export="handleExport"
         @zoom-in="zoomIn"
         @zoom-out="zoomOut"
+        @new-project="handleNewProject"
       />
 
       <!-- Main Workspace -->

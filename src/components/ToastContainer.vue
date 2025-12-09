@@ -14,6 +14,8 @@ const icons = {
 }
 
 // Colors per type (from spec)
+// These define the Status Strip and Icon colors.
+// We keep them as hex/specific values to maintain Semantic meaning across themes.
 const typeStyles = {
   success: {
     strip: '#10B981', // Neon Green
@@ -109,7 +111,7 @@ function getSwipeOpacity(id: string): number {
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="toast-card pointer-events-auto w-80 max-sm:w-full bg-[#252526] border border-[#3E3E42] rounded shadow-toast overflow-hidden flex"
+          class="toast-card pointer-events-auto w-80 max-sm:w-full bg-surface border border-border rounded shadow-toast overflow-hidden flex touch-none select-none"
           :role="toast.type === 'warning' ? 'alert' : 'status'"
           :aria-live="toast.type === 'warning' ? 'assertive' : 'polite'"
           :style="{
@@ -136,12 +138,12 @@ function getSwipeOpacity(id: string): number {
 
             <!-- Message Body -->
             <div class="flex-1 min-w-0">
-              <p class="text-[13px] font-semibold text-white leading-tight">
+              <p class="text-[13px] font-semibold text-text leading-tight">
                 {{ toast.title }}
               </p>
               <p
                 v-if="toast.detail"
-                class="text-[11px] font-mono text-[#A1A1AA] mt-0.5 truncate"
+                class="text-[11px] font-mono text-text-muted mt-0.5 truncate"
                 :title="toast.detail"
               >
                 {{ toast.detail }}
@@ -152,7 +154,7 @@ function getSwipeOpacity(id: string): number {
             <div class="shrink-0 flex items-center gap-1">
               <button
                 v-if="toast.action"
-                class="text-[11px] font-bold tracking-wide transition-colors px-2 py-1 rounded hover:bg-white/5"
+                class="text-[11px] font-bold tracking-wide transition-colors px-2 py-1 rounded hover:bg-text/5"
                 :class="typeStyles[toast.type].action"
                 @click="toast.action.onClick"
               >
@@ -162,7 +164,7 @@ function getSwipeOpacity(id: string): number {
               <!-- Dismiss button (for warnings/errors or as fallback) -->
               <button
                 v-if="toast.duration === 0 || toast.type === 'warning'"
-                class="p-1 rounded hover:bg-white/10 transition-colors"
+                class="p-1 rounded hover:bg-text/10 transition-colors"
                 :class="typeStyles[toast.type].icon"
                 @click="dismiss(toast.id)"
                 title="Dismiss"
@@ -180,7 +182,7 @@ function getSwipeOpacity(id: string): number {
 <style scoped>
 /* High lift shadow from spec */
 .shadow-toast {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--paper-shadow); /* Use theme shadow or fallback */
 }
 
 /* Entrance: Slide in from right with spring effect */
@@ -214,5 +216,9 @@ function getSwipeOpacity(id: string): number {
   .toast-enter-from {
     transform: translateY(20px);
   }
+}
+
+.touch-none {
+  touch-action: none;
 }
 </style>

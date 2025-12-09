@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
+import { useScrollLock, useSwipe } from '@vueuse/core'
 import { X } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables/useMobile'
@@ -13,25 +14,42 @@ const emit = defineEmits<{
 }>()
 
 const store = useDocumentStore()
+const { onBackButton } = useMobile()
 const { haptic } = useMobile()
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const editedTitle = ref('')
 
-// Drag to dismiss
-const dragStartY = ref(0)
-const dragCurrentY = ref(0)
-const isDragging = ref(false)
+// 1. LOCK BODY SCROLL
+const isLocked = useScrollLock(document.body)
 
-const dragOffset = computed(() => {
-  if (!isDragging.value) return 0
-  return Math.max(0, dragCurrentY.value - dragStartY.value)
+// 2. SWIPE LOGIC (VueUse)
+const sheetRef = ref<HTMLElement | null>(null)
+
+const { lengthY, isSwiping } = useSwipe(sheetRef, {
+  passive: false, // Prevent native scrolling while dragging
+  onSwipeEnd(e, direction) {
+    // If dragged down more than 100px, close
+    if (lengthY.value < -100) {
+      emit('close')
+    }
+  },
 })
 
-// Reset and focus when opened
+// Calculate animation offset
+const dragOffset = computed(() => {
+  if (!isSwiping.value) return 0
+  // Convert negative lengthY (down drag) to positive translate pixels
+  return Math.max(0, -lengthY.value)
+})
+
+// 3. WATCHERS (Focus & Scroll Lock)
 watch(
   () => props.open,
   async (isOpen) => {
+    // Update lock state
+    isLocked.value = isOpen
+
     if (isOpen) {
       editedTitle.value = store.projectTitle
       await nextTick()
@@ -42,6 +60,7 @@ watch(
       }, 100)
     }
   },
+  { immediate: true }, // Ensure lock is set on mount if open
 )
 
 function handleSave() {
@@ -55,38 +74,15 @@ function handleSave() {
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
-    event.preventDefault()
+    event.preventDefault() // Prevent form submission if inside form
     handleSave()
   }
 }
 
-function handleTouchStart(event: TouchEvent) {
-  const touch = event.touches[0]
-  if (touch) {
-    dragStartY.value = touch.clientY
-    dragCurrentY.value = touch.clientY
-    isDragging.value = true
-  }
-}
-
-function handleTouchMove(event: TouchEvent) {
-  if (!isDragging.value) return
-  const touch = event.touches[0]
-  if (touch) {
-    dragCurrentY.value = touch.clientY
-  }
-}
-
-function handleTouchEnd() {
-  if (!isDragging.value) return
-  isDragging.value = false
-
-  if (dragCurrentY.value - dragStartY.value > 100) {
-    emit('close')
-  }
-
-  dragCurrentY.value = dragStartY.value
-}
+onBackButton(
+  computed(() => props.open),
+  () => emit('close'),
+)
 </script>
 
 <template>
@@ -96,16 +92,14 @@ function handleTouchEnd() {
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/60" @click="emit('close')" />
 
-        <!-- Sheet -->
+        <!-- Sheet Container -->
         <div
-          class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden transition-transform duration-200"
+          ref="sheetRef"
+          class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden touch-none"
           :style="{ transform: `translateY(${dragOffset}px)` }"
-          @touchstart="handleTouchStart"
-          @touchmove="handleTouchMove"
-          @touchend="handleTouchEnd"
         >
           <!-- Drag Handle -->
-          <div class="flex justify-center py-3">
+          <div class="flex justify-center py-3 pointer-events-none">
             <div class="w-10 h-1 bg-text-muted/30 rounded-full" />
           </div>
 
@@ -151,6 +145,11 @@ function handleTouchEnd() {
 </template>
 
 <style scoped>
+/* Critical: Stops browser from handling swipes */
+.touch-none {
+  touch-action: none;
+}
+
 .sheet-enter-active {
   transition: opacity 0.2s ease;
 }

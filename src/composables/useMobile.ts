@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, type Ref } from 'vue'
 
 const MOBILE_BREAKPOINT = 768
 
@@ -120,6 +120,44 @@ export function useMobile() {
     }
   }
 
+  /**
+   * Android Back Button Handler (Reactive)
+   * @param isOpen - The Ref indicating if the modal is visible
+   * @param close - The function to call when Back is pressed
+   */
+  function onBackButton(isOpen: Ref<boolean>, close: () => void) {
+    let isListening = false
+
+    const onPop = (e: PopStateEvent) => {
+      // If we receive a popstate event, it means the user hit Back.
+      // We consume the event and close the modal.
+      if (isListening) {
+        e.preventDefault()
+        isListening = false // Mark as consumed so we don't double-back
+        window.removeEventListener('popstate', onPop)
+        close()
+      }
+    }
+
+    watch(isOpen, (active) => {
+      if (active) {
+        // Modal Opened: Push state and listen
+        window.history.pushState({ modal: true }, '')
+        window.addEventListener('popstate', onPop)
+        isListening = true
+      } else {
+        // Modal Closed: Cleanup
+        if (isListening) {
+          // If still listening, it means closed via UI (X button), not Back.
+          // We must manually revert the history state we pushed.
+          window.removeEventListener('popstate', onPop)
+          window.history.back()
+          isListening = false
+        }
+      }
+    })
+  }
+
   return {
     isMobile,
     screenWidth,
@@ -129,5 +167,6 @@ export function useMobile() {
     canShareFiles,
     shareFile,
     shareUrl,
+    onBackButton,
   }
 }

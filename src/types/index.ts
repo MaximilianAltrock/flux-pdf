@@ -84,5 +84,6 @@ export interface SelectionState {
 export interface FileUploadResult {
   success: boolean
   sourceFile?: SourceFile
+  pageRefs?: PageReference[]
   error?: string
 }

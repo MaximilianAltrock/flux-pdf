@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-vue-next'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { useDocumentStore } from '@/stores/document'
 import type { PageReference } from '@/types'
+import { useMobile } from '@/composables'
 
 const props = defineProps<{
   open: boolean
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 
 const store = useDocumentStore()
 const { renderThumbnail } = useThumbnailRenderer()
+const { isMobile, onBackButton } = useMobile()
 
 const previewUrl = ref<string | null>(null)
 const isLoading = ref(false)
@@ -26,7 +28,7 @@ const containerRef = ref<HTMLElement | null>(null)
 // Get current page index in the document
 const currentIndex = computed(() => {
   if (!props.pageRef) return -1
-  return store.pages.findIndex(p => p.id === props.pageRef!.id)
+  return store.pages.findIndex((p) => p.id === props.pageRef!.id)
 })
 
 const hasPrevious = computed(() => currentIndex.value > 0)
@@ -43,7 +45,7 @@ watch(
       await loadPreview()
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 async function loadPreview() {
@@ -127,21 +129,25 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
 })
+
+if (isMobile.value) {
+  onBackButton(
+    computed(() => props.open),
+    () => emit('close'),
+  )
+}
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div
-        v-if="open && pageRef"
-        class="fixed inset-0 z-50 flex flex-col bg-background/95"
-      >
+      <div v-if="open && pageRef" class="fixed inset-0 z-50 flex flex-col bg-background/95">
         <!-- Header -->
-        <header class="flex items-center justify-between px-4 py-3 bg-background border-b border-border">
+        <header
+          class="flex items-center justify-between px-4 py-3 bg-background border-b border-border"
+        >
           <div class="flex items-center gap-4">
-            <span class="text-text font-medium">
-              Page {{ pageNumber }} of {{ totalPages }}
-            </span>
+            <span class="text-text font-medium"> Page {{ pageNumber }} of {{ totalPages }} </span>
 
             <!-- Zoom controls -->
             <div class="flex items-center gap-1">
@@ -173,9 +179,7 @@ onUnmounted(() => {
 
           <div class="flex items-center gap-2">
             <!-- Keyboard hints -->
-            <span class="text-xs text-text-muted mr-4">
-              ← → navigate • +/- zoom • Esc close
-            </span>
+            <span class="text-xs text-text-muted mr-4"> ← → navigate • +/- zoom • Esc close </span>
 
             <button
               class="p-2 text-text-muted hover:text-text hover:bg-muted/10 rounded-lg transition-colors"
@@ -188,17 +192,10 @@ onUnmounted(() => {
         </header>
 
         <!-- Main content -->
-        <div
-          ref="containerRef"
-          class="flex-1 overflow-auto flex items-center justify-center p-8"
-        >
+        <div ref="containerRef" class="flex-1 overflow-auto flex items-center justify-center p-8">
           <!-- Loading state -->
           <div v-if="isLoading" class="flex flex-col items-center gap-4">
-            <svg
-              class="w-12 h-12 text-primary animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-12 h-12 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 class="opacity-25"
                 cx="12"
