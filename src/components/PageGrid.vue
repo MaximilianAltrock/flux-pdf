@@ -16,10 +16,11 @@ import ContextMenu from './ContextMenu.vue'
 import type { PageReference } from '@/types'
 import { UserAction } from '@/types/actions'
 
-// Refactored Emits using Enum
+// FIX: defineEmits cannot use computed keys ([UserAction.PREVIEW])
+// We must use the string literal 'preview' here.
 const emit = defineEmits<{
   filesDropped: [files: FileList]
-  [UserAction.PREVIEW]: [pageRef: PageReference]
+  preview: [pageRef: PageReference]
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
 
@@ -129,6 +130,7 @@ function handleDragEnd() {
 // === Page Actions ===
 
 function handlePreview(pageRef: PageReference) {
+  // We can still use the Enum value when emitting, as it evaluates to 'preview' at runtime
   emit(UserAction.PREVIEW, pageRef)
 }
 
