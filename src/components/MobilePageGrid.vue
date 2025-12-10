@@ -30,9 +30,9 @@ const { localPages, isDragging, isSelected, store } = useGridLogic()
 const dragStartOrder = ref<PageReference[]>([])
 
 // Mobile-specific state
-const columnCount = ref(3)
+const columnCount = ref(2)
 const MIN_COLUMNS = 2
-const MAX_COLUMNS = 4
+const MAX_COLUMNS = 3
 
 // Long press for selection
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -60,14 +60,6 @@ watch(
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
 }))
-
-// Calculate thumbnail width
-const thumbnailWidth = computed(() => {
-  const padding = 32 // p-4 = 16px each side
-  const gap = 12 * (columnCount.value - 1) // gap-3 = 12px
-  const available = screenWidth.value - padding - gap
-  return Math.floor(available / columnCount.value)
-})
 
 // Visible pages (non-deleted, non-divider) for page numbering
 const visiblePagesList = computed(() => localPages.value.filter((p) => !p.deleted && !p.isDivider))
@@ -370,7 +362,7 @@ onUnmounted(() => {
             :page-ref="pageRef"
             :page-number="getVisiblePageNumber(pageRef)"
             :selected="props.selectionMode && isSelected(pageRef.id)"
-            :width="thumbnailWidth"
+            :width="300"
             :is-start-of-file="false"
             :is-razor-active="false"
             :can-split="false"

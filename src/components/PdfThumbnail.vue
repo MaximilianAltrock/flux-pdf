@@ -11,6 +11,7 @@ const props = defineProps<{
   pageNumber: number
   selected?: boolean
   width?: number
+  fitToParent?: boolean
   isStartOfFile?: boolean
   isRazorActive?: boolean
   canSplit?: boolean
@@ -42,7 +43,11 @@ const sourceColor = computed(() => {
   return source?.color || 'gray'
 })
 
-const thumbnailWidth = computed(() => props.width ?? 220)
+// Logic: If fitting to parent, CSS width is unset (handled by w-full class),
+// otherwise use fixed pixel width.
+const cssWidth = computed(() => (props.fitToParent ? undefined : `${props.width ?? 220}px`))
+
+const renderTargetWidth = computed(() => props.width ?? 220)
 
 // Intersection observer - only load when visible
 const { stop: stopObserver } = useIntersectionObserver(
@@ -57,8 +62,8 @@ const { stop: stopObserver } = useIntersectionObserver(
   },
   {
     rootMargin: '200px', // Start loading 200px before coming into view
-    threshold: 0
-  }
+    threshold: 0,
+  },
 )
 
 async function loadThumbnail() {
@@ -68,7 +73,7 @@ async function loadThumbnail() {
   hasError.value = false
 
   try {
-    const url = await renderThumbnail(props.pageRef, thumbnailWidth.value)
+    const url = await renderThumbnail(props.pageRef, renderTargetWidth.value)
     thumbnailUrl.value = url
   } catch (error) {
     if ((error as Error).message !== 'Render aborted') {
@@ -88,10 +93,9 @@ watch(
       thumbnailUrl.value = null
       loadThumbnail()
     }
-  }
+  },
 )
 
-// Watch for sourceFileId changes (page might be from different source after undo)
 // Watch for sourceFileId changes (page might be from different source after undo)
 watch(
   [() => props.pageRef.sourceFileId, () => props.pageRef.sourcePageIndex, () => props.pageRef],
@@ -101,7 +105,7 @@ watch(
       loadThumbnail()
     }
   },
-  { deep: true }
+  { deep: true },
 )
 
 onUnmounted(() => {
@@ -129,11 +133,12 @@ function handleRetry() {
     ref="containerRef"
     class="page-thumbnail flex flex-col items-center gap-2 p-2 rounded-lg cursor-pointer select-none relative group h-fit transition-all duration-300"
     :class="{
+      'w-full': fitToParent,
       'ring-2 ring-selection bg-selection/10': selected && !pageRef.deleted,
       'hover:bg-surface/50': !selected && !pageRef.deleted,
       'mt-4': isStartOfFile && pageNumber > 1,
       'grayscale opacity-50 scale-90': pageRef.deleted,
-      'razor-cursor': isRazorActive && canSplit
+      'razor-cursor': isRazorActive && canSplit,
     }"
     @click="handleClick"
     @dblclick="handleDoubleClick"
@@ -148,28 +153,34 @@ function handleRetry() {
     <!-- Thumbnail container -->
     <div
       class="thumbnail-paper relative bg-white rounded-none overflow-hidden transition-transform duration-200 border-l-[6px]"
-      :class="{ 'scale-[1.02]': selected }"
-      :style="{ width: `${thumbnailWidth}px`, borderLeftColor: sourceColor }"
+      :class="{ 'scale-[1.02]': selected, 'w-full': fitToParent }"
+      :style="{ width: cssWidth, borderLeftColor: sourceColor }"
     >
       <!-- Placeholder for not-yet-visible items (maintains layout) -->
       <div
         v-if="!hasBeenVisible"
         class="aspect-[8.5/11] bg-muted/20 flex items-center justify-center pointer-events-none"
-      >
-      </div>
+      ></div>
 
       <!-- Loading skeleton -->
       <div
         v-else-if="isLoading && !thumbnailUrl"
         class="aspect-[8.5/11] bg-muted/30 animate-pulse flex items-center justify-center pointer-events-none"
       >
-        <svg
-          class="w-8 h-8 text-text-muted/50 animate-spin"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        <svg class="w-8 h-8 text-text-muted/50 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
         </svg>
       </div>
 
@@ -179,10 +190,20 @@ function handleRetry() {
         class="aspect-[8.5/11] bg-danger/10 flex flex-col items-center justify-center gap-2 text-danger pointer-events-none"
       >
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
         </svg>
         <span class="text-xs">Failed</span>
-        <button class="text-xs underline hover:no-underline pointer-events-auto" @click.stop="handleRetry">Retry</button>
+        <button
+          class="text-xs underline hover:no-underline pointer-events-auto"
+          @click.stop="handleRetry"
+        >
+          Retry
+        </button>
       </div>
 
       <!-- Rendered thumbnail -->
@@ -196,7 +217,10 @@ function handleRetry() {
       />
 
       <!-- Selection Ring (Border Overlay) -->
-      <div v-if="selected" class="absolute inset-0 border-2 border-selection pointer-events-none z-10"></div>
+      <div
+        v-if="selected"
+        class="absolute inset-0 border-2 border-selection pointer-events-none z-10"
+      ></div>
 
       <!-- Invisible UI Overlay (Gradient + Actions) -->
       <div
@@ -224,7 +248,9 @@ function handleRetry() {
 
         <!-- Bottom Hint -->
         <div class="flex justify-center pb-2">
-           <span class="text-[10px] text-white/80 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">Double-click to preview</span>
+          <span class="text-[10px] text-white/80 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm"
+            >Double-click to preview</span
+          >
         </div>
       </div>
 
@@ -233,7 +259,10 @@ function handleRetry() {
         v-if="pageRef.deleted"
         class="absolute inset-0 bg-background/50 flex flex-col items-center justify-center gap-2 z-20"
       >
-        <span class="text-xs font-bold text-danger bg-background/90 px-2 py-1 rounded border border-danger/50 shadow-sm">DELETED</span>
+        <span
+          class="text-xs font-bold text-danger bg-background/90 px-2 py-1 rounded border border-danger/50 shadow-sm"
+          >DELETED</span
+        >
         <button
           class="text-xs bg-primary text-white px-2 py-1.5 rounded shadow hover:bg-primary-hover transition-colors"
           @click.stop="emit('restore')"
@@ -242,9 +271,13 @@ function handleRetry() {
         </button>
       </div>
 
-       <!-- Page Number Tag -->
-      <div class="absolute bottom-2 left-1/2 -translate-x-1/2 translate-y-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <span class="bg-surface text-text font-mono text-xs px-1.5 py-0.5 rounded shadow border border-border">
+      <!-- Page Number Tag -->
+      <div
+        class="absolute bottom-2 left-1/2 -translate-x-1/2 translate-y-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+      >
+        <span
+          class="bg-surface text-text font-mono text-xs px-1.5 py-0.5 rounded shadow border border-border"
+        >
           {{ pageNumber }}
         </span>
       </div>
