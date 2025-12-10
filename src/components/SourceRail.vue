@@ -34,24 +34,27 @@ let dragCounter = 0
 
 function handleDragOver(e: DragEvent) {
   e.preventDefault()
+  // Only react to files, not internal page drags
   if (e.dataTransfer?.types.includes('Files')) {
-    isDragOver.value = true
+    e.dataTransfer.dropEffect = 'copy'
   }
 }
 
 function handleDragEnter(e: DragEvent) {
   e.preventDefault()
-  dragCounter++
   if (e.dataTransfer?.types.includes('Files')) {
+    dragCounter++
     isDragOver.value = true
   }
 }
 
 function handleDragLeave(e: DragEvent) {
   e.preventDefault()
-  dragCounter--
-  if (dragCounter === 0) {
-    isDragOver.value = false
+  if (e.dataTransfer?.types.includes('Files')) {
+    dragCounter--
+    if (dragCounter === 0) {
+      isDragOver.value = false
+    }
   }
 }
 
@@ -62,10 +65,19 @@ async function handleDrop(e: DragEvent) {
 
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
-    // Pass autoAddPages: false
-    // We need to update loadPdfFiles signature first, or pass option object
-    // Assuming we'll update usePdfManager next
-    await loadPdfFiles(droppedFiles)
+    store.setLoading(true, 'Importing files...')
+
+    // 1. Load Files (Saves to DB)
+    const results = await loadPdfFiles(droppedFiles)
+
+    // 2. Update Store State (Fixes the bug where files didn't appear)
+    for (const result of results) {
+      if (result.success && result.sourceFile) {
+        store.addSourceFile(result.sourceFile)
+      }
+    }
+
+    store.setLoading(false)
   }
 }
 </script>
@@ -94,7 +106,7 @@ async function handleDrop(e: DragEvent) {
       <div
         v-for="file in files"
         :key="file.id"
-        class="bg-background border border-border rounded p-0 overflow-hidden group hover:border-border-focus transition-all relative select-none"
+        class="bg-background border border-border rounded p-0 overflow-hidden group hover:border-border-focus transition-all relative select-none cursor-grab active:cursor-grabbing"
         draggable="true"
         @dragstart="handleDragStart($event, file.id)"
       >
@@ -125,7 +137,7 @@ async function handleDrop(e: DragEvent) {
                     <X class="w-3 h-3" />
                   </button>
                   <GripVertical
-                    class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+                    class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100"
                   />
                 </div>
               </div>

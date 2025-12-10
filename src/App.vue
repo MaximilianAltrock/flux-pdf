@@ -41,7 +41,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { PageReference } from '@/types'
 
 const store = useDocumentStore()
-const { initSession } = usePdfManager()
+const { initSession, removeSourceFile, clearAll } = usePdfManager()
 const { execute, clearHistory, undo, restoreHistory } = useCommandManager()
 const toast = useToast()
 const { confirmDelete, confirmClearWorkspace } = useConfirm()
@@ -195,14 +195,14 @@ async function handleRemoveSource(sourceId: string) {
     if (!confirmed) return
   }
 
-  store.removeSourceFile(sourceId)
+  await removeSourceFile(sourceId)
   toast.success('File removed')
 }
 
 async function handleNewProject() {
   const confirmed = await confirmClearWorkspace()
   if (!confirmed) return
-  store.reset()
+  await clearAll()
   clearHistory()
   toast.info('Workspace Cleared')
 }

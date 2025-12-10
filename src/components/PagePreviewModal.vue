@@ -31,8 +31,11 @@ const currentIndex = computed(() => {
   return store.pages.findIndex((p) => p.id === props.pageRef!.id)
 })
 
-const hasPrevious = computed(() => currentIndex.value > 0)
-const hasNext = computed(() => currentIndex.value < store.pages.length - 1)
+const nextContentIndex = computed(() => findNextContentPage(currentIndex.value, 'next'))
+const prevContentIndex = computed(() => findNextContentPage(currentIndex.value, 'prev'))
+
+const hasPrevious = computed(() => prevContentIndex.value !== -1)
+const hasNext = computed(() => nextContentIndex.value !== -1)
 
 const pageNumber = computed(() => currentIndex.value + 1)
 const totalPages = computed(() => store.pages.length)
@@ -82,6 +85,21 @@ function goToNext() {
   if (hasNext.value && nextPage) {
     emit('navigate', nextPage)
   }
+}
+
+// FIX: Helper to skip dividers when navigating
+function findNextContentPage(startIndex: number, direction: 'next' | 'prev'): number {
+  let i = startIndex
+  const delta = direction === 'next' ? 1 : -1
+
+  while (i >= 0 && i < store.pages.length) {
+    i += delta
+    const page = store.pages[i]
+    if (page && !page.isDivider && !page.deleted) {
+      return i
+    }
+  }
+  return -1
 }
 
 function zoomIn() {

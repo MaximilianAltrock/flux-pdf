@@ -46,9 +46,11 @@ function openFileDialog() {
 <template>
   <div
     class="relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer"
-    :class="isDragging
-      ? 'border-primary bg-primary/5 scale-[1.02]'
-      : 'border-border hover:border-primary/50 hover:bg-muted/5'"
+    :class="
+      isDragging
+        ? 'border-primary bg-primary/5 scale-[1.02]'
+        : 'border-border hover:border-primary/50 hover:bg-muted/5'
+    "
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
@@ -74,21 +76,14 @@ function openFileDialog() {
     </div>
 
     <!-- Text -->
-    <h3
-      class="text-lg font-semibold mb-2"
-      :class="isDragging ? 'text-primary' : 'text-text'"
-    >
+    <h3 class="text-lg font-semibold mb-2" :class="isDragging ? 'text-primary' : 'text-text'">
       {{ isDragging ? 'Drop your PDF here' : 'Upload PDF files' }}
     </h3>
 
-    <p class="text-sm text-text-muted mb-4">
-      Drag & drop PDF files here, or click to browse
-    </p>
+    <p class="text-sm text-text-muted mb-4">Drag & drop PDF files here, or click to browse</p>
 
     <!-- Supported formats hint -->
-    <p class="text-xs text-text-muted">
-      Supports: .pdf files
-    </p>
+    <p class="text-xs text-text-muted">Supports: .pdf files</p>
 
     <!-- Drag overlay animation -->
     <div

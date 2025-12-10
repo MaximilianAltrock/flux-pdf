@@ -63,6 +63,9 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function insertPages(index: number, newPages: PageReference[]) {
+    if (index < 0) index = 0
+    if (index > pages.value.length) index = pages.value.length
+
     pages.value.splice(index, 0, ...newPages)
   }
 

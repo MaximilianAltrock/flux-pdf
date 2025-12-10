@@ -32,7 +32,12 @@ export function rehydrateCommand(type: string, payload: any): Command | null {
         return new RotatePagesCommand(payload.pageIds, payload.degrees)
 
       case CommandType.DELETE:
-        return new DeletePagesCommand(payload.pageIds) // Note: Undo logic for delete needs careful handling of page data restoration
+        const delCmd = new DeletePagesCommand(payload.pageIds)
+        // FIX: Restore the backup snapshots so Undo works after reload
+        if (payload.backupSnapshots) {
+          delCmd.backupSnapshots = payload.backupSnapshots
+        }
+        return delCmd
 
       case CommandType.REORDER:
         return new ReorderPagesCommand(payload.previousOrder, payload.newOrder)
@@ -43,10 +48,20 @@ export function rehydrateCommand(type: string, payload: any): Command | null {
         return new AddPagesCommand(payload.sourceFile, payload.pages, payload.shouldAddSource)
 
       case CommandType.DUPLICATE:
-        return new DuplicatePagesCommand(payload.pageIds)
+        const dupCmd = new DuplicatePagesCommand(payload.sourcePageIds)
+        // FIX: Restore the IDs of the clones created
+        if (payload.createdPageIds) {
+          dupCmd.createdPageIds = payload.createdPageIds
+        }
+        return dupCmd
 
       case CommandType.SPLIT:
-        return new SplitGroupCommand(payload.index)
+        const splitCmd = new SplitGroupCommand(payload.index)
+        // FIX: Restore the specific Divider ID that was actually inserted
+        if (payload.divider) {
+          splitCmd.divider = payload.divider
+        }
+        return splitCmd
 
       default:
         console.warn(`Unknown command type: ${type}`)

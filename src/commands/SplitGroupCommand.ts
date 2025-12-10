@@ -9,13 +9,13 @@ export class SplitGroupCommand implements Command {
   public readonly name = 'Split Group'
 
   public index: number
+  // Make mutable so registry can restore it
   public divider: PageReference
 
   constructor(index: number) {
     this.id = crypto.randomUUID()
     this.index = index
 
-    // Create the divider instance immediately so it persists
     this.divider = {
       id: crypto.randomUUID(),
       sourceFileId: 'virtual-divider',
@@ -28,13 +28,14 @@ export class SplitGroupCommand implements Command {
 
   execute(): void {
     const store = useDocumentStore()
-    // Insert the specific divider object instance
+    // Check if we are re-executing (Redo).
+    // If the divider is already in the store (unlikely in pure redo, but possible in edge cases),
+    // we should ensure we don't duplicate it, but typically insertPages handles placement.
     store.insertPages(this.index, [this.divider])
   }
 
   undo(): void {
     const store = useDocumentStore()
-    // Remove the divider by ID
     store.deletePages([this.divider.id])
   }
 }
