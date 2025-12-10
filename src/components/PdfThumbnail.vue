@@ -11,7 +11,7 @@ const props = defineProps<{
   pageNumber: number
   selected?: boolean
   width?: number
-  fitToParent?: boolean
+  fixedSize?: boolean
   isStartOfFile?: boolean
   isRazorActive?: boolean
   canSplit?: boolean
@@ -43,11 +43,11 @@ const sourceColor = computed(() => {
   return source?.color || 'gray'
 })
 
-// Logic: If fitting to parent, CSS width is unset (handled by w-full class),
-// otherwise use fixed pixel width.
-const cssWidth = computed(() => (props.fitToParent ? undefined : `${props.width ?? 220}px`))
+// Logic: Only apply pixel width if fixedSize is true (Desktop behavior)
+const cssWidth = computed(() => (props.fixedSize ? `${props.width ?? 220}px` : '100%'))
 
-const renderTargetWidth = computed(() => props.width ?? 220)
+// Logic: Render engine always needs a number. Default to 300 for mobile sharpness.
+const renderTargetWidth = computed(() => props.width ?? 300)
 
 // Intersection observer - only load when visible
 const { stop: stopObserver } = useIntersectionObserver(
@@ -133,7 +133,7 @@ function handleRetry() {
     ref="containerRef"
     class="page-thumbnail flex flex-col items-center gap-2 p-2 rounded-lg cursor-pointer select-none relative group h-fit transition-all duration-300"
     :class="{
-      'w-full': fitToParent,
+      'w-full': !fixedSize,
       'ring-2 ring-selection bg-selection/10': selected && !pageRef.deleted,
       'hover:bg-surface/50': !selected && !pageRef.deleted,
       'mt-4': isStartOfFile && pageNumber > 1,
@@ -153,7 +153,7 @@ function handleRetry() {
     <!-- Thumbnail container -->
     <div
       class="thumbnail-paper relative bg-white rounded-none overflow-hidden transition-transform duration-200 border-l-[6px]"
-      :class="{ 'scale-[1.02]': selected, 'w-full': fitToParent }"
+      :class="{ 'scale-[1.02]': selected, 'w-full': !fixedSize }"
       :style="{ width: cssWidth, borderLeftColor: sourceColor }"
     >
       <!-- Placeholder for not-yet-visible items (maintains layout) -->

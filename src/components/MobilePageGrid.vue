@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const { execute } = useCommandManager()
-const { haptic, screenWidth } = useMobile()
+const { haptic } = useMobile()
 const { localPages, isDragging, isSelected, store } = useGridLogic()
 
 // Local state for drag tracking
@@ -32,7 +32,7 @@ const dragStartOrder = ref<PageReference[]>([])
 // Mobile-specific state
 const columnCount = ref(2)
 const MIN_COLUMNS = 2
-const MAX_COLUMNS = 3
+const MAX_COLUMNS = 4
 
 // Long press for selection
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -270,6 +270,7 @@ onUnmounted(() => {
 
 <template>
   <div
+    ref="containerRef"
     class="h-full overflow-y-auto overflow-x-hidden bg-background grid-touch-area no-scrollbar"
     @contextmenu="preventContextMenu"
   >
@@ -362,6 +363,7 @@ onUnmounted(() => {
             :page-ref="pageRef"
             :page-number="getVisiblePageNumber(pageRef)"
             :selected="props.selectionMode && isSelected(pageRef.id)"
+            :fixed-size="false"
             :width="300"
             :is-start-of-file="false"
             :is-razor-active="false"

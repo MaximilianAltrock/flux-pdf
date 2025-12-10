@@ -263,6 +263,7 @@ async function handleFileDrop(event: DragEvent) {
           :page-ref="pageRef"
           :page-number="index + 1"
           :selected="isSelected(pageRef.id)"
+          :fixed-size="true"
           :width="store.zoom"
           :is-start-of-file="
             index === 0 ||

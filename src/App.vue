@@ -311,7 +311,7 @@ onMounted(async () => {
 
 <template>
   <div
-    class="h-[100dvh] w-screen flex flex-col bg-background text-text overflow-hidden supports-[height:100dvh]:h-[100dvh]"
+    class="h-[100dvh] w-full flex flex-col bg-background text-text overflow-hidden supports-[height:100dvh]:h-[100dvh]"
   >
     <input
       ref="fileInputRef"
