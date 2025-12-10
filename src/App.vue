@@ -12,7 +12,12 @@ import { useFileHandler } from '@/composables/useFileHandler'
 import { usePdfExport } from '@/composables/usePdfExport'
 import { UserAction } from '@/types/actions'
 
-import { RotatePagesCommand, DuplicatePagesCommand, DeletePagesCommand } from '@/commands'
+import {
+  RotatePagesCommand,
+  DuplicatePagesCommand,
+  DeletePagesCommand,
+  AddPagesCommand,
+} from '@/commands'
 
 // Desktop Components
 import MicroHeader from '@/components/MicroHeader.vue'
@@ -46,8 +51,8 @@ const { execute, clearHistory, undo, restoreHistory } = useCommandManager()
 const toast = useToast()
 const { confirmDelete, confirmClearWorkspace } = useConfirm()
 const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
-const { handleFiles } = useFileHandler() // Use Composable
-const { generateRawPdf } = usePdfExport() // Use Composable
+const { handleFiles } = useFileHandler()
+const { generateRawPdf } = usePdfExport()
 
 // Initialize theme
 useTheme()
@@ -91,6 +96,27 @@ function handleFileInputChange(event: Event) {
   }
 }
 
+// === Source Drop Handling (from SourceRail via FileDropzone) ===
+function handleSourceDropped(sourceId: string) {
+  const sourceFile = store.sources.get(sourceId)
+  if (!sourceFile) return
+
+  const groupId = crypto.randomUUID()
+  const newPages: PageReference[] = []
+
+  for (let i = 0; i < sourceFile.pageCount; i++) {
+    newPages.push({
+      id: crypto.randomUUID(),
+      sourceFileId: sourceFile.id,
+      sourcePageIndex: i,
+      rotation: 0,
+      groupId,
+    })
+  }
+
+  execute(new AddPagesCommand(sourceFile, newPages, false))
+}
+
 // === Export Handling ===
 async function handleExport() {
   if (isMobile.value && canShareFiles.value) {
@@ -110,10 +136,8 @@ async function handleMobileExport() {
 
     const filename = store.projectTitle || 'document'
 
-    // DRY Export Logic: Use shared generator
     const pdfBytes = await generateRawPdf(pagesToExport, { compress: true })
 
-    // Create File for sharing (fix types with cast)
     const file = new File([pdfBytes as any], `${filename}.pdf`, { type: 'application/pdf' })
 
     store.setLoading(false)
@@ -160,7 +184,6 @@ async function handleDeleteSelected() {
   toast.success(
     'Pages deleted',
     `${selectedIds.length} page${selectedIds.length > 1 ? 's' : ''} removed`,
-    // Actionable Toast
     { label: 'UNDO', onClick: () => undo() },
   )
 }
@@ -185,9 +208,6 @@ async function handleRemoveSource(sourceId: string) {
   const source = store.sources.get(sourceId)
   if (!source) return
 
-  // In Hard Delete mode, removing source removes pages instantly.
-  // We can't easily undo source removal in this MVP without a complex Command,
-  // so we just warn the user.
   const pagesToRemove = store.pages.filter((p) => p.sourceFileId === sourceId).length
 
   if (!isMobile.value) {
@@ -301,10 +321,7 @@ function zoomOut() {
 }
 
 onMounted(async () => {
-  // 1. Load Files & Page Grid
   await initSession()
-
-  // 2. Load History Stack
   await restoreHistory()
 })
 </script>
@@ -444,9 +461,9 @@ onMounted(async () => {
         <main class="flex-1 overflow-hidden relative flex flex-col bg-background">
           <div v-if="!hasPages" class="h-full flex items-center justify-center p-8">
             <div class="max-w-lg w-full">
-              <FileDropzone @files-selected="handleFiles" />
+              <FileDropzone @files-selected="handleFiles" @source-dropped="handleSourceDropped" />
               <div class="mt-8 text-center text-text-muted">
-                <p class="mb-4">Or drag files from your desktop</p>
+                <p class="mb-4">Or drag files from your desktop or sources panel</p>
                 <div class="flex flex-wrap justify-center gap-2 text-xs opacity-70">
                   <span class="px-2 py-1 bg-surface rounded">CMD+K for commands</span>
                 </div>

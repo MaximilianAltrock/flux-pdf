@@ -1,28 +1,65 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Upload, FileText } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { Upload, Layers } from 'lucide-vue-next'
 
 const emit = defineEmits<{
   filesSelected: [files: FileList]
+  sourceDropped: [sourceId: string]
 }>()
 
 const isDragging = ref(false)
+const dragType = ref<'files' | 'source' | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// Computed for dynamic messaging
+const dropMessage = computed(() => {
+  if (dragType.value === 'source') return 'Drop to add pages'
+  return 'Drop your PDF here'
+})
+
+const dropIcon = computed(() => {
+  if (dragType.value === 'source') return Layers
+  return Upload
+})
 
 function handleDragOver(event: DragEvent) {
   event.preventDefault()
   isDragging.value = true
+
+  // Detect drag type
+  if (event.dataTransfer?.types.includes('application/json')) {
+    dragType.value = 'source'
+  } else {
+    dragType.value = 'files'
+  }
 }
 
 function handleDragLeave(event: DragEvent) {
   event.preventDefault()
   isDragging.value = false
+  dragType.value = null
 }
 
 function handleDrop(event: DragEvent) {
   event.preventDefault()
   isDragging.value = false
+  dragType.value = null
 
+  // 1. Check for internal SourceRail drag first
+  const jsonData = event.dataTransfer?.getData('application/json')
+  if (jsonData) {
+    try {
+      const data = JSON.parse(jsonData)
+      if (data.type === 'source-file' && data.sourceId) {
+        emit('sourceDropped', data.sourceId)
+        return
+      }
+    } catch {
+      /* ignore invalid json */
+    }
+  }
+
+  // 2. Handle OS file drops
   const files = event.dataTransfer?.files
   if (files && files.length > 0) {
     emit('filesSelected', files)
@@ -71,19 +108,24 @@ function openFileDialog() {
       class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors"
       :class="isDragging ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-text-muted'"
     >
-      <Upload v-if="isDragging" class="w-8 h-8" />
-      <FileText v-else class="w-8 h-8" />
+      <component :is="dropIcon" class="w-8 h-8" />
     </div>
 
     <!-- Text -->
     <h3 class="text-lg font-semibold mb-2" :class="isDragging ? 'text-primary' : 'text-text'">
-      {{ isDragging ? 'Drop your PDF here' : 'Upload PDF files' }}
+      {{ isDragging ? dropMessage : 'Upload PDF files' }}
     </h3>
 
-    <p class="text-sm text-text-muted mb-4">Drag & drop PDF files here, or click to browse</p>
+    <p class="text-sm text-text-muted mb-4">
+      {{
+        isDragging && dragType === 'source'
+          ? 'Release to add all pages from this source'
+          : 'Drag & drop PDF files here, or click to browse'
+      }}
+    </p>
 
     <!-- Supported formats hint -->
-    <p class="text-xs text-text-muted">Supports: .pdf files</p>
+    <p v-if="!isDragging" class="text-xs text-text-muted">Supports: .pdf files</p>
 
     <!-- Drag overlay animation -->
     <div
@@ -93,3 +135,15 @@ function openFileDialog() {
     />
   </div>
 </template>
+
+<style scoped>
+@keyframes dropzone-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+</style>
