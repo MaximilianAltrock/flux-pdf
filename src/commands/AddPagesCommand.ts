@@ -1,43 +1,49 @@
 import type { Command } from './types'
 import type { PageReference, SourceFile } from '@/types'
 import { useDocumentStore } from '@/stores/document'
+import { CommandType } from './registry'
 
-/**
- * Command to add pages from a newly loaded PDF
- */
 export class AddPagesCommand implements Command {
-  readonly id: string
-  readonly name: string
+  public readonly type = CommandType.ADD
+  public readonly id: string
+  public readonly name: string
 
-  private sourceFile: SourceFile
-  private pages: PageReference[]
-  private store = useDocumentStore()
-  private shouldAddSource: boolean
+  // Public for JSON serialization
+  public sourceFile: SourceFile
+  public pages: PageReference[]
+  public shouldAddSource: boolean
 
   constructor(sourceFile: SourceFile, pages: PageReference[], shouldAddSource = true) {
     this.id = crypto.randomUUID()
     this.sourceFile = { ...sourceFile }
+    // Deep copy pages to ensure isolation
     this.pages = pages.map((p) => ({ ...p }))
     this.name = `Add "${sourceFile.filename}"`
     this.shouldAddSource = shouldAddSource
   }
 
   execute(): void {
-    if (this.shouldAddSource && !this.store.sources.has(this.sourceFile.id)) {
-      this.store.addSourceFile(this.sourceFile)
+    const store = useDocumentStore()
+
+    // 1. Add Source Metadata if needed
+    if (this.shouldAddSource && !store.sources.has(this.sourceFile.id)) {
+      store.addSourceFile(this.sourceFile)
     }
-    // TODO Optimization: Instead of storing full Page objects in AddPagesCommand, store the sourceFileId and a range (e.g., "Indices 0 to 499"). Reconstruct the Page objects on Undo/Redo if possible.
-    this.store.addPages(this.pages.map((p) => ({ ...p })))
+
+    // 2. Add Pages to Grid
+    store.addPages(this.pages.map((p) => ({ ...p })))
   }
 
   undo(): void {
-    // Remove the pages
-    const pageIds = this.pages.map((p) => p.id)
-    this.store.deletePages(pageIds)
+    const store = useDocumentStore()
 
-    // Remove source only if we added it (use removeSourceOnly to avoid double page removal)
+    // 1. Remove Pages
+    const pageIds = this.pages.map((p) => p.id)
+    store.deletePages(pageIds)
+
+    // 2. Remove Source (only if this command added it)
     if (this.shouldAddSource) {
-      this.store.removeSourceOnly(this.sourceFile.id)
+      store.removeSourceOnly(this.sourceFile.id)
     }
   }
 }

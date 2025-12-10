@@ -1,72 +1,89 @@
 import type { Command } from './types'
 import { useDocumentStore } from '@/stores/document'
 import type { PageReference } from '@/types'
+import { CommandType } from './registry'
 
-/**
- * Command to duplicate pages
- */
 export class DuplicatePagesCommand implements Command {
-  readonly id = crypto.randomUUID()
-  readonly name: string
+  public readonly type = CommandType.DUPLICATE
+  public readonly id: string
+  public readonly name: string
 
-  private store = useDocumentStore()
-  private pageIds: string[]
-  private duplicatedPages: PageReference[] = []
-  private insertIndices: number[] = []
+  public sourcePageIds: string[]
+
+  // Track the IDs of the clones we created so we can delete them on undo
+  public createdPageIds: string[] = []
 
   constructor(pageIds: string[]) {
-    this.pageIds = pageIds
+    this.id = crypto.randomUUID()
+    this.sourcePageIds = [...pageIds]
     const count = pageIds.length
     this.name = count === 1 ? 'Duplicate page' : `Duplicate ${count} pages`
   }
 
   execute(): void {
-    // Find pages to duplicate and their indices
+    const store = useDocumentStore()
+
+    // If we already have created IDs (Redo scenario), we might need to clear them
+    // But typically Redo logic just re-runs logic.
+    // For idempotency in "Redo", we reset the tracking array if we are re-generating.
+    // However, to keep IDs consistent across Undo/Redo/Persistence,
+    // we should ideally reuse IDs if they exist.
+    const reuseExistingIds = this.createdPageIds.length > 0
+
+    if (!reuseExistingIds) {
+      this.createdPageIds = []
+    }
+
     const pagesToDuplicate: { page: PageReference; index: number }[] = []
 
-    for (const id of this.pageIds) {
-      const index = this.store.pages.findIndex((p) => p.id === id)
-      if (index !== -1 && this.store.pages[index]) {
-        pagesToDuplicate.push({ page: this.store.pages[index], index })
+    for (const id of this.sourcePageIds) {
+      const index = store.pages.findIndex((p) => p.id === id)
+      if (index !== -1 && store.pages[index]) {
+        pagesToDuplicate.push({ page: store.pages[index], index })
       }
     }
 
-    // Sort by index descending so we insert from end to start
-    // This prevents index shifting issues
+    // Sort descending to insert from end to start (maintains indices)
     pagesToDuplicate.sort((a, b) => b.index - a.index)
 
-    this.duplicatedPages = []
-    this.insertIndices = []
+    // Used for reconstruction during loop
+    const tempCreatedIds: string[] = []
 
-    // Create duplicates and insert after each original
+    // Execute duplication
+    let reuseIndex = 0 // For iterating createdPageIds if reusing
+
     for (const { page, index } of pagesToDuplicate) {
+      // If reusing (Redo), use the ID we generated last time.
+      // If new (First Run), generate new ID.
+      const newId = reuseExistingIds
+        ? this.createdPageIds[this.createdPageIds.length - 1 - reuseIndex]!
+        : crypto.randomUUID()
+
       const duplicate: PageReference = {
-        id: crypto.randomUUID(),
+        id: newId,
         sourceFileId: page.sourceFileId,
         sourcePageIndex: page.sourcePageIndex,
         rotation: page.rotation,
+        groupId: page.groupId,
       }
 
-      // Insert after the original using store action
-      const insertIndex = index + 1
-      this.store.insertPages(insertIndex, [duplicate])
+      store.insertPages(index + 1, [duplicate])
 
-      this.duplicatedPages.push(duplicate)
-      this.insertIndices.push(insertIndex)
+      if (!reuseExistingIds) {
+        tempCreatedIds.push(newId)
+      }
+      reuseIndex++
     }
 
-    // Reverse arrays so they're in the order they were added
-    this.duplicatedPages.reverse()
-    this.insertIndices.reverse()
+    if (!reuseExistingIds) {
+      // Reverse to match the visual order (if we care about array consistency)
+      this.createdPageIds = tempCreatedIds.reverse()
+    }
   }
+
   undo(): void {
-    // Remove the duplicated pages
-    const idsToRemove: string[] = []
-    for (let i = this.duplicatedPages.length - 1; i >= 0; i--) {
-      const duplicate = this.duplicatedPages[i]
-      if (!duplicate) continue
-      idsToRemove.push(duplicate.id)
-    }
-    this.store.deletePages(idsToRemove)
+    const store = useDocumentStore()
+    // Simply delete the pages we created
+    store.deletePages(this.createdPageIds)
   }
 }

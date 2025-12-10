@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDocumentStore } from '@/stores/document'
+import { usePdfManager } from '@/composables'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -40,7 +41,8 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { PageReference } from '@/types'
 
 const store = useDocumentStore()
-const { execute, clearHistory, undo } = useCommandManager()
+const { initSession } = usePdfManager()
+const { execute, clearHistory, undo, restoreHistory } = useCommandManager()
 const toast = useToast()
 const { confirmDelete, confirmClearWorkspace } = useConfirm()
 const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
@@ -297,6 +299,14 @@ function zoomIn() {
 function zoomOut() {
   store.zoomOut()
 }
+
+onMounted(async () => {
+  // 1. Load Files & Page Grid
+  await initSession()
+
+  // 2. Load History Stack
+  await restoreHistory()
+})
 </script>
 
 <template>

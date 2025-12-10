@@ -1,18 +1,21 @@
 import type { Command } from './types'
 import { useDocumentStore } from '@/stores/document'
 import type { PageReference } from '@/types'
+import { CommandType } from './registry'
 
 export class SplitGroupCommand implements Command {
-  readonly id: string
-  readonly name = 'Split Group'
+  public readonly type = CommandType.SPLIT
+  public readonly id: string
+  public readonly name = 'Split Group'
 
-  private store = useDocumentStore()
-  private divider: PageReference
-  private index: number
+  public index: number
+  public divider: PageReference
 
   constructor(index: number) {
     this.id = crypto.randomUUID()
     this.index = index
+
+    // Create the divider instance immediately so it persists
     this.divider = {
       id: crypto.randomUUID(),
       sourceFileId: 'virtual-divider',
@@ -24,12 +27,14 @@ export class SplitGroupCommand implements Command {
   }
 
   execute(): void {
-    // Insert divider at index using store action
-    this.store.insertPages(this.index, [this.divider])
+    const store = useDocumentStore()
+    // Insert the specific divider object instance
+    store.insertPages(this.index, [this.divider])
   }
 
   undo(): void {
-    // Remove the divider by ID using store action
-    this.store.deletePages([this.divider.id])
+    const store = useDocumentStore()
+    // Remove the divider by ID
+    store.deletePages([this.divider.id])
   }
 }

@@ -7,11 +7,15 @@ import type { PageReference } from '@/types'
 export interface Command {
   /** Unique identifier for this command instance */
   readonly id: string
+  /**
+   * Stable identifier for serialization (SURVIVES MINIFICATION)
+   * Must match a key in CommandType registry
+   */
+  readonly type: string
   /** Human-readable description for history display */
   readonly name: string
-  /** Execute the command */
+
   execute(): void
-  /** Reverse the command */
   undo(): void
 }
 
