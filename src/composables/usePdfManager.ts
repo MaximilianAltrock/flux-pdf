@@ -5,6 +5,7 @@ import { useDocumentStore } from '@/stores/document'
 import { useConverter } from './useConverter'
 import { db } from '@/db/db'
 import type { SourceFile, PageReference, FileUploadResult } from '@/types'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
@@ -12,7 +13,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
  * PDF cache: We still keep PARSED documents in RAM for performance,
  * but the raw ArrayBuffers are in IDB.
  */
-const pdfDocCache = new Map<string, any>()
+const pdfDocCache = new Map<string, PDFDocumentProxy>()
 
 export function usePdfManager() {
   const store = useDocumentStore()
@@ -125,9 +126,9 @@ export function usePdfManager() {
   /**
    * 3. Get Document: RAM Cache -> IDB -> Error
    */
-  async function getPdfDocument(sourceFileId: string): Promise<any> {
+  async function getPdfDocument(sourceFileId: string): Promise<PDFDocumentProxy> {
     // 1. Try RAM Cache
-    if (pdfDocCache.has(sourceFileId)) return pdfDocCache.get(sourceFileId)
+    if (pdfDocCache.has(sourceFileId)) return pdfDocCache.get(sourceFileId)!
 
     // 2. Try IndexedDB
     const record = await db.files.get(sourceFileId)

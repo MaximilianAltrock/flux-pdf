@@ -23,7 +23,7 @@ import type { AppState } from './useAppState'
  */
 export function useAppActions(state: AppState) {
   const store = useDocumentStore()
-  const { removeSourceFile, clearAll } = usePdfManager()
+  const { clearAll } = usePdfManager()
   const { execute, clearHistory, undo } = useCommandManager()
   const toast = useToast()
   const { confirmDelete, confirmClearWorkspace } = useConfirm()
@@ -105,7 +105,7 @@ export function useAppActions(state: AppState) {
 
       const filename = store.projectTitle || 'document'
       const pdfBytes = await generateRawPdf(pagesToExport, { compress: true })
-      const file = new File([pdfBytes as any], `${filename}.pdf`, {
+      const file = new File([pdfBytes as BlobPart], `${filename}.pdf`, {
         type: 'application/pdf',
       })
 

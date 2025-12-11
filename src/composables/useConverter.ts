@@ -46,7 +46,9 @@ export function useConverter() {
       // 5. Convert back to a File object
       // We append .pdf to the original name so "photo.jpg" becomes "photo.jpg.pdf"
       // The FileHandler title logic handles stripping extensions later.
-      const pdfFile = new File([pdfBytes as any], `${file.name}.pdf`, { type: 'application/pdf' })
+      const pdfFile = new File([pdfBytes as BlobPart], `${file.name}.pdf`, {
+        type: 'application/pdf',
+      })
 
       return { success: true, file: pdfFile }
     } catch (error) {

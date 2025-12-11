@@ -40,7 +40,7 @@ const sheetRef = ref<HTMLElement | null>(null)
 const { lengthY, isSwiping } = useSwipe(sheetRef, {
   // passive: false allows us to prevent native browser scrolling while dragging
   passive: false,
-  onSwipeEnd(e, direction) {
+  onSwipeEnd() {
     // lengthY is negative when dragging DOWN (Start Y - End Y)
     // If dragged down more than 100px, close
     if (lengthY.value < -100) {

@@ -132,7 +132,7 @@ export function useThumbnailRenderer() {
       await page.render({
         canvasContext: context,
         viewport: scaledViewport,
-      }).promise
+      } as any).promise
 
       // Check if aborted
       if (abortController.signal.aborted) {
