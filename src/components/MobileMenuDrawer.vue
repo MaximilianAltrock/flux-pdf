@@ -6,6 +6,7 @@ import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useTheme } from '@/composables/useTheme'
 import { useMobile } from '@/composables/useMobile'
+import { formatFileSize, formatTime } from '@/utils/format'
 
 const props = defineProps<{
   open: boolean
@@ -32,19 +33,6 @@ const totalSize = computed(() => {
   }
   return size
 })
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function handleThemeToggle() {
   haptic('light')
@@ -120,7 +108,9 @@ onBackButton(
                   <div class="text-xs text-text-muted">Files</div>
                 </div>
               </div>
-              <div class="mt-3 text-xs text-text-muted">Est. size: {{ formatSize(totalSize) }}</div>
+              <div class="mt-3 text-xs text-text-muted">
+                Est. size: {{ formatFileSize(totalSize) }}
+              </div>
             </div>
 
             <!-- Source Files -->
@@ -149,7 +139,7 @@ onBackButton(
                       {{ source.filename }}
                     </div>
                     <div class="text-xs text-text-muted">
-                      {{ source.pageCount }} pages • {{ formatSize(source.fileSize) }}
+                      {{ source.pageCount }} pages • {{ formatFileSize(source.fileSize) }}
                     </div>
                   </div>
                   <button

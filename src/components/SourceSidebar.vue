@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { FileText, X, ChevronRight } from 'lucide-vue-next'
+import { formatFileSize } from '@/utils/format'
 
 const emit = defineEmits<{
   removeSource: [sourceId: string]
@@ -11,14 +12,8 @@ const store = useDocumentStore()
 
 const sources = computed(() => store.sourceFileList)
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 function getPageCountForSource(sourceId: string): number {
-  return store.pages.filter(p => p.sourceFileId === sourceId).length
+  return store.pages.filter((p) => p.sourceFileId === sourceId).length
 }
 
 function handleRemove(sourceId: string, event: Event) {
@@ -53,7 +48,9 @@ function handleRemove(sourceId: string, event: Event) {
         >
           <div class="flex items-start gap-3">
             <!-- Icon -->
-            <div class="flex-shrink-0 w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
+            <div
+              class="flex-shrink-0 w-8 h-8 bg-primary/10 rounded flex items-center justify-center"
+            >
               <FileText class="w-4 h-4 text-primary" />
             </div>
 
