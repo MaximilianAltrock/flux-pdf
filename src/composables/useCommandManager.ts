@@ -16,6 +16,7 @@ const MAX_HISTORY_SIZE = 50
  */
 const history = ref<HistoryEntry[]>([])
 const historyPointer = ref(-1)
+const sessionStartTime = ref(Date.now())
 
 /**
  * Command Manager Composable
@@ -81,6 +82,8 @@ export function useCommandManager() {
       const session = await db.session.get('current-session')
       if (!session || !session.history) return
 
+      sessionStartTime.value = session.updatedAt || Date.now()
+
       const rehydratedEntries: HistoryEntry[] = []
 
       for (const serialized of session.history) {
@@ -139,13 +142,25 @@ export function useCommandManager() {
     return history.value[historyPointer.value + 1]?.command.name ?? null
   })
 
-  const historyList = computed((): HistoryDisplayEntry[] =>
-    history.value.map((entry, index) => ({
+  const historyList = computed((): HistoryDisplayEntry[] => {
+    // Create the "Root" entry
+    const rootEntry: HistoryDisplayEntry = {
+      command: { id: 'root', name: 'Session Start' } as any, // Mock command
+      timestamp: sessionStartTime.value,
+      isCurrent: historyPointer.value === -1,
+      isUndone: historyPointer.value < -1, // Never undone
+      pointer: -1,
+    }
+
+    const mapped = history.value.map((entry, index) => ({
       ...entry,
       isCurrent: index === historyPointer.value,
       isUndone: index > historyPointer.value,
-    })),
-  )
+      pointer: index,
+    }))
+
+    return [rootEntry, ...mapped]
+  })
 
   // ============================================
   // Command Operations

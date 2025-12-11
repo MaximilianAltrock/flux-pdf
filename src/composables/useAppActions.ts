@@ -11,6 +11,7 @@ import {
   DuplicatePagesCommand,
   DeletePagesCommand,
   AddPagesCommand,
+  RemoveSourceCommand,
 } from '@/commands'
 import { UserAction } from '@/types/actions'
 import type { PageReference } from '@/types'
@@ -216,16 +217,19 @@ export function useAppActions(state: AppState) {
     const source = store.sources.get(sourceId)
     if (!source) return
 
-    const pagesToRemove = store.pages.filter((p) => p.sourceFileId === sourceId).length
+    const relatedPages = store.pages.filter((p) => p.sourceFileId === sourceId)
 
-    // Desktop requires confirmation
     if (!isMobile.value) {
-      const confirmed = await confirmDelete(pagesToRemove, 'page')
+      const confirmed = await confirmDelete(relatedPages.length, 'page')
       if (!confirmed) return
     }
 
-    await removeSourceFile(sourceId)
-    toast.success('File removed')
+    execute(new RemoveSourceCommand(source, store.pages))
+
+    toast.success('File removed', undefined, {
+      label: 'UNDO',
+      onClick: () => undo(),
+    })
   }
 
   // ============================================

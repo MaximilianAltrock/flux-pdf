@@ -100,4 +100,6 @@ export interface HistoryDisplayEntry extends HistoryEntry {
   isCurrent: boolean
   /** Has this been undone? */
   isUndone: boolean
+
+  pointer: number
 }

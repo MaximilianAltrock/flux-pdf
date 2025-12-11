@@ -165,9 +165,6 @@ export function usePdfManager() {
   }
 
   async function removeSourceFile(sourceFileId: string) {
-    // Remove from DB, Cache, and Store
-    await db.files.delete(sourceFileId)
-    pdfDocCache.delete(sourceFileId)
     store.removeSourceFile(sourceFileId)
   }
 

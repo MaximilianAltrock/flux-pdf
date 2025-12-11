@@ -11,6 +11,7 @@ export const CommandType = {
   REORDER: 'ReorderPages',
   ROTATE: 'RotatePages',
   SPLIT: 'SplitGroup',
+  REMOVE_SOURCE: 'RemoveSource',
 } as const
 
 export type CommandTypeValue = (typeof CommandType)[keyof typeof CommandType]

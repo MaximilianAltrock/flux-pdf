@@ -44,9 +44,9 @@ function handleRemoveSource(sourceId: string) {
   emit('removeSource', sourceId)
 }
 
-function handleHistoryJump(index: number) {
+function handleHistoryJump(pointer: number) {
   haptic('light')
-  jumpTo(index)
+  jumpTo(pointer)
 }
 
 // LOCK THE BODY SCROLL
