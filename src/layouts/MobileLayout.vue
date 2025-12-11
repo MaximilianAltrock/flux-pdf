@@ -1,0 +1,172 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useDocumentStore } from '@/stores/document'
+
+// Mobile Components
+import MobileTopBar from '@/components/MobileTopBar.vue'
+import MobilePageGrid from '@/components/MobilePageGrid.vue'
+import MobileBottomBar from '@/components/MobileBottomBar.vue'
+import MobileFAB from '@/components/MobileFAB.vue'
+import MobileMenuDrawer from '@/components/MobileMenuDrawer.vue'
+import MobileTitleSheet from '@/components/MobileTitleSheet.vue'
+import MobileAddSheet from '@/components/MobileAddSheet.vue'
+import MobileActionSheet from '@/components/MobileActionSheet.vue'
+
+import type { PageReference } from '@/types'
+import type { AppState } from '@/composables/useAppState'
+import type { AppActions } from '@/composables/useAppActions'
+
+// Props - receive state and actions from parent
+const props = defineProps<{
+  state: AppState
+  actions: AppActions
+}>()
+
+const store = useDocumentStore()
+
+// Local computed for template readability
+const hasPages = computed(() => store.pageCount > 0)
+const selectedCount = computed(() => store.selectedCount)
+const isLoading = computed(() => store.isLoading)
+const loadingMessage = computed(() => store.loadingMessage)
+
+// Event handlers
+function onPreview(pageRef: PageReference) {
+  props.actions.handlePagePreview(pageRef)
+}
+
+function onRemoveSource(sourceId: string) {
+  props.actions.handleRemoveSource(sourceId)
+}
+</script>
+
+<template>
+  <div class="flex flex-col h-full">
+    <!-- Safe Area Top -->
+    <div class="pt-[env(safe-area-inset-top)]">
+      <MobileTopBar
+        :selection-mode="props.state.mobileSelectionMode.value"
+        :selected-count="selectedCount"
+        @menu="props.state.openMenuDrawer"
+        @exit-selection="props.state.exitMobileSelectionMode"
+        @edit-title="props.state.openTitleSheet"
+      />
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-hidden relative">
+      <!-- Empty State -->
+      <div v-if="!hasPages" class="h-full flex flex-col items-center justify-center p-8">
+        <div class="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+          <svg class="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+            />
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-text mb-2">No PDFs yet</h2>
+        <p class="text-text-muted text-center mb-6">Tap the + button to add your first PDF</p>
+      </div>
+
+      <!-- Page Grid -->
+      <MobilePageGrid
+        v-else
+        :selection-mode="props.state.mobileSelectionMode.value"
+        @enter-selection="props.state.enterMobileSelectionMode"
+        @exit-selection="props.state.exitMobileSelectionMode"
+        @preview="onPreview"
+      />
+
+      <!-- Loading Overlay -->
+      <Transition name="fade">
+        <div
+          v-if="isLoading"
+          class="absolute inset-0 bg-background/90 flex flex-col items-center justify-center z-50"
+        >
+          <svg class="w-12 h-12 text-primary animate-spin mb-4" fill="none" viewBox="0 0 24 24">
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <span class="text-text-muted font-medium">{{ loadingMessage }}</span>
+        </div>
+      </Transition>
+    </main>
+
+    <!-- Safe Area Bottom -->
+    <div class="pb-[env(safe-area-inset-bottom)]">
+      <MobileBottomBar
+        :selection-mode="props.state.mobileSelectionMode.value"
+        :selected-count="selectedCount"
+        :has-pages="hasPages"
+        @rotate-left="props.actions.handleRotateSelected(-90)"
+        @rotate-right="props.actions.handleRotateSelected(90)"
+        @delete="props.actions.handleDeleteSelected"
+        @duplicate="props.actions.handleDuplicateSelected"
+        @export="props.actions.handleExport"
+      />
+    </div>
+
+    <!-- Floating Action Button -->
+    <MobileFAB
+      :selection-mode="props.state.mobileSelectionMode.value"
+      :selected-count="selectedCount"
+      @add="props.state.openAddSheet"
+      @actions="props.state.openActionSheet"
+    />
+
+    <!-- Mobile Sheets & Drawers -->
+    <MobileMenuDrawer
+      :open="props.state.showMenuDrawer.value"
+      @close="props.state.closeMenuDrawer"
+      @remove-source="onRemoveSource"
+    />
+
+    <MobileTitleSheet
+      :open="props.state.showTitleSheet.value"
+      @close="props.state.closeTitleSheet"
+    />
+
+    <MobileAddSheet
+      :open="props.state.showAddSheet.value"
+      @close="props.state.closeAddSheet"
+      @select-files="props.actions.handleMobileAddFiles"
+      @take-photo="props.actions.handleMobileTakePhoto"
+    />
+
+    <MobileActionSheet
+      :open="props.state.showActionSheet.value"
+      :selected-count="selectedCount"
+      @close="props.state.closeActionSheet"
+      @rotate-left="props.actions.handleRotateSelected(-90)"
+      @rotate-right="props.actions.handleRotateSelected(90)"
+      @duplicate="props.actions.handleDuplicateSelected"
+      @delete="props.actions.handleDeleteSelected"
+      @export-selected="props.actions.handleExportSelected"
+    />
+  </div>
+</template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
