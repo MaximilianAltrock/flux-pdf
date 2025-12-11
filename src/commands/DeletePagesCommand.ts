@@ -1,60 +1,125 @@
-import type { Command } from './types'
-import type { PageReference } from '@/types'
+import { BaseCommand } from './BaseCommand'
+import { CommandType, registerCommand } from './registry'
+import type { SerializedCommand, PageSnapshot } from './types'
 import { useDocumentStore } from '@/stores/document'
-import { CommandType } from './registry'
 
-interface PageSnapshot {
-  page: PageReference
-  index: number
+/**
+ * Payload structure for serialization
+ */
+interface DeletePagesPayload {
+  id: string
+  pageIds: string[]
+  backupSnapshots: PageSnapshot[]
 }
 
-export class DeletePagesCommand implements Command {
+/**
+ * Command to delete one or more pages
+ *
+ * Captures page state before deletion so they can be
+ * perfectly restored on undo, including original positions.
+ */
+export class DeletePagesCommand extends BaseCommand {
   public readonly type = CommandType.DELETE
-  public readonly id: string
   public readonly name: string
 
-  public pageIds: string[]
+  /** IDs of pages to delete */
+  public readonly pageIds: string[]
 
-  // Stores the state of pages BEFORE they were deleted.
-  // Must be public for serialization/persistence.
-  public backupSnapshots: PageSnapshot[] = []
+  /**
+   * Snapshots of pages BEFORE deletion
+   * Populated on first execute(), restored on undo()
+   */
+  private backupSnapshots: PageSnapshot[] = []
 
-  constructor(pageIds: string[]) {
-    this.id = crypto.randomUUID()
-    this.pageIds = [...pageIds]
-    const count = pageIds.length
-    this.name = count === 1 ? 'Delete page' : `Delete ${count} pages`
+  constructor(
+    pageIds: string[],
+    id?: string,
+    backupSnapshots?: PageSnapshot[],
+    createdAt?: number,
+  ) {
+    super(id, createdAt)
+
+    // Validate inputs
+    if (!pageIds || pageIds.length === 0) {
+      throw new Error('DeletePagesCommand requires at least one page ID')
+    }
+
+    this.pageIds = [...pageIds] // Defensive copy
+    this.name = BaseCommand.formatName('Delete', pageIds.length)
+
+    // Restore backup snapshots if provided (from deserialization)
+    if (backupSnapshots) {
+      this.backupSnapshots = backupSnapshots.map((s) => ({
+        page: { ...s.page },
+        index: s.index,
+      }))
+    }
   }
 
   execute(): void {
     const store = useDocumentStore()
 
-    // 1. If this is the first run (not a redo), capture the state
+    // Capture state on first execution (not on redo)
     if (this.backupSnapshots.length === 0) {
-      store.pages.forEach((page, index) => {
-        if (this.pageIds.includes(page.id)) {
-          this.backupSnapshots.push({
-            page: { ...page },
-            index,
-          })
-        }
-      })
+      this.captureSnapshots(store)
     }
 
-    // 2. Perform Delete
+    // Perform deletion
     store.deletePages(this.pageIds)
   }
 
   undo(): void {
     const store = useDocumentStore()
 
-    // 3. Restore in correct order (Index Ascending)
-    // Sorting ensures that if we restore index 5 and 10,
-    // index 10 lands in the correct spot relative to 5.
+    // Restore pages in correct order (ascending index)
+    // This ensures page 5 is inserted before page 10,
+    // so indices remain valid during restoration
     const sorted = [...this.backupSnapshots].sort((a, b) => a.index - b.index)
 
     for (const { page, index } of sorted) {
-      store.insertPages(index, [page])
+      store.insertPages(index, [{ ...page }])
     }
   }
+
+  /**
+   * Capture snapshots of pages before deletion
+   */
+  private captureSnapshots(store: ReturnType<typeof useDocumentStore>): void {
+    const pageIdSet = new Set(this.pageIds)
+
+    store.pages.forEach((page, index) => {
+      if (pageIdSet.has(page.id)) {
+        this.backupSnapshots.push({
+          page: { ...page },
+          index,
+        })
+      }
+    })
+  }
+
+  protected getPayload(): Record<string, unknown> {
+    return {
+      pageIds: this.pageIds,
+      backupSnapshots: this.backupSnapshots.map((s) => ({
+        page: { ...s.page },
+        index: s.index,
+      })),
+    }
+  }
+
+  /**
+   * Reconstruct command from serialized data
+   */
+  static deserialize(data: SerializedCommand): DeletePagesCommand {
+    const payload = data.payload as unknown as DeletePagesPayload
+    return new DeletePagesCommand(
+      payload.pageIds,
+      payload.id,
+      payload.backupSnapshots,
+      data.timestamp,
+    )
+  }
 }
+
+// Self-register with the command registry
+registerCommand(CommandType.DELETE, DeletePagesCommand)

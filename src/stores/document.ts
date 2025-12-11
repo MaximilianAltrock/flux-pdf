@@ -156,19 +156,6 @@ export const useDocumentStore = defineStore('document', () => {
   const projectTitle = ref('Untitled Project')
   const isTitleLocked = ref(false)
 
-  function splitGroup(pageIndex: number) {
-    if (pageIndex <= 0 || pageIndex >= pages.value.length) return
-    const divider: PageReference = {
-      id: crypto.randomUUID(),
-      sourceFileId: 'virtual-divider',
-      sourcePageIndex: -1,
-      rotation: 0,
-      isDivider: true,
-      groupId: crypto.randomUUID(),
-    }
-    pages.value.splice(pageIndex, 0, divider)
-  }
-
   function setZoom(level: number) {
     zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
   }
@@ -214,6 +201,5 @@ export const useDocumentStore = defineStore('document', () => {
     zoomOut,
     projectTitle,
     isTitleLocked,
-    splitGroup,
   }
 })

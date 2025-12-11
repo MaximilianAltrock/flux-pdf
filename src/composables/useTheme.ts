@@ -46,15 +46,11 @@ function applyTheme() {
     isDark.value = theme.value === 'dark'
   }
 
-  console.log('[Theme] Applying theme:', theme.value, 'isDark:', isDark.value)
-
   // Update html element class (light-theme class for light mode)
   if (isDark.value) {
     document.documentElement.classList.remove('light-theme')
-    console.log('[Theme] Removed light-theme class from html')
   } else {
     document.documentElement.classList.add('light-theme')
-    console.log('[Theme] Added light-theme class to html')
   }
 }
 
@@ -75,7 +71,6 @@ export function useTheme() {
 
   // Toggle between light and dark (not system)
   function toggleTheme() {
-    console.log('[Theme] Toggle called, current isDark:', isDark.value)
     setTheme(isDark.value ? 'light' : 'dark')
   }
 
@@ -90,6 +85,6 @@ export function useTheme() {
     isDark,
     themeLabel,
     setTheme,
-    toggleTheme
+    toggleTheme,
   }
 }

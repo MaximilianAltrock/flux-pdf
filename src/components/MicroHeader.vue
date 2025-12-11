@@ -203,7 +203,6 @@ const emit = defineEmits<{
       <!-- Tool Switcher -->
       <div class="flex items-center gap-1 bg-surface rounded p-0.5 border border-border">
         <button
-          v-tooltip="'Select Tool (V)'"
           class="p-1 rounded transition-colors"
           :class="
             store.currentTool === 'select'
@@ -215,7 +214,6 @@ const emit = defineEmits<{
           <MousePointer2 class="w-3.5 h-3.5" />
         </button>
         <button
-          v-tooltip="'Razor Tool (C)'"
           class="p-1 rounded transition-colors"
           :class="
             store.currentTool === 'razor'
@@ -230,12 +228,7 @@ const emit = defineEmits<{
 
       <!-- Theme Toggle -->
       <button
-        @click="
-          () => {
-            console.log('Theme button clicked!')
-            toggleTheme()
-          }
-        "
+        @click="toggleTheme()"
         class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors"
         :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
       >

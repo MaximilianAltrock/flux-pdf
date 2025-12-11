@@ -1,35 +1,68 @@
 import Dexie, { type Table } from 'dexie'
 import type { PageReference } from '@/types'
+import type { SerializedCommand } from '@/commands'
 
-// Serialization interface for Commands
-export interface SerializedCommand {
-  type: string
-  payload: any
-  timestamp: number
-}
-
-// 1. The "Session" Table (The current workspace state)
+/**
+ * Session state stored in IndexedDB
+ * Represents the current workspace state including history
+ */
 export interface SessionState {
-  id: 'current-session' // Singleton ID
+  /** Singleton ID - always 'current-session' */
+  id: 'current-session'
+
+  /** User's project title */
   projectTitle: string
+
+  /** Current page arrangement */
   pageMap: PageReference[]
+
+  /** Serialized command history */
   history: SerializedCommand[]
+
+  /** Current position in history (-1 = beginning) */
   historyPointer: number
+
+  /** Zoom level */
   zoom: number
+
+  /** Last update timestamp */
   updatedAt: number
 }
 
-// 2. The "Files" Table (Heavy Blobs)
+/**
+ * Source PDF file stored in IndexedDB
+ * Contains the heavy binary data separate from metadata
+ */
 export interface StoredFile {
+  /** Unique file identifier */
   id: string
-  data: ArrayBuffer // The heavy PDF binary
+
+  /** The PDF binary data */
+  data: ArrayBuffer
+
+  /** Original filename */
   filename: string
+
+  /** File size in bytes */
   fileSize: number
+
+  /** Number of pages in the PDF */
   pageCount: number
+
+  /** Timestamp when file was added */
   addedAt: number
+
+  /** Color assigned to this source for UI */
   color: string
 }
 
+/**
+ * FluxPDF IndexedDB Database
+ *
+ * Stores:
+ * - session: Singleton containing workspace state and history
+ * - files: Source PDF binary data
+ */
 export class FluxDatabase extends Dexie {
   session!: Table<SessionState>
   files!: Table<StoredFile>
@@ -38,10 +71,11 @@ export class FluxDatabase extends Dexie {
     super('FluxPDF_DB')
 
     this.version(1).stores({
-      session: 'id', // Singleton
-      files: 'id', // Source File ID
+      session: 'id', // Singleton - always 'current-session'
+      files: 'id', // Source file ID
     })
   }
 }
 
+/** Global database instance */
 export const db = new FluxDatabase()

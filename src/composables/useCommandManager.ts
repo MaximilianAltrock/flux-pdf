@@ -2,8 +2,8 @@ import { ref, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useDocumentStore } from '@/stores/document'
 import { db, type SessionState } from '@/db/db'
-import { rehydrateCommand } from '@/commands/registry'
-import type { Command, HistoryEntry } from '@/commands/types'
+import { commandRegistry } from '@/commands'
+import type { Command, HistoryEntry, HistoryDisplayEntry, SerializedCommand } from '@/commands'
 
 /**
  * Maximum number of commands to keep in history
@@ -17,48 +17,44 @@ const MAX_HISTORY_SIZE = 50
 const history = ref<HistoryEntry[]>([])
 const historyPointer = ref(-1)
 
+/**
+ * Command Manager Composable
+ *
+ * Manages the undo/redo command history stack.
+ * Persists history to IndexedDB for session restoration.
+ */
 export function useCommandManager() {
   const store = useDocumentStore()
 
-  // ==========================================
+  // ============================================
   // Persistence Logic (IndexedDB)
-  // ==========================================
+  // ============================================
 
   /**
    * Save the current session state to IndexedDB.
    * Debounced by 1s via VueUse to prevent database thrashing.
    */
   const saveSession = useDebounceFn(async () => {
-    // 1. Serialize History
-    const serializedHistory = history.value.map((entry) => {
-      // PRODUCTION FIX: Use the explicit 'type' property
-      // This string is constant and will not be mangled by minifiers.
-      if (!entry.command.type) {
-        console.error('Command missing type property during serialization:', entry.command)
-      }
+    // Ensure we only persist plain JSON-friendly data (no Proxies)
+    const toPlain = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
-      return {
-        type: entry.command.type,
-        // We assume all public properties on the Command class are needed for state restoration.
-        // JSON.stringify automatically drops functions (execute/undo), leaving only data.
-        payload: JSON.parse(JSON.stringify(entry.command)),
-        timestamp: entry.timestamp,
-      }
-    })
+    // Serialize history using the new command.serialize() method
+    const serializedHistory: SerializedCommand[] = history.value.map((entry) =>
+      toPlain(entry.command.serialize()),
+    )
 
-    // 2. Construct Session Object
+    // Construct session object
     const sessionData: SessionState = {
       id: 'current-session',
-      projectTitle: store.projectTitle,
-      // Deep copy pages array to avoid reactivity issues during storage
-      pageMap: JSON.parse(JSON.stringify(store.pages)),
+      projectTitle: String(store.projectTitle ?? ''),
+      pageMap: toPlain(store.pages),
       history: serializedHistory,
       historyPointer: historyPointer.value,
-      zoom: store.zoom,
+      zoom: Number(store.zoom),
       updatedAt: Date.now(),
     }
 
-    // 3. Write to DB
+    // Write to DB
     try {
       await db.session.put(sessionData)
     } catch (e) {
@@ -80,52 +76,70 @@ export function useCommandManager() {
   /**
    * Restore the history stack from IndexedDB on app launch
    */
-  async function restoreHistory() {
+  async function restoreHistory(): Promise<void> {
     try {
       const session = await db.session.get('current-session')
       if (!session || !session.history) return
 
       const rehydratedEntries: HistoryEntry[] = []
 
-      for (const item of session.history) {
-        // Factory method to convert JSON -> Class Instance
-        const command = rehydrateCommand(item.type, item.payload)
+      for (const serialized of session.history) {
+        // Use the new registry-based deserialization
+        const command = commandRegistry.deserialize(serialized as SerializedCommand)
 
         if (command) {
           rehydratedEntries.push({
             command,
-            timestamp: item.timestamp,
+            timestamp: command.createdAt,
           })
         } else {
-          console.warn(`Skipping unknown command type during restore: ${item.type}`)
+          console.warn(`Skipping unknown command type during restore: ${serialized.type}`)
         }
       }
 
       history.value = rehydratedEntries
-      historyPointer.value = session.historyPointer
+
+      // Clamp pointer to available history in case some commands were skipped
+      const clampedPointer = Math.max(
+        -1,
+        Math.min(session.historyPointer ?? -1, rehydratedEntries.length - 1),
+      )
+      historyPointer.value = clampedPointer
+
+      // If the page map wasn't restored (e.g., failed persistence), rebuild state by replaying history
+      if (store.pages.length === 0 && clampedPointer >= 0) {
+        for (let i = 0; i <= clampedPointer; i++) {
+          try {
+            rehydratedEntries[i]?.command.execute()
+          } catch (error) {
+            console.error('Failed to replay command during restore:', error)
+            break
+          }
+        }
+      }
     } catch (e) {
       console.error('Failed to restore history:', e)
     }
   }
 
-  // ==========================================
-  // Standard Command Logic
-  // ==========================================
+  // ============================================
+  // Computed Properties
+  // ============================================
 
   const canUndo = computed(() => historyPointer.value >= 0)
   const canRedo = computed(() => historyPointer.value < history.value.length - 1)
 
-  const undoName = computed(() => {
+  const undoName = computed((): string | null => {
     if (!canUndo.value) return null
     return history.value[historyPointer.value]?.command.name ?? null
   })
 
-  const redoName = computed(() => {
+  const redoName = computed((): string | null => {
     if (!canRedo.value) return null
     return history.value[historyPointer.value + 1]?.command.name ?? null
   })
 
-  const historyList = computed(() =>
+  const historyList = computed((): HistoryDisplayEntry[] =>
     history.value.map((entry, index) => ({
       ...entry,
       isCurrent: index === historyPointer.value,
@@ -133,20 +147,29 @@ export function useCommandManager() {
     })),
   )
 
+  // ============================================
+  // Command Operations
+  // ============================================
+
+  /**
+   * Execute a command and add it to history
+   */
   function execute(command: Command): void {
     // If we're in the middle of history, discard the "future"
     if (historyPointer.value < history.value.length - 1) {
       history.value = history.value.slice(0, historyPointer.value + 1)
     }
 
+    // Execute the command
     command.execute()
 
+    // Add to history
     history.value.push({
       command,
-      timestamp: Date.now(),
+      timestamp: command.createdAt,
     })
 
-    // Trim history if too long to save memory
+    // Trim history if too long
     if (history.value.length > MAX_HISTORY_SIZE) {
       history.value = history.value.slice(-MAX_HISTORY_SIZE)
     }
@@ -154,6 +177,10 @@ export function useCommandManager() {
     historyPointer.value = history.value.length - 1
   }
 
+  /**
+   * Undo the last command
+   * @returns true if undo was performed
+   */
   function undo(): boolean {
     if (!canUndo.value) return false
 
@@ -166,6 +193,10 @@ export function useCommandManager() {
     return true
   }
 
+  /**
+   * Redo the next command
+   * @returns true if redo was performed
+   */
   function redo(): boolean {
     if (!canRedo.value) return false
 
@@ -178,12 +209,19 @@ export function useCommandManager() {
     return true
   }
 
+  /**
+   * Clear all history
+   */
   function clearHistory(): void {
     history.value = []
     historyPointer.value = -1
     saveSession() // Trigger immediate save to clear DB
   }
 
+  /**
+   * Jump to a specific point in history
+   * @param index - Target history index
+   */
   function jumpTo(index: number): void {
     if (index < -1 || index >= history.value.length) return
 
@@ -197,11 +235,14 @@ export function useCommandManager() {
   }
 
   return {
+    // State
     canUndo,
     canRedo,
     undoName,
     redoName,
     historyList,
+
+    // Actions
     execute,
     undo,
     redo,

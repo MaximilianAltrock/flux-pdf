@@ -1,73 +1,111 @@
-import type { Command } from './types'
-import { useDocumentStore } from '@/stores/document'
+import { BaseCommand } from './BaseCommand'
+import { CommandType, registerCommand } from './registry'
+import type { SerializedCommand } from './types'
 import type { PageReference } from '@/types'
-import { CommandType } from './registry'
+import { useDocumentStore } from '@/stores/document'
 
-export class DuplicatePagesCommand implements Command {
+/**
+ * Payload structure for serialization
+ */
+interface DuplicatePagesPayload {
+  id: string
+  sourcePageIds: string[]
+  createdPageIds: string[]
+}
+
+/**
+ * Command to duplicate one or more pages
+ *
+ * Duplicates are inserted immediately after their source pages.
+ * On undo, the exact same pages are removed.
+ * On redo, the exact same IDs are reused to maintain consistency.
+ */
+export class DuplicatePagesCommand extends BaseCommand {
   public readonly type = CommandType.DUPLICATE
-  public readonly id: string
   public readonly name: string
 
-  public sourcePageIds: string[]
-  public createdPageIds: string[] = []
+  /** IDs of pages to duplicate */
+  public readonly sourcePageIds: string[]
 
-  // Constructor must match the payload.sourcePageIds structure
-  constructor(sourcePageIds: string[]) {
-    this.id = crypto.randomUUID()
-    this.sourcePageIds = [...sourcePageIds]
-    const count = sourcePageIds.length
-    this.name = count === 1 ? 'Duplicate page' : `Duplicate ${count} pages`
+  /**
+   * IDs of pages created by this command
+   * Populated on first execute(), reused on redo
+   */
+  private createdPageIds: string[] = []
+
+  constructor(
+    sourcePageIds: string[],
+    id?: string,
+    createdPageIds?: string[],
+    createdAt?: number,
+  ) {
+    super(id, createdAt)
+
+    // Validate inputs
+    if (!sourcePageIds || sourcePageIds.length === 0) {
+      throw new Error('DuplicatePagesCommand requires at least one source page ID')
+    }
+
+    this.sourcePageIds = [...sourcePageIds] // Defensive copy
+    this.name = BaseCommand.formatName('Duplicate', sourcePageIds.length)
+
+    // Restore created IDs if provided (from deserialization)
+    if (createdPageIds) {
+      this.createdPageIds = [...createdPageIds]
+    }
   }
 
   execute(): void {
     const store = useDocumentStore()
-    const reuseExistingIds = this.createdPageIds.length > 0
+    const isRedo = this.createdPageIds.length > 0
 
-    // If this is a fresh run (not a redo), clear any stale IDs
-    if (!reuseExistingIds) {
-      this.createdPageIds = []
-    }
-
+    // Find pages to duplicate with their indices
     const pagesToDuplicate: { page: PageReference; index: number }[] = []
 
-    for (const id of this.sourcePageIds) {
-      const index = store.pages.findIndex((p) => p.id === id)
-      if (index !== -1 && store.pages[index]) {
-        pagesToDuplicate.push({ page: store.pages[index], index })
+    for (const sourceId of this.sourcePageIds) {
+      const index = store.pages.findIndex((p) => p.id === sourceId)
+      if (index !== -1) {
+        pagesToDuplicate.push({
+          page: store.pages[index]!,
+          index,
+        })
       }
     }
 
-    // Sort descending to insert from end to start (maintains indices)
+    // Sort descending by index to insert from end to start
+    // This prevents index shifting during insertion
     pagesToDuplicate.sort((a, b) => b.index - a.index)
 
-    const tempCreatedIds: string[] = []
+    const newIds: string[] = []
     let reuseIndex = 0
 
     for (const { page, index } of pagesToDuplicate) {
-      // Logic: In Redo, we MUST reuse the same ID we created before,
-      // otherwise history stack pointers get confused.
-      const newId = reuseExistingIds
-        ? this.createdPageIds[this.createdPageIds.length - 1 - reuseIndex]
+      // On redo, reuse the same IDs we created before
+      // This ensures history references remain valid
+      const newId = isRedo
+        ? this.createdPageIds[this.createdPageIds.length - 1 - reuseIndex]!
         : crypto.randomUUID()
 
       const duplicate: PageReference = {
-        id: newId!, // TS assertion
+        id: newId,
         sourceFileId: page.sourceFileId,
         sourcePageIndex: page.sourcePageIndex,
         rotation: page.rotation,
         groupId: page.groupId,
       }
 
+      // Insert duplicate immediately after original
       store.insertPages(index + 1, [duplicate])
 
-      if (!reuseExistingIds) {
-        tempCreatedIds.push(newId!)
+      if (!isRedo) {
+        newIds.push(newId)
       }
       reuseIndex++
     }
 
-    if (!reuseExistingIds) {
-      this.createdPageIds = tempCreatedIds.reverse()
+    // Store created IDs in reverse order (to match insertion order)
+    if (!isRedo) {
+      this.createdPageIds = newIds.reverse()
     }
   }
 
@@ -75,4 +113,27 @@ export class DuplicatePagesCommand implements Command {
     const store = useDocumentStore()
     store.deletePages(this.createdPageIds)
   }
+
+  protected getPayload(): Record<string, unknown> {
+    return {
+      sourcePageIds: this.sourcePageIds,
+      createdPageIds: this.createdPageIds,
+    }
+  }
+
+  /**
+   * Reconstruct command from serialized data
+   */
+  static deserialize(data: SerializedCommand): DuplicatePagesCommand {
+    const payload = data.payload as unknown as DuplicatePagesPayload
+    return new DuplicatePagesCommand(
+      payload.sourcePageIds,
+      payload.id,
+      payload.createdPageIds,
+      data.timestamp,
+    )
+  }
 }
+
+// Self-register with the command registry
+registerCommand(CommandType.DUPLICATE, DuplicatePagesCommand)

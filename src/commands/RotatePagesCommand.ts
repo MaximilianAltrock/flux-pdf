@@ -1,23 +1,49 @@
-import { CommandType } from './registry'
-import type { Command } from './types'
+import { BaseCommand } from './BaseCommand'
+import { CommandType, registerCommand } from './registry'
+import type { SerializedCommand } from './types'
 import { useDocumentStore } from '@/stores/document'
 
-export class RotatePagesCommand implements Command {
+/**
+ * Payload structure for serialization
+ */
+interface RotatePagesPayload {
+  id: string
+  pageIds: string[]
+  degrees: 90 | -90
+}
+
+/**
+ * Command to rotate one or more pages
+ *
+ * Rotation is applied incrementally (adds to existing rotation)
+ * and wraps at 360 degrees.
+ */
+export class RotatePagesCommand extends BaseCommand {
   public readonly type = CommandType.ROTATE
-  public readonly id: string
   public readonly name: string
 
-  public pageIds: string[]
-  public degrees: 90 | -90
+  /** IDs of pages to rotate */
+  public readonly pageIds: string[]
 
-  constructor(pageIds: string[], degrees: 90 | -90) {
-    this.id = crypto.randomUUID()
-    this.pageIds = [...pageIds]
+  /** Rotation amount in degrees (positive = clockwise) */
+  public readonly degrees: 90 | -90
+
+  constructor(pageIds: string[], degrees: 90 | -90, id?: string, createdAt?: number) {
+    super(id, createdAt)
+
+    // Validate inputs
+    if (!pageIds || pageIds.length === 0) {
+      throw new Error('RotatePagesCommand requires at least one page ID')
+    }
+    if (degrees !== 90 && degrees !== -90) {
+      throw new Error('Rotation degrees must be 90 or -90')
+    }
+
+    this.pageIds = [...pageIds] // Defensive copy
     this.degrees = degrees
 
-    const count = pageIds.length
     const direction = degrees > 0 ? 'right' : 'left'
-    this.name = count === 1 ? `Rotate page ${direction}` : `Rotate ${count} pages ${direction}`
+    this.name = BaseCommand.formatName(`Rotate ${direction}`, pageIds.length)
   }
 
   execute(): void {
@@ -34,4 +60,22 @@ export class RotatePagesCommand implements Command {
       store.rotatePage(pageId, reverseDegrees)
     }
   }
+
+  protected getPayload(): Record<string, unknown> {
+    return {
+      pageIds: this.pageIds,
+      degrees: this.degrees,
+    }
+  }
+
+  /**
+   * Reconstruct command from serialized data
+   */
+  static deserialize(data: SerializedCommand): RotatePagesCommand {
+    const payload = data.payload as unknown as RotatePagesPayload
+    return new RotatePagesCommand(payload.pageIds, payload.degrees, payload.id, data.timestamp)
+  }
 }
+
+// Self-register with the command registry
+registerCommand(CommandType.ROTATE, RotatePagesCommand)
