@@ -133,6 +133,7 @@ function onRemoveSource(sourceId: string) {
       :open="props.state.showMenuDrawer.value"
       @close="props.state.closeMenuDrawer"
       @remove-source="onRemoveSource"
+      @new-project="props.actions.handleNewProject"
     />
 
     <MobileTitleSheet

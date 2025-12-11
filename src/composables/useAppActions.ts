@@ -16,6 +16,7 @@ import {
 import { UserAction } from '@/types/actions'
 import type { PageReference } from '@/types'
 import type { AppState } from './useAppState'
+import { useThumbnailRenderer } from './useThumbnailRenderer'
 
 /**
  * Centralized action handlers for the application
@@ -25,6 +26,7 @@ export function useAppActions(state: AppState) {
   const store = useDocumentStore()
   const { clearAll } = usePdfManager()
   const { execute, clearHistory, undo } = useCommandManager()
+  const { clearCache } = useThumbnailRenderer()
   const toast = useToast()
   const { confirmDelete, confirmClearWorkspace } = useConfirm()
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
@@ -242,9 +244,12 @@ export function useAppActions(state: AppState) {
   async function handleNewProject() {
     const confirmed = await confirmClearWorkspace()
     if (!confirmed) return
-
+    // A. Wipe the Database and Store
     await clearAll()
+    // B. Wipe the Undo Stack
     clearHistory()
+    // C. Wipe the Visual Cache
+    clearCache()
     toast.info('Workspace Cleared')
   }
 

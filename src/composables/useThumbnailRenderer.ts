@@ -186,20 +186,10 @@ export function useThumbnailRenderer() {
     thumbnailCache.clear()
   }
 
-  /**
-   * Invalidate cache for a specific page (e.g., after rotation)
-   */
-  function invalidatePage(pageRef: PageReference): void {
-    // The cache key includes rotation, so rotating will automatically
-    // cause a cache miss. But if you want to force re-render:
-    // thumbnailCache.delete(pageRef)
-  }
-
   return {
     renderThumbnail,
     cancelRender,
     cancelAllRenders,
     clearCache,
-    invalidatePage,
   }
 }

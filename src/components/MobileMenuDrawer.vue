@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useScrollLock } from '@vueuse/core'
-import { X, FileText, Clock, Sun, Moon, Trash2, ChevronRight, Info } from 'lucide-vue-next'
+import {
+  X,
+  FileText,
+  Clock,
+  Sun,
+  Moon,
+  Trash2,
+  ChevronRight,
+  Info,
+  FilePlus,
+} from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useTheme } from '@/composables/useTheme'
@@ -15,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   removeSource: [sourceId: string]
+  newProject: []
 }>()
 
 const { onBackButton } = useMobile()
@@ -47,6 +58,12 @@ function handleRemoveSource(sourceId: string) {
 function handleHistoryJump(pointer: number) {
   haptic('light')
   jumpTo(pointer)
+}
+
+function handleNewProject() {
+  haptic('medium')
+  emit('newProject')
+  emit('close')
 }
 
 // LOCK THE BODY SCROLL
@@ -165,7 +182,7 @@ onBackButton(
                   :key="index"
                   class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors"
                   :class="entry.isCurrent ? 'bg-primary/10' : 'active:bg-muted/10'"
-                  @click="handleHistoryJump(historyList.length - 1 - index)"
+                  @click="handleHistoryJump(entry.pointer)"
                 >
                   <div
                     class="w-2 h-2 rounded-full shrink-0"
@@ -202,6 +219,24 @@ onBackButton(
                 <ChevronRight class="w-4 h-4 text-text-muted" />
               </button>
             </div>
+          </div>
+          <div class="px-4 pb-6">
+            <button
+              class="w-full flex items-center gap-3 p-4 bg-background border border-border rounded-lg active:bg-danger/5 transition-colors group"
+              @click="handleNewProject"
+            >
+              <div class="flex items-center justify-center w-5 h-5">
+                <FilePlus
+                  class="w-5 h-5 text-text-muted group-active:text-danger transition-colors"
+                />
+              </div>
+              <span
+                class="text-sm font-medium text-text group-active:text-danger transition-colors"
+              >
+                New Project
+              </span>
+              <span class="ml-auto text-xs text-text-muted"> Clear All </span>
+            </button>
           </div>
 
           <!-- Footer -->
