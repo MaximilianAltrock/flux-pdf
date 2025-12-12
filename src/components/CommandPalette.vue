@@ -30,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  action: [action: string]
+  action: [action: UserAction]
 }>()
 
 const store = useDocumentStore()

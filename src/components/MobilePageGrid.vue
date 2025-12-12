@@ -7,7 +7,6 @@ import { useCommandManager } from '@/composables/useCommandManager'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import { ReorderPagesCommand } from '@/commands'
-import { UserAction } from '@/types/actions'
 import PdfThumbnail from './PdfThumbnail.vue'
 import type { PageReference } from '@/types'
 
@@ -113,7 +112,7 @@ function handlePageTap(pageRef: PageReference, event: Event) {
     }
   } else {
     // Open preview (Focus View)
-    emit(UserAction.PREVIEW, pageRef)
+    emit('preview', pageRef)
   }
 }
 

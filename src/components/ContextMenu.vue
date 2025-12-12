@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Download
 } from 'lucide-vue-next'
+import { UserAction } from '@/types/actions'
 
 const props = defineProps<{
   x: number
@@ -20,7 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  action: [action: string]
+  action: [action: UserAction]
 }>()
 
 const menuRef = ref<HTMLElement | null>(null)
@@ -54,7 +55,7 @@ const menuLabel = computed(() => {
   return `Page ${props.pageNumber}`
 })
 
-function handleAction(action: string) {
+function handleAction(action: UserAction) {
   emit('action', action)
   emit('close')
 }
@@ -100,7 +101,7 @@ onUnmounted(() => {
         <div class="py-1">
           <button
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            @click="handleAction('preview')"
+            @click="handleAction(UserAction.PREVIEW)"
           >
             <Eye class="w-4 h-4 text-text-muted" />
             <span>Preview</span>
@@ -109,7 +110,7 @@ onUnmounted(() => {
 
           <button
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            @click="handleAction('duplicate')"
+            @click="handleAction(UserAction.DUPLICATE)"
           >
             <Copy class="w-4 h-4 text-text-muted" />
             <span>Duplicate</span>
@@ -119,7 +120,7 @@ onUnmounted(() => {
 
           <button
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            @click="handleAction('rotate-left')"
+            @click="handleAction(UserAction.ROTATE_LEFT)"
           >
             <RotateCcw class="w-4 h-4 text-text-muted" />
             <span>Rotate Left</span>
@@ -128,7 +129,7 @@ onUnmounted(() => {
 
           <button
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            @click="handleAction('rotate-right')"
+            @click="handleAction(UserAction.ROTATE_RIGHT)"
           >
             <RotateCw class="w-4 h-4 text-text-muted" />
             <span>Rotate Right</span>
@@ -140,7 +141,7 @@ onUnmounted(() => {
           <button
             v-if="selectedCount > 0"
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            @click="handleAction('select-all')"
+            @click="handleAction(UserAction.SELECT_ALL)"
           >
             <CheckSquare class="w-4 h-4 text-text-muted" />
             <span>Select All</span>
@@ -150,7 +151,7 @@ onUnmounted(() => {
           <button
             v-if="selectedCount > 0"
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            @click="handleAction('export-selected')"
+            @click="handleAction(UserAction.EXPORT_SELECTED)"
           >
             <Download class="w-4 h-4 text-text-muted" />
             <span>Export Selected</span>
@@ -160,7 +161,7 @@ onUnmounted(() => {
 
           <button
             class="w-full flex items-center gap-3 px-3 py-2 text-sm text-danger hover:bg-danger/10 transition-colors"
-            @click="handleAction('delete')"
+            @click="handleAction(UserAction.DELETE)"
           >
             <Trash2 class="w-4 h-4" />
             <span>Delete</span>

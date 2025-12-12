@@ -3,7 +3,7 @@ import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { UserAction } from '@/types/actions'
 
-export function useKeyboardShortcuts(handleAction: (action: string) => void) {
+export function useKeyboardShortcuts(handleAction: (action: UserAction) => void) {
   const store = useDocumentStore()
   const { undo, redo } = useCommandManager()
 

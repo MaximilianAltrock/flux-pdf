@@ -11,6 +11,7 @@ import FileDropzone from '@/components/FileDropzone.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 
 import type { PageReference } from '@/types'
+import type { UserAction } from '@/types/actions'
 import type { AppState } from '@/composables/useAppState'
 import type { AppActions } from '@/composables/useAppActions'
 
@@ -40,7 +41,7 @@ function onPreview(pageRef: PageReference) {
   props.actions.handlePagePreview(pageRef)
 }
 
-function onContextAction(action: string, pageRef: PageReference) {
+function onContextAction(action: UserAction, pageRef: PageReference) {
   props.actions.handleContextAction(action, pageRef)
 }
 
@@ -48,7 +49,7 @@ function onRemoveSource(sourceId: string) {
   props.actions.handleRemoveSource(sourceId)
 }
 
-function onCommandAction(action: string) {
+function onCommandAction(action: UserAction) {
   props.actions.handleCommandAction(action)
 }
 </script>

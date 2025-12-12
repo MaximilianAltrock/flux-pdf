@@ -90,10 +90,9 @@ function handlePageContextMenu(pageRef: PageReference, index: number, event: Mou
   }
 }
 
-function handleContextMenuAction(action: string) {
+function handleContextMenuAction(action: UserAction) {
   if (contextMenu.value.pageRef) {
-    // Cast string to Enum to maintain strict typing upstream
-    emit('contextAction', action as UserAction, contextMenu.value.pageRef)
+    emit('contextAction', action, contextMenu.value.pageRef)
   }
 }
 
@@ -128,8 +127,7 @@ function handleDragEnd() {
 // === Page Actions ===
 
 function handlePreview(pageRef: PageReference) {
-  // We can still use the Enum value when emitting, as it evaluates to 'preview' at runtime
-  emit(UserAction.PREVIEW, pageRef)
+  emit('preview', pageRef)
 }
 
 function handleDelete(pageRef: PageReference) {

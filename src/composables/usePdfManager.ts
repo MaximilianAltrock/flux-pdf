@@ -138,7 +138,8 @@ export function usePdfManager() {
       return { success: true, sourceFile, pageRefs }
     } catch (error) {
       store.setLoading(false)
-      return { success: false, error: (error as Error).message }
+      console.error('Failed to load PDF file:', error)
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   }
 
@@ -184,7 +185,7 @@ export function usePdfManager() {
     return record?.data
   }
 
-  async function removeSourceFile(sourceFileId: string) {
+  function removeSourceFile(sourceFileId: string) {
     store.removeSourceFile(sourceFileId)
   }
 

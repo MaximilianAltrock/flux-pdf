@@ -284,7 +284,7 @@ export function useAppActions(state: AppState) {
   /**
    * Handle context menu action on a page
    */
-  function handleContextAction(action: string, pageRef: PageReference) {
+  function handleContextAction(action: UserAction, pageRef: PageReference) {
     // Ensure the page is selected before acting
     if (!store.selection.selectedIds.has(pageRef.id)) {
       store.selectPage(pageRef.id, false)
@@ -315,13 +315,15 @@ export function useAppActions(state: AppState) {
       case UserAction.DIFF:
         handleDiffSelected()
         break
+      default:
+        break
     }
   }
 
   /**
    * Handle command palette action
    */
-  function handleCommandAction(action: string) {
+  function handleCommandAction(action: UserAction) {
     state.closeCommandPalette()
 
     switch (action) {
@@ -358,6 +360,8 @@ export function useAppActions(state: AppState) {
           const page = store.pages.find((p) => p.id === id)
           if (page) handlePagePreview(page)
         }
+        break
+      default:
         break
     }
   }

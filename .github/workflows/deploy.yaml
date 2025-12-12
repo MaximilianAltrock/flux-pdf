@@ -14,19 +14,24 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 🛎️
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 💼
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Install 🔧
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build 🏗️
+      - name: Lint
+        run: |
+          npm exec -- eslint . --max-warnings 0
+          npm exec -- oxlint . -D correctness --ignore-path .gitignore
+
+      - name: Build
         env:
           NODE_ENV: production
         run: |
@@ -34,7 +39,7 @@ jobs:
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
 
-      - name: Upload artifact 📦
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -43,5 +48,5 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Deploy to GitHub Pages 🚀
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4

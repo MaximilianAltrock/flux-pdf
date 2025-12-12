@@ -312,8 +312,12 @@ export function usePdfExport() {
    * Trigger a browser download
    */
   function downloadFile(data: Uint8Array, filename: string, mimeType = 'application/pdf'): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const blob = new Blob([data as any], { type: mimeType })
+    const arrayBuffer =
+      data.buffer instanceof ArrayBuffer
+        ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+        : data.slice().buffer
+
+    const blob = new Blob([arrayBuffer], { type: mimeType })
     const url = URL.createObjectURL(blob)
 
     const link = document.createElement('a')

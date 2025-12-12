@@ -32,10 +32,9 @@ export function useCommandManager() {
   // ============================================
 
   /**
-   * Save the current session state to IndexedDB.
-   * Debounced by 1s via VueUse to prevent database thrashing.
+   * Persist the current session state to IndexedDB.
    */
-  const saveSession = useDebounceFn(async () => {
+  async function persistSession(): Promise<void> {
     // Ensure we only persist plain JSON-friendly data (no Proxies)
     const toPlain = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
@@ -62,13 +61,19 @@ export function useCommandManager() {
     } catch (e) {
       console.error('Failed to save session to IndexedDB:', e)
     }
-  }, 1000)
+  }
+
+  /**
+   * Save the current session state to IndexedDB.
+   * Debounced by 1s via VueUse to prevent database thrashing.
+   */
+  const saveSession = useDebounceFn(persistSession, 1000)
 
   /**
    * Watch for state changes to trigger auto-save
    */
   watch(
-    [historyPointer, () => store.pages, () => store.projectTitle],
+    [historyPointer, () => store.pages, () => store.projectTitle, () => store.zoom],
     () => {
       saveSession()
     },
@@ -243,7 +248,7 @@ export function useCommandManager() {
   function clearHistory(): void {
     history.value = []
     historyPointer.value = -1
-    saveSession() // Trigger immediate save to clear DB
+    void persistSession() // Clear persisted history immediately
   }
 
   /**

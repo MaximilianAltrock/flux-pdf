@@ -51,9 +51,14 @@ export function useFileHandler() {
 
     // 3. Error Handling
     if (errors.length > 0) {
+      const detail = errors
+        .map((e) => e.error)
+        .filter((e): e is string => typeof e === 'string' && e.length > 0)
+        .join(', ')
+
       toast.error(
         `Failed to load ${errors.length} file${errors.length > 1 ? 's' : ''}`,
-        errors.map((e) => e.error).join(', '),
+        detail || 'Unknown error',
       )
     }
   }

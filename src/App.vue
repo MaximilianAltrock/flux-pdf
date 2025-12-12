@@ -20,7 +20,6 @@ import { usePdfManager } from '@/composables/usePdfManager'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
-import { useToast } from '@/composables/useToast'
 import { useAppState } from '@/composables/useAppState'
 import { useAppActions } from '@/composables/useAppActions'
 
@@ -34,7 +33,7 @@ import DiffModal from '@/components/DiffModal.vue'
 import PagePreviewModal from '@/components/PagePreviewModal.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { UserAction } from './types/actions'
+import { UserAction } from '@/types/actions'
 
 // ============================================
 // Initialization
@@ -42,7 +41,6 @@ import { UserAction } from './types/actions'
 
 const { initSession } = usePdfManager()
 const { restoreHistory } = useCommandManager()
-const toast = useToast()
 
 // Initialize theme (handles flash prevention)
 useTheme()
@@ -52,8 +50,7 @@ const state = useAppState()
 const actions = useAppActions(state)
 
 // Initialize keyboard shortcuts (desktop only)
-// We pass a callback that routes string actions to the correct handler
-useKeyboardShortcuts((action: string) => {
+useKeyboardShortcuts((action: UserAction) => {
   if (action === UserAction.OPEN_COMMAND_PALETTE) {
     state.openCommandPalette()
   } else {
@@ -71,13 +68,6 @@ onMounted(async () => {
   await restoreHistory()
 })
 
-// ============================================
-// Export Success Handler (for toast notification)
-// ============================================
-
-function handleExportSuccess() {
-  toast.success('PDF Exported')
-}
 </script>
 
 <template>
@@ -109,7 +99,7 @@ function handleExportSuccess() {
       :open="state.showExportModal.value"
       :export-selected="state.exportSelectedOnly.value"
       @close="state.closeExportModal"
-      @success="handleExportSuccess"
+      @success="actions.handleExportSuccess"
     />
 
     <!-- Page Preview Modal -->
