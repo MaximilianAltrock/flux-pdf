@@ -1,7 +1,8 @@
 import { usePdfManager } from './usePdfManager'
 import { useCommandManager } from './useCommandManager'
 import { useToast } from './useToast'
-import { AddPagesCommand } from '@/commands'
+import { AddPagesCommand, BatchCommand } from '@/commands'
+import type { Command } from '@/commands/types'
 
 export function useFileHandler() {
   const pdfManager = usePdfManager()
@@ -17,10 +18,27 @@ export function useFileHandler() {
 
     // 2. Command Execution
     if (successes.length > 0) {
+      // Step A: Create the command objects, but DO NOT execute them yet.
+      const commandsToRun: Command[] = []
+
       for (const result of successes) {
         if (result.sourceFile && result.pageRefs) {
-          execute(new AddPagesCommand(result.sourceFile, result.pageRefs, true))
+          const cmd = new AddPagesCommand(result.sourceFile, result.pageRefs, true)
+          commandsToRun.push(cmd)
         }
+      }
+
+      // Step B: Decide how to execute based on count
+      if (commandsToRun.length === 1) {
+        // Case 1: Single file - Just execute normally
+        execute(commandsToRun[0]!)
+      } else if (commandsToRun.length > 1) {
+        // Case 2: Multiple files - Wrap in CompositeCommand
+        const batchName = `Import ${commandsToRun.length} files`
+        const batchCmd = new BatchCommand(commandsToRun, batchName)
+
+        // This adds ONE entry to history, but runs ALL adds internally
+        execute(batchCmd)
       }
 
       const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)

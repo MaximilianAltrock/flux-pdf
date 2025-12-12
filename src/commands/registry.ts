@@ -12,6 +12,7 @@ export const CommandType = {
   ROTATE: 'RotatePages',
   SPLIT: 'SplitGroup',
   REMOVE_SOURCE: 'RemoveSource',
+  BATCH: 'BatchCommand',
 } as const
 
 export type CommandTypeValue = (typeof CommandType)[keyof typeof CommandType]

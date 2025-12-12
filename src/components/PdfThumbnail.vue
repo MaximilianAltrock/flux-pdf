@@ -213,7 +213,6 @@ function handleRetry() {
         :alt="`Page ${pageNumber}`"
         class="w-full h-auto block select-none"
         loading="lazy"
-        :style="{ transform: `rotate(${pageRef.rotation}deg)` }"
       />
 
       <!-- Selection Ring (Border Overlay) -->
