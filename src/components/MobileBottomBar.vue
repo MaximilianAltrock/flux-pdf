@@ -18,9 +18,28 @@ const emit = defineEmits<{
 
 const { haptic, canShareFiles } = useMobile()
 
-function handleAction(action: string) {
+type BottomBarEvent = 'rotateLeft' | 'rotateRight' | 'delete' | 'duplicate' | 'export'
+
+function handleAction(action: BottomBarEvent) {
   haptic('light')
-  emit(action as any)
+
+  switch (action) {
+    case 'rotateLeft':
+      emit('rotateLeft')
+      break
+    case 'rotateRight':
+      emit('rotateRight')
+      break
+    case 'delete':
+      emit('delete')
+      break
+    case 'duplicate':
+      emit('duplicate')
+      break
+    case 'export':
+      emit('export')
+      break
+  }
 }
 </script>
 
@@ -35,6 +54,7 @@ function handleAction(action: string) {
       class="h-16 flex items-center justify-around px-2"
     >
       <button
+        type="button"
         class="flex flex-col items-center justify-center gap-0.5 p-2 min-w-[60px] text-text active:text-primary transition-colors"
         @click="handleAction('rotateLeft')"
       >
@@ -43,6 +63,7 @@ function handleAction(action: string) {
       </button>
 
       <button
+        type="button"
         class="flex flex-col items-center justify-center gap-0.5 p-2 min-w-[60px] text-text active:text-primary transition-colors"
         @click="handleAction('rotateRight')"
       >
@@ -51,6 +72,7 @@ function handleAction(action: string) {
       </button>
 
       <button
+        type="button"
         class="flex flex-col items-center justify-center gap-0.5 p-2 min-w-[60px] text-text active:text-primary transition-colors"
         @click="handleAction('duplicate')"
       >
@@ -59,6 +81,7 @@ function handleAction(action: string) {
       </button>
 
       <button
+        type="button"
         class="flex flex-col items-center justify-center gap-0.5 p-2 min-w-[60px] text-danger active:text-danger/80 transition-colors"
         @click="handleAction('delete')"
       >
@@ -71,6 +94,7 @@ function handleAction(action: string) {
     <div v-else class="h-16 flex items-center px-4">
       <button
         v-if="hasPages"
+        type="button"
         class="flex-1 h-12 flex items-center justify-center gap-2 bg-primary text-white rounded-xl font-semibold active:bg-primary/90 transition-colors shadow-sm"
         @click="handleAction('export')"
       >

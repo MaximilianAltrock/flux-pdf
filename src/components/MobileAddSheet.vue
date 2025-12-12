@@ -4,6 +4,7 @@ import { useScrollLock, useSwipe } from '@vueuse/core'
 import { Camera, FolderOpen, X } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables/useMobile'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const props = defineProps<{
   open: boolean
@@ -35,6 +36,7 @@ watch(
 
 // 2. SWIPE LOGIC (VueUse)
 const sheetRef = ref<HTMLElement | null>(null)
+const closeButtonRef = ref<HTMLButtonElement | null>(null)
 
 const { lengthY, isSwiping } = useSwipe(sheetRef, {
   passive: false, // Prevent native scrolling while dragging
@@ -70,6 +72,15 @@ onBackButton(
   computed(() => props.open),
   () => emit('close'),
 )
+
+useFocusTrap(
+  computed(() => props.open),
+  sheetRef,
+  {
+    onEscape: () => emit('close'),
+    initialFocus: () => closeButtonRef.value,
+  },
+)
 </script>
 
 <template>
@@ -84,6 +95,9 @@ onBackButton(
           ref="sheetRef"
           class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden touch-none"
           :style="{ transform: `translateY(${dragOffset}px)` }"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-add-title"
         >
           <!-- Drag Handle -->
           <div class="flex justify-center py-3 pointer-events-none">
@@ -92,8 +106,14 @@ onBackButton(
 
           <!-- Header -->
           <div class="flex items-center justify-between px-4 pb-2">
-            <h2 class="text-lg font-semibold text-text">Add Pages</h2>
-            <button class="p-2 -mr-2 text-text-muted active:text-text" @click="emit('close')">
+            <h2 id="mobile-add-title" class="text-lg font-semibold text-text">Add Pages</h2>
+            <button
+              ref="closeButtonRef"
+              type="button"
+              aria-label="Close add pages"
+              class="p-2 -mr-2 text-text-muted active:text-text"
+              @click="emit('close')"
+            >
               <X class="w-5 h-5" />
             </button>
           </div>

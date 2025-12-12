@@ -38,6 +38,8 @@ export function useAppState() {
   const exportSelectedOnly = ref(false)
   const showPreviewModal = ref(false)
   const previewPageRef = ref<PageReference | null>(null)
+  const showDiffModal = ref(false)
+  const diffPages = ref<[PageReference, PageReference] | null>(null)
 
   // ============================================
   // Computed Properties
@@ -87,6 +89,16 @@ export function useAppState() {
 
   function navigatePreview(pageRef: PageReference) {
     previewPageRef.value = pageRef
+  }
+
+  function openDiffModal(pageA: PageReference, pageB: PageReference) {
+    diffPages.value = [pageA, pageB]
+    showDiffModal.value = true
+  }
+
+  function closeDiffModal() {
+    showDiffModal.value = false
+    diffPages.value = null
   }
 
   // ============================================
@@ -213,6 +225,11 @@ export function useAppState() {
 
     // Document Title
     updateDocumentTitle,
+
+    showDiffModal,
+    diffPages,
+    openDiffModal,
+    closeDiffModal,
   }
 }
 

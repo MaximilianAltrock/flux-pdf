@@ -134,7 +134,7 @@ export function usePdfExport() {
     }
 
     // Cache loaded PDFs to avoid reloading
-    const loadedPdfs = new Map<string, any>()
+    const loadedPdfs = new Map<string, PDFDocument>()
 
     // Track progress
     let processedPages = 0
@@ -198,10 +198,10 @@ export function usePdfExport() {
       const indices = parsePageRange(pageRange, store.pages.length)
       pagesToExport = indices
         .map((i) => store.pages[i])
-        // Filter out deleted, but KEEP dividers to know where to split
-        .filter((p): p is PageReference => !!p && !p.deleted)
+        // Keep dividers to know where to split
+        .filter((p): p is PageReference => !!p)
     } else {
-      pagesToExport = store.pages.filter((p) => !p.deleted)
+      pagesToExport = store.pages
     }
 
     // Group pages into segments based on Dividers

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, type Component } from 'vue'
 import {
   Search,
   RotateCw,
@@ -16,11 +16,13 @@ import {
   Sun,
   Moon,
   FolderPlus,
+  Layers,
 } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useTheme } from '@/composables/useTheme'
-import { RotatePagesCommand } from '@/commands'
+import { useFocusTrap } from '@/composables/useFocusTrap'
+import { UserAction } from '@/types/actions'
 
 const props = defineProps<{
   open: boolean
@@ -32,32 +34,33 @@ const emit = defineEmits<{
 }>()
 
 const store = useDocumentStore()
-const { execute, undo, redo, canUndo, canRedo } = useCommandManager()
+const { undo, redo, canUndo, canRedo } = useCommandManager()
 const { isDark, toggleTheme } = useTheme()
 
 const searchQuery = ref('')
 const selectedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
+const dialogRef = ref<HTMLElement | null>(null)
 
 interface CommandItem {
   id: string
   label: string
   shortcut?: string
-  icon: any
+  icon: Component
   action: () => void
   enabled: () => boolean
   category: string
   keywords?: string[] // Additional search keywords
 }
 
-const allCommands: CommandItem[] = [
+const allCommands = computed<CommandItem[]>(() => [
   // File actions
   {
     id: 'new-project',
     label: 'New Project',
     shortcut: '',
     icon: FolderPlus,
-    action: () => emit('action', 'new-project'),
+    action: () => emit('action', UserAction.NEW_PROJECT),
     enabled: () => true,
     category: 'File',
     keywords: ['clear', 'reset', 'workspace', 'start over'],
@@ -67,7 +70,7 @@ const allCommands: CommandItem[] = [
     label: 'Add PDF files',
     shortcut: '',
     icon: FilePlus,
-    action: () => emit('action', 'add-files'),
+    action: () => emit('action', UserAction.ADD_FILES),
     enabled: () => true,
     category: 'File',
   },
@@ -76,7 +79,7 @@ const allCommands: CommandItem[] = [
     label: 'Export PDF',
     shortcut: '',
     icon: Download,
-    action: () => emit('action', 'export'),
+    action: () => emit('action', UserAction.EXPORT),
     enabled: () => store.pageCount > 0,
     category: 'File',
   },
@@ -85,7 +88,7 @@ const allCommands: CommandItem[] = [
     label: 'Export selected pages',
     shortcut: '',
     icon: Download,
-    action: () => emit('action', 'export-selected'),
+    action: () => emit('action', UserAction.EXPORT_SELECTED),
     enabled: () => store.selectedCount > 0,
     category: 'File',
   },
@@ -141,6 +144,15 @@ const allCommands: CommandItem[] = [
     enabled: () => store.selectedCount > 0,
     category: 'Selection',
   },
+  {
+    id: 'diff-pages',
+    label: 'Diff selected pages (Ghost Overlay)',
+    shortcut: 'D',
+    icon: Layers,
+    action: () => emit('action', UserAction.DIFF),
+    enabled: () => store.selectedCount === 2, // Only enabled when exactly 2 selected
+    category: 'Selection',
+  },
 
   // Page actions
   {
@@ -148,11 +160,7 @@ const allCommands: CommandItem[] = [
     label: 'Rotate selected right',
     shortcut: 'R',
     icon: RotateCw,
-    action: () => {
-      const ids = Array.from(store.selection.selectedIds)
-      execute(new RotatePagesCommand(ids, 90))
-      emit('close')
-    },
+    action: () => emit('action', UserAction.ROTATE_RIGHT),
     enabled: () => store.selectedCount > 0,
     category: 'Page',
   },
@@ -161,11 +169,7 @@ const allCommands: CommandItem[] = [
     label: 'Rotate selected left',
     shortcut: 'Shift+R',
     icon: RotateCcw,
-    action: () => {
-      const ids = Array.from(store.selection.selectedIds)
-      execute(new RotatePagesCommand(ids, -90))
-      emit('close')
-    },
+    action: () => emit('action', UserAction.ROTATE_LEFT),
     enabled: () => store.selectedCount > 0,
     category: 'Page',
   },
@@ -174,18 +178,16 @@ const allCommands: CommandItem[] = [
     label: 'Delete selected pages',
     shortcut: 'Del',
     icon: Trash2,
-    action: () => {
-      emit('action', 'delete')
-    },
+    action: () => emit('action', UserAction.DELETE),
     enabled: () => store.selectedCount > 0,
     category: 'Page',
   },
   {
     id: 'duplicate',
     label: 'Duplicate selected pages',
-    shortcut: 'D',
+    shortcut: 'Ctrl/Cmd+D',
     icon: Copy,
-    action: () => emit('action', 'duplicate'),
+    action: () => emit('action', UserAction.DUPLICATE),
     enabled: () => store.selectedCount > 0,
     category: 'Page',
   },
@@ -194,7 +196,7 @@ const allCommands: CommandItem[] = [
     label: 'Preview selected page',
     shortcut: 'Space',
     icon: Eye,
-    action: () => emit('action', 'preview'),
+    action: () => emit('action', UserAction.PREVIEW),
     enabled: () => store.selectedCount === 1,
     category: 'Page',
   },
@@ -202,9 +204,9 @@ const allCommands: CommandItem[] = [
   // Settings
   {
     id: 'toggle-theme',
-    label: computed(() => (isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode')).value,
+    label: isDark.value ? 'Switch to Light Mode' : 'Switch to Dark Mode',
     shortcut: '',
-    icon: computed(() => (isDark.value ? Sun : Moon)).value,
+    icon: isDark.value ? Sun : Moon,
     action: () => {
       toggleTheme()
       emit('close')
@@ -212,16 +214,16 @@ const allCommands: CommandItem[] = [
     enabled: () => true,
     category: 'Settings',
   },
-]
+])
 
 const filteredCommands = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
 
   if (!query) {
-    return allCommands.filter((cmd) => cmd.enabled())
+    return allCommands.value.filter((cmd) => cmd.enabled())
   }
 
-  return allCommands.filter((cmd) => {
+  return allCommands.value.filter((cmd) => {
     if (!cmd.enabled()) return false
 
     const labelMatch = cmd.label.toLowerCase().includes(query)
@@ -250,7 +252,7 @@ const groupedCommands = computed(() => {
   // 1. Last Used (only if no search query)
   if (!query && lastUsedIds.value.length > 0) {
     const recent = lastUsedIds.value
-      .map((id) => allCommands.find((c) => c.id === id))
+      .map((id) => allCommands.value.find((c) => c.id === id))
       .filter((c): c is CommandItem => !!c && c.enabled())
 
     if (recent.length > 0) {
@@ -285,6 +287,15 @@ watch(
       await nextTick()
       inputRef.value?.focus()
     }
+  },
+)
+
+useFocusTrap(
+  computed(() => props.open),
+  dialogRef,
+  {
+    onEscape: () => emit('close'),
+    initialFocus: () => inputRef.value,
   },
 )
 
@@ -337,14 +348,19 @@ function getGlobalIndex(category: string, localIndex: number): number {
         class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
         @click.self="emit('close')"
         @keydown="handleKeydown"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="command-palette-title"
       >
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="emit('close')" />
 
         <!-- Palette -->
         <div
+          ref="dialogRef"
           class="relative w-full max-w-[600px] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
         >
+          <h2 id="command-palette-title" class="sr-only">Command palette</h2>
           <!-- Search input -->
           <div class="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
             <Search class="w-5 h-5 text-text-muted/50" />
@@ -352,6 +368,7 @@ function getGlobalIndex(category: string, localIndex: number): number {
               ref="inputRef"
               v-model="searchQuery"
               type="text"
+              aria-label="Search commands"
               placeholder="Type a command or search..."
               class="flex-1 text-sm outline-none placeholder-text-muted/50 bg-transparent text-text h-6"
             />

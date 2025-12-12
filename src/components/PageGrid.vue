@@ -1,25 +1,23 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Scissors } from 'lucide-vue-next'
-import { VueDraggable } from 'vue-draggable-plus'
-import { useCommandManager } from '@/composables/useCommandManager'
-import { useGridLogic } from '@/composables/useGridLogic'
-import {
-  ReorderPagesCommand,
-  RotatePagesCommand,
-  SplitGroupCommand,
-  AddPagesCommand,
-  DeletePagesCommand,
-} from '@/commands'
-import PdfThumbnail from './PdfThumbnail.vue'
-import ContextMenu from './ContextMenu.vue'
-import type { PageReference } from '@/types'
-import { UserAction } from '@/types/actions'
+  import { ref, computed } from 'vue'
+  import { Scissors } from 'lucide-vue-next'
+  import { VueDraggable } from 'vue-draggable-plus'
+  import { useCommandManager } from '@/composables/useCommandManager'
+  import { useGridLogic } from '@/composables/useGridLogic'
+  import {
+    ReorderPagesCommand,
+    SplitGroupCommand,
+  } from '@/commands'
+  import PdfThumbnail from './PdfThumbnail.vue'
+  import ContextMenu from './ContextMenu.vue'
+  import type { PageReference } from '@/types'
+  import { UserAction } from '@/types/actions'
 
 // FIX: defineEmits cannot use computed keys ([UserAction.PREVIEW])
 // We must use the string literal 'preview' here.
 const emit = defineEmits<{
   filesDropped: [files: FileList]
+  sourceDropped: [sourceId: string]
   preview: [pageRef: PageReference]
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
@@ -135,11 +133,11 @@ function handlePreview(pageRef: PageReference) {
 }
 
 function handleDelete(pageRef: PageReference) {
-  execute(new DeletePagesCommand([pageRef.id]))
+  emit('contextAction', UserAction.DELETE, pageRef)
 }
 
 function handleRotate(pageRef: PageReference) {
-  execute(new RotatePagesCommand([pageRef.id], 90))
+  emit('contextAction', UserAction.ROTATE_RIGHT, pageRef)
 }
 
 // === File Drop (Ingestion) ===
@@ -168,30 +166,14 @@ async function handleFileDrop(event: DragEvent) {
   if (jsonData) {
     try {
       const data = JSON.parse(jsonData)
-      // If user drags a source file from Left Sidebar -> Grid
-      if (data.type === 'source-file' && data.sourceId) {
-        const sourceFile = store.sources.get(data.sourceId)
-        if (!sourceFile) return
-
-        const groupId = crypto.randomUUID()
-        const newPages: PageReference[] = []
-
-        for (let i = 0; i < sourceFile.pageCount; i++) {
-          newPages.push({
-            id: crypto.randomUUID(),
-            sourceFileId: sourceFile.id,
-            sourcePageIndex: i,
-            rotation: 0,
-            groupId,
-          })
+        // If user drags a source file from Left Sidebar -> Grid
+        if (data.type === 'source-file' && data.sourceId) {
+          emit('sourceDropped', data.sourceId)
+          return
         }
-        // execute AddPagesCommand (Undoable)
-        execute(new AddPagesCommand(sourceFile, newPages, false))
-        return
+      } catch {
+        /* ignore invalid json */
       }
-    } catch {
-      /* ignore invalid json */
-    }
   }
 
   // 2. Check for External Files (OS Drop)

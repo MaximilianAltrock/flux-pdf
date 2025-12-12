@@ -48,6 +48,7 @@ export function useCommandManager() {
     const sessionData: SessionState = {
       id: 'current-session',
       projectTitle: String(store.projectTitle ?? ''),
+      activeSourceIds: Array.from(store.sources.keys()),
       pageMap: toPlain(store.pages),
       history: serializedHistory,
       historyPointer: historyPointer.value,
@@ -144,8 +145,20 @@ export function useCommandManager() {
 
   const historyList = computed((): HistoryDisplayEntry[] => {
     // Create the "Root" entry
+    const rootCommand: Command = {
+      id: 'root',
+      type: 'Root',
+      name: 'Session Start',
+      createdAt: sessionStartTime.value,
+      execute() {},
+      undo() {},
+      serialize() {
+        return { type: 'Root', payload: { id: 'root' }, timestamp: sessionStartTime.value }
+      },
+    }
+
     const rootEntry: HistoryDisplayEntry = {
-      command: { id: 'root', name: 'Session Start' } as any, // Mock command
+      command: rootCommand,
       timestamp: sessionStartTime.value,
       isCurrent: historyPointer.value === -1,
       isUndone: historyPointer.value < -1, // Never undone

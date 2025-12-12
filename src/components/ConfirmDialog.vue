@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { AlertTriangle, Info, Trash2 } from 'lucide-vue-next'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const { isOpen, state, handleConfirm, handleCancel } = useConfirm()
+
+const dialogRef = ref<HTMLElement | null>(null)
+const confirmButtonRef = ref<HTMLButtonElement | null>(null)
 
 const icons = {
   danger: Trash2,
@@ -33,22 +37,9 @@ const styles = computed(() => {
   }[variant]
 })
 
-function handleKeydown(event: KeyboardEvent) {
-  if (!isOpen.value) return
-
-  if (event.key === 'Escape') {
-    handleCancel()
-  } else if (event.key === 'Enter') {
-    handleConfirm()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown)
+useFocusTrap(isOpen, dialogRef, {
+  onEscape: handleCancel,
+  initialFocus: () => confirmButtonRef.value,
 })
 </script>
 
@@ -58,6 +49,10 @@ onUnmounted(() => {
       <div
         v-if="isOpen && state"
         class="fixed inset-0 z-[90] flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
       >
         <!-- Backdrop -->
         <div
@@ -66,7 +61,10 @@ onUnmounted(() => {
         />
 
         <!-- Dialog -->
-        <div class="relative bg-surface rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div
+          ref="dialogRef"
+          class="relative bg-surface rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        >
           <div class="p-6">
             <div class="flex items-start gap-4">
               <!-- Icon -->
@@ -83,10 +81,10 @@ onUnmounted(() => {
 
               <!-- Content -->
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-text">
+                <h3 id="confirm-dialog-title" class="text-lg font-semibold text-text">
                   {{ state.title }}
                 </h3>
-                <p class="mt-2 text-sm text-text-muted">
+                <p id="confirm-dialog-description" class="mt-2 text-sm text-text-muted">
                   {{ state.message }}
                 </p>
               </div>
@@ -96,12 +94,15 @@ onUnmounted(() => {
           <!-- Actions -->
           <div class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/5 border-t border-border">
             <button
+              type="button"
               class="px-4 py-2 text-sm font-medium text-text hover:bg-muted/20 rounded-lg transition-colors"
               @click="handleCancel"
             >
               {{ state.cancelText }}
             </button>
             <button
+              ref="confirmButtonRef"
+              type="button"
               class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
               :class="styles.confirmBtn"
               @click="handleConfirm"

@@ -30,8 +30,6 @@ export interface PageReference {
   sourcePageIndex: number // 0-based index in the original file
   rotation: 0 | 90 | 180 | 270
 
-  // New properties for  // Interaction
-  deleted?: boolean
   // Grouping
   groupId?: string // specific group/batch ID, defaults to sourceFileId
   isDivider?: boolean

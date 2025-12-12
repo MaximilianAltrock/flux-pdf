@@ -16,12 +16,12 @@ class ThumbnailCache {
   /**
    * Generate cache key from page reference
    */
-  private getKey(pageRef: PageReference, width: number): string {
-    return `${pageRef.sourceFileId}-${pageRef.sourcePageIndex}-${pageRef.rotation}-${width}`
+  private getKey(pageRef: PageReference, width: number, scaleFactor: number): string {
+    return `${pageRef.sourceFileId}-${pageRef.sourcePageIndex}-${pageRef.rotation}-${width}-${scaleFactor}`
   }
 
-  get(pageRef: PageReference, width: number): string | null {
-    const key = this.getKey(pageRef, width)
+  get(pageRef: PageReference, width: number, scaleFactor: number): string | null {
+    const key = this.getKey(pageRef, width, scaleFactor)
     const entry = this.cache.get(key)
 
     if (entry) {
@@ -32,8 +32,8 @@ class ThumbnailCache {
     return null
   }
 
-  set(pageRef: PageReference, width: number, url: string): void {
-    const key = this.getKey(pageRef, width)
+  set(pageRef: PageReference, width: number, scaleFactor: number, url: string): void {
+    const key = this.getKey(pageRef, width, scaleFactor)
 
     // Evict if at capacity
     if (this.cache.size >= this.maxSize) {
@@ -80,6 +80,7 @@ const thumbnailCache = new ThumbnailCache(100)
 export function useThumbnailRenderer() {
   const pdfManager = usePdfManager()
   const renderQueue = ref<Map<string, AbortController>>(new Map())
+  const renderTasks = new Map<string, { cancel: () => void }>()
 
   /**
    * Render a PDF page to a canvas and return a blob URL
@@ -94,7 +95,7 @@ export function useThumbnailRenderer() {
     scaleFactor = 2,
   ): Promise<string> {
     // Check cache first
-    const cached = thumbnailCache.get(pageRef, displayWidth)
+    const cached = thumbnailCache.get(pageRef, displayWidth, scaleFactor)
     if (cached) {
       return cached
     }
@@ -129,10 +130,20 @@ export function useThumbnailRenderer() {
       canvas.height = Math.floor(scaledViewport.height)
 
       // Render at high resolution
-      await page.render({
+      const renderTask = page.render({
+        canvas,
         canvasContext: context,
         viewport: scaledViewport,
-      } as any).promise
+      })
+
+      renderTasks.set(pageRef.id, renderTask)
+
+      if (abortController.signal.aborted) {
+        renderTask.cancel()
+        throw new Error('Render aborted')
+      }
+
+      await renderTask.promise
 
       // Check if aborted
       if (abortController.signal.aborted) {
@@ -150,11 +161,12 @@ export function useThumbnailRenderer() {
       const url = URL.createObjectURL(blob)
 
       // Cache it
-      thumbnailCache.set(pageRef, displayWidth, url)
+      thumbnailCache.set(pageRef, displayWidth, scaleFactor, url)
 
       return url
     } finally {
       renderQueue.value.delete(pageRef.id)
+      renderTasks.delete(pageRef.id)
     }
   }
 
@@ -167,6 +179,10 @@ export function useThumbnailRenderer() {
       controller.abort()
       renderQueue.value.delete(pageRefId)
     }
+
+    const task = renderTasks.get(pageRefId)
+    task?.cancel()
+    renderTasks.delete(pageRefId)
   }
 
   /**
@@ -177,6 +193,11 @@ export function useThumbnailRenderer() {
       controller.abort()
     }
     renderQueue.value.clear()
+
+    for (const task of renderTasks.values()) {
+      task.cancel()
+    }
+    renderTasks.clear()
   }
 
   /**

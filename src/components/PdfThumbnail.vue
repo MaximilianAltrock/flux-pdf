@@ -20,7 +20,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: [event: MouseEvent]
   preview: []
-  restore: []
   rotate: []
   delete: []
 }>()
@@ -134,10 +133,9 @@ function handleRetry() {
     class="page-thumbnail flex flex-col items-center gap-2 p-2 rounded-lg cursor-pointer select-none relative group h-fit transition-all duration-300"
     :class="{
       'w-full': !fixedSize,
-      'ring-2 ring-selection bg-selection/10': selected && !pageRef.deleted,
-      'hover:bg-surface/50': !selected && !pageRef.deleted,
+      'ring-2 ring-selection bg-selection/10': selected,
+      'hover:bg-surface/50': !selected,
       'mt-4': isStartOfFile && pageNumber > 1,
-      'grayscale opacity-50 scale-90': pageRef.deleted,
       'razor-cursor': isRazorActive && canSplit,
     }"
     @click="handleClick"
@@ -223,7 +221,7 @@ function handleRetry() {
 
       <!-- Invisible UI Overlay (Gradient + Actions) -->
       <div
-        v-if="!pageRef.deleted && !isLoading"
+        v-if="!isLoading"
         class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200 z-20 flex flex-col justify-between p-2"
       >
         <!-- Top Actions -->
@@ -251,23 +249,6 @@ function handleRetry() {
             >Double-click to preview</span
           >
         </div>
-      </div>
-
-      <!-- Deleted Overlay -->
-      <div
-        v-if="pageRef.deleted"
-        class="absolute inset-0 bg-background/50 flex flex-col items-center justify-center gap-2 z-20"
-      >
-        <span
-          class="text-xs font-bold text-danger bg-background/90 px-2 py-1 rounded border border-danger/50 shadow-sm"
-          >DELETED</span
-        >
-        <button
-          class="text-xs bg-primary text-white px-2 py-1.5 rounded shadow hover:bg-primary-hover transition-colors"
-          @click.stop="emit('restore')"
-        >
-          Restore
-        </button>
       </div>
 
       <!-- Page Number Tag -->

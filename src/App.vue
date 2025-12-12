@@ -30,9 +30,11 @@ import MobileLayout from '@/layouts/MobileLayout.vue'
 
 // Shared Overlays (used by both layouts)
 import ExportModal from '@/components/ExportModal.vue'
+import DiffModal from '@/components/DiffModal.vue'
 import PagePreviewModal from '@/components/PagePreviewModal.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { UserAction } from './types/actions'
 
 // ============================================
 // Initialization
@@ -50,8 +52,14 @@ const state = useAppState()
 const actions = useAppActions(state)
 
 // Initialize keyboard shortcuts (desktop only)
-useKeyboardShortcuts(() => {
-  state.toggleCommandPalette()
+// We pass a callback that routes string actions to the correct handler
+useKeyboardShortcuts((action: string) => {
+  if (action === UserAction.OPEN_COMMAND_PALETTE) {
+    state.openCommandPalette()
+  } else {
+    // Delegate all other actions (diff, duplicate, etc.) to the central Action handler
+    actions.handleCommandAction(action)
+  }
 })
 
 // ============================================
@@ -110,6 +118,13 @@ function handleExportSuccess() {
       :page-ref="state.previewPageRef.value"
       @close="state.closePreviewModal"
       @navigate="state.navigatePreview"
+    />
+
+    <!-- Ghost Overlay -->
+    <DiffModal
+      :open="state.showDiffModal.value"
+      :pages="state.diffPages.value"
+      @close="state.closeDiffModal"
     />
 
     <!-- Toast Notifications -->

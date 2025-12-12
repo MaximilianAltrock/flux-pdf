@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, ref } from 'vue'
 import { useScrollLock } from '@vueuse/core'
 import {
   X,
@@ -16,6 +16,7 @@ import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useTheme } from '@/composables/useTheme'
 import { useMobile } from '@/composables/useMobile'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { formatFileSize, formatTime } from '@/utils/format'
 
 const props = defineProps<{
@@ -36,6 +37,8 @@ const { isDark, toggleTheme } = useTheme()
 const { haptic } = useMobile()
 
 const sources = computed(() => store.sourceFileList)
+const drawerRef = ref<HTMLElement | null>(null)
+const closeButtonRef = ref<HTMLButtonElement | null>(null)
 
 const totalSize = computed(() => {
   let size = 0
@@ -81,6 +84,15 @@ onBackButton(
   computed(() => props.open),
   () => emit('close'),
 )
+
+useFocusTrap(
+  computed(() => props.open),
+  drawerRef,
+  {
+    onEscape: () => emit('close'),
+    initialFocus: () => closeButtonRef.value,
+  },
+)
 </script>
 
 <template>
@@ -92,7 +104,11 @@ onBackButton(
 
         <!-- Drawer -->
         <div
+          ref="drawerRef"
           class="absolute top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-surface flex flex-col pt-[env(safe-area-inset-top)]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-menu-title"
         >
           <!-- Header -->
           <div class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
@@ -100,9 +116,15 @@ onBackButton(
               <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
                 <div class="w-4 h-4 bg-primary rounded-sm" />
               </div>
-              <span class="font-bold text-text">FluxPDF</span>
+              <span id="mobile-menu-title" class="font-bold text-text">FluxPDF</span>
             </div>
-            <button class="p-2 -mr-2 text-text-muted active:text-text" @click="emit('close')">
+            <button
+              ref="closeButtonRef"
+              type="button"
+              aria-label="Close menu"
+              class="p-2 -mr-2 text-text-muted active:text-text"
+              @click="emit('close')"
+            >
               <X class="w-5 h-5" />
             </button>
           </div>

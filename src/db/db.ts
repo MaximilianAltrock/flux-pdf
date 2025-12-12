@@ -13,6 +13,9 @@ export interface SessionState {
   /** User's project title */
   projectTitle: string
 
+  /** The whitelist of files actually visible in the sidebar */
+  activeSourceIds: string[]
+
   /** Current page arrangement */
   pageMap: PageReference[]
 

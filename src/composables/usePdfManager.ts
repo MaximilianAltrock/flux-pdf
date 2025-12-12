@@ -4,6 +4,7 @@ import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useDocumentStore } from '@/stores/document'
 import { useConverter } from './useConverter'
 import { db } from '@/db/db'
+import type { StoredFile } from '@/db/db'
 import type { SourceFile, PageReference, FileUploadResult } from '@/types'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
@@ -34,9 +35,29 @@ export function usePdfManager() {
     store.setLoading(true, 'Restoring session...')
 
     try {
-      // A. Restore Files Metadata (Not Blobs)
-      const storedFiles = await db.files.toArray()
-      storedFiles.forEach((f) => {
+      // 1. Get the Session FIRST
+      const session = await db.session.get('current-session')
+
+      // 2. Determine which files to load
+      // If no session exists, load nothing.
+      // If session exists but has no activeSourceIds (legacy data), fall back to loading all (migration strategy)
+      const activeIds = session?.activeSourceIds
+
+      let filesToLoad: StoredFile[] = []
+
+      if (activeIds) {
+        // NEW BEHAVIOR: Load only active files
+        filesToLoad = await db.files.where('id').anyOf(activeIds).toArray()
+      } else if (!session) {
+        // Fresh start
+        filesToLoad = []
+      } else {
+        // Legacy fallback (rare): Load everything if we migrated from old schema
+        filesToLoad = await db.files.toArray()
+      }
+
+      // 3. Populate Store
+      filesToLoad.forEach((f) => {
         store.addSourceFile({
           id: f.id,
           filename: f.filename,
@@ -47,13 +68,11 @@ export function usePdfManager() {
         })
       })
 
-      // B. Restore Session State (Pages & Project Title)
-      const session = await db.session.get('current-session')
+      // 4. Restore remaining session state
       if (session) {
         store.projectTitle = session.projectTitle
-        store.pages = session.pageMap // Restore the grid
+        store.pages = session.pageMap
         store.setZoom(session.zoom)
-        // Command history is restored in useCommandManager
       }
     } catch (e) {
       console.error('Session restore failed', e)

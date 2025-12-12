@@ -4,6 +4,7 @@ import { useScrollLock, useSwipe } from '@vueuse/core'
 import { X } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables/useMobile'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const props = defineProps<{
   open: boolean
@@ -64,7 +65,7 @@ watch(
 )
 
 function handleSave() {
-  const trimmed = editedTitle.value.trim().replace(/[\/\\:]/g, '-')
+  const trimmed = editedTitle.value.trim().replace(/[/\\:]/g, '-')
   if (trimmed) {
     store.projectTitle = trimmed
     haptic('light')
@@ -83,6 +84,15 @@ onBackButton(
   computed(() => props.open),
   () => emit('close'),
 )
+
+useFocusTrap(
+  computed(() => props.open),
+  sheetRef,
+  {
+    onEscape: () => emit('close'),
+    initialFocus: () => inputRef.value,
+  },
+)
 </script>
 
 <template>
@@ -97,6 +107,9 @@ onBackButton(
           ref="sheetRef"
           class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden touch-none"
           :style="{ transform: `translateY(${dragOffset}px)` }"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rename-project-title"
         >
           <!-- Drag Handle -->
           <div class="flex justify-center py-3 pointer-events-none">
@@ -105,8 +118,13 @@ onBackButton(
 
           <!-- Header -->
           <div class="flex items-center justify-between px-4 pb-3">
-            <h2 class="text-lg font-semibold text-text">Rename Project</h2>
-            <button class="p-2 -mr-2 text-text-muted active:text-text" @click="emit('close')">
+            <h2 id="rename-project-title" class="text-lg font-semibold text-text">Rename Project</h2>
+            <button
+              type="button"
+              aria-label="Close rename project"
+              class="p-2 -mr-2 text-text-muted active:text-text"
+              @click="emit('close')"
+            >
               <X class="w-5 h-5" />
             </button>
           </div>
@@ -117,6 +135,7 @@ onBackButton(
               ref="inputRef"
               v-model="editedTitle"
               type="text"
+              aria-label="Project name"
               placeholder="Enter project name"
               class="w-full px-4 py-3 bg-background border border-border rounded-xl text-text text-base focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
               @keydown="handleKeydown"
@@ -129,6 +148,7 @@ onBackButton(
           <!-- Actions -->
           <div class="px-4 pb-4">
             <button
+              type="button"
               class="w-full py-3.5 bg-primary text-white rounded-xl font-semibold active:bg-primary/90 transition-colors"
               @click="handleSave"
             >

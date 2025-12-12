@@ -23,6 +23,6 @@ function cycleTheme() {
   >
     <Sun v-if="theme === 'light'" class="w-5 h-5 text-amber-500" />
     <Moon v-else-if="theme === 'dark'" class="w-5 h-5 text-indigo-400" />
-    <Monitor v-else class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+    <Monitor v-else class="w-5 h-5 text-text-muted" />
   </button>
 </template>

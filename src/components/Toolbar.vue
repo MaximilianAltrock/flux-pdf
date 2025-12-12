@@ -15,6 +15,8 @@ import {
   Redo2
 } from 'lucide-vue-next'
 
+defineOptions({ name: 'AppToolbar' })
+
 const emit = defineEmits<{
   addFiles: []
   export: []

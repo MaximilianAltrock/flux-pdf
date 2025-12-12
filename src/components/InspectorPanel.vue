@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { RotateCw, RotateCcw, Trash2, Copy } from 'lucide-vue-next'
+import { RotateCw, RotateCcw, Trash2, Copy, Layers } from 'lucide-vue-next'
 import { RotatePagesCommand } from '@/commands'
 import PdfThumbnail from './PdfThumbnail.vue'
 
@@ -37,6 +37,7 @@ function rotate(degrees: 90 | -90) {
 const emit = defineEmits<{
   (e: 'delete-selected'): void
   (e: 'duplicate-selected'): void
+  (e: 'diff-selected'): void
 }>()
 
 function handleDelete() {
@@ -45,6 +46,10 @@ function handleDelete() {
 
 function handleDuplicate() {
   emit('duplicate-selected')
+}
+
+function handleDiff() {
+  emit('diff-selected')
 }
 
 // Format timestamp
@@ -150,6 +155,16 @@ function formatTime(ts: number) {
 
             <!-- Management -->
             <div class="space-y-2">
+              <button
+                v-if="store.selectedCount === 2"
+                @click="handleDiff"
+                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-medium text-text bg-background border border-border hover:bg-surface transition-colors"
+                title="Compare pages (D)"
+              >
+                <!-- Icon -->
+                <Layers class="w-3.5 h-3.5 text-text-muted" />
+                <span>Compare Pages</span>
+              </button>
               <button
                 @click="handleDuplicate"
                 class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-medium text-text bg-background border border-border hover:bg-surface transition-colors"

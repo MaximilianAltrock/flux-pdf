@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useScrollLock, useSwipe } from '@vueuse/core'
 import { RotateCw, RotateCcw, Copy, Trash2, Download, X } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const props = defineProps<{
   open: boolean
@@ -36,6 +37,7 @@ watch(
 
 // 2. SWIPE LOGIC (VueUse)
 const sheetRef = ref<HTMLElement | null>(null)
+const closeButtonRef = ref<HTMLButtonElement | null>(null)
 
 const { lengthY, isSwiping } = useSwipe(sheetRef, {
   // passive: false allows us to prevent native browser scrolling while dragging
@@ -58,15 +60,44 @@ const dragOffset = computed(() => {
   return Math.max(0, -lengthY.value)
 })
 
-function handleAction(action: string) {
+type ActionSheetEvent = 'rotateLeft' | 'rotateRight' | 'duplicate' | 'delete' | 'exportSelected'
+
+function handleAction(action: ActionSheetEvent) {
   haptic('medium')
-  emit(action as any)
+
+  switch (action) {
+    case 'rotateLeft':
+      emit('rotateLeft')
+      break
+    case 'rotateRight':
+      emit('rotateRight')
+      break
+    case 'duplicate':
+      emit('duplicate')
+      break
+    case 'delete':
+      emit('delete')
+      break
+    case 'exportSelected':
+      emit('exportSelected')
+      break
+  }
+
   emit('close')
 }
 
 onBackButton(
   computed(() => props.open),
   () => emit('close'),
+)
+
+useFocusTrap(
+  computed(() => props.open),
+  sheetRef,
+  {
+    onEscape: () => emit('close'),
+    initialFocus: () => closeButtonRef.value,
+  },
 )
 </script>
 
@@ -86,6 +117,9 @@ onBackButton(
           ref="sheetRef"
           class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl overflow-hidden touch-none"
           :style="{ transform: `translateY(${dragOffset}px)` }"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mobile-actions-title"
         >
           <!-- Drag Handle -->
           <div class="flex justify-center py-3 pointer-events-none">
@@ -94,10 +128,16 @@ onBackButton(
 
           <!-- Header -->
           <div class="flex items-center justify-between px-4 pb-2">
-            <h2 class="text-lg font-semibold text-text">
+            <h2 id="mobile-actions-title" class="text-lg font-semibold text-text">
               {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }} selected
             </h2>
-            <button class="p-2 -mr-2 text-text-muted active:text-text" @click="emit('close')">
+            <button
+              ref="closeButtonRef"
+              type="button"
+              aria-label="Close actions"
+              class="p-2 -mr-2 text-text-muted active:text-text"
+              @click="emit('close')"
+            >
               <X class="w-5 h-5" />
             </button>
           </div>
@@ -105,6 +145,7 @@ onBackButton(
           <!-- Actions Grid -->
           <div class="grid grid-cols-4 gap-2 px-4 py-4">
             <button
+              type="button"
               class="flex flex-col items-center gap-2 p-3 rounded-xl bg-background active:bg-muted/20 transition-colors"
               @click="handleAction('rotateLeft')"
             >
@@ -115,6 +156,7 @@ onBackButton(
             </button>
 
             <button
+              type="button"
               class="flex flex-col items-center gap-2 p-3 rounded-xl bg-background active:bg-muted/20 transition-colors"
               @click="handleAction('rotateRight')"
             >
@@ -125,6 +167,7 @@ onBackButton(
             </button>
 
             <button
+              type="button"
               class="flex flex-col items-center gap-2 p-3 rounded-xl bg-background active:bg-muted/20 transition-colors"
               @click="handleAction('duplicate')"
             >
@@ -135,6 +178,7 @@ onBackButton(
             </button>
 
             <button
+              type="button"
               class="flex flex-col items-center gap-2 p-3 rounded-xl bg-background active:bg-muted/20 transition-colors"
               @click="handleAction('exportSelected')"
             >
@@ -148,6 +192,7 @@ onBackButton(
           <!-- Delete (separate, danger) -->
           <div class="px-4 pb-4">
             <button
+              type="button"
               class="w-full flex items-center justify-center gap-2 py-3.5 bg-danger/10 text-danger rounded-xl font-medium active:bg-danger/20 transition-colors"
               @click="handleAction('delete')"
             >

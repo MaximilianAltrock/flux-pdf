@@ -127,6 +127,7 @@ export function useMobile() {
    */
   function onBackButton(isOpen: Ref<boolean>, close: () => void) {
     let isListening = false
+    const modalStateId = crypto.randomUUID()
 
     const onPop = (e: PopStateEvent) => {
       // If we receive a popstate event, it means the user hit Back.
@@ -142,7 +143,7 @@ export function useMobile() {
     watch(isOpen, (active) => {
       if (active) {
         // Modal Opened: Push state and listen
-        window.history.pushState({ modal: true }, '')
+        window.history.pushState({ modal: true, modalStateId }, '')
         window.addEventListener('popstate', onPop)
         isListening = true
       } else {
@@ -151,7 +152,9 @@ export function useMobile() {
           // If still listening, it means closed via UI (X button), not Back.
           // We must manually revert the history state we pushed.
           window.removeEventListener('popstate', onPop)
-          window.history.back()
+          if (window.history.state?.modalStateId === modalStateId) {
+            window.history.back()
+          }
           isListening = false
         }
       }

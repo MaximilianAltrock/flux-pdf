@@ -61,4 +61,5 @@ export class BatchCommand extends BaseCommand {
   }
 }
 
+// Self-register with the command registry
 registerCommand(CommandType.BATCH, BatchCommand)

@@ -1,11 +1,11 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { DeletePagesCommand, RotatePagesCommand } from '@/commands'
+import { UserAction } from '@/types/actions'
 
-export function useKeyboardShortcuts(emitCommandPalette: () => void) {
+export function useKeyboardShortcuts(handleAction: (action: string) => void) {
   const store = useDocumentStore()
-  const { undo, redo, execute } = useCommandManager()
+  const { undo, redo } = useCommandManager()
 
   function handleKeydown(e: KeyboardEvent) {
     // Ignore if typing in an input
@@ -22,7 +22,7 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
     // Command Palette: Cmd+K or /
     if ((isCmd && e.key === 'k') || e.key === '/') {
       e.preventDefault()
-      emitCommandPalette()
+      handleAction(UserAction.OPEN_COMMAND_PALETTE)
       return
     }
 
@@ -44,17 +44,6 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
       return
     }
 
-    // Deletion
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      if (store.selectedCount > 0) {
-        e.preventDefault()
-        // FIX: Use Command instead of store.softDeletePages
-        const selectedIds = Array.from(store.selection.selectedIds)
-        execute(new DeletePagesCommand(selectedIds))
-      }
-      return
-    }
-
     // Select All
     if (isCmd && e.key === 'a') {
       e.preventDefault()
@@ -68,12 +57,51 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
       return
     }
 
-    // Rotation
-    if (e.key.toLowerCase() === 'r') {
-      if (store.selectedCount > 0) {
+    if (store.selectedCount > 0) {
+      // ----------------------------------------------------
+      // 1. STANDARD DUPLICATE (Cmd + D)
+      // ----------------------------------------------------
+      // Using standard convention avoids confusion.
+      if (isCmd && e.key.toLowerCase() === 'd') {
         e.preventDefault()
-        const degrees = isShift ? -90 : 90
-        execute(new RotatePagesCommand(Array.from(store.selection.selectedIds), degrees))
+        handleAction(UserAction.DUPLICATE)
+        return
+      }
+
+      // ----------------------------------------------------
+      // 2. DELETE (Backspace / Delete)
+      // ----------------------------------------------------
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        handleAction(UserAction.DELETE) // Delegate to handler
+        return
+      }
+
+      // ----------------------------------------------------
+      // 3. DIFF MODE (D)
+      // ----------------------------------------------------
+      // 'D' always tries to Diff. It never Duplicates.
+      // Deterministic behavior is better than "smart" behavior.
+      if (e.key.toLowerCase() === 'd' && !isCmd) {
+        e.preventDefault()
+        // We trigger the action regardless of count.
+        // The Action Handler (useAppActions) is responsible for
+        // checking the count and showing a Toast error if != 2.
+        handleAction(UserAction.DIFF)
+        return
+      }
+      // ----------------------------------------------------
+      // ROTATE (R)
+      // ----------------------------------------------------
+      if (e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        // Delegate to the Action Handler
+        if (e.shiftKey) {
+          handleAction(UserAction.ROTATE_LEFT)
+        } else {
+          handleAction(UserAction.ROTATE_RIGHT)
+        }
+        return
       }
     }
 
@@ -82,7 +110,7 @@ export function useKeyboardShortcuts(emitCommandPalette: () => void) {
     // Here we just implementing "Next/Prev" logic based on selection index.
     if (['ArrowLeft', 'ArrowRight'].includes(e.key) && store.selection.lastSelectedId) {
       e.preventDefault()
-      const allPages = store.pages // This includes deleted ones? store.pages is all.
+      const allPages = store.pages
       const index = allPages.findIndex((p) => p.id === store.selection.lastSelectedId)
 
       if (index === -1) return

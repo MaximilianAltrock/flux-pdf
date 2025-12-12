@@ -144,8 +144,6 @@
 
     /* Prevent the whole app from bouncing */
     overflow: hidden;
-    position: fixed;
-    width: 100%;
 
     /* Disable Native Gestures & Selection */
     touch-action: manipulation; /* Kill double-tap zoom */
@@ -169,7 +167,6 @@
   /* Prevent dragging images (ghost image effect) */
   img {
     -webkit-user-drag: none;
-    pointer-events: none;
   }
 
   /* For data/numbers */

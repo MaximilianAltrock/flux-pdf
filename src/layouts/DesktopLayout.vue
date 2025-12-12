@@ -90,6 +90,7 @@ function onCommandAction(action: string) {
         <PageGrid
           v-else
           @files-dropped="onFilesDropped"
+          @source-dropped="onSourceDropped"
           @preview="onPreview"
           @context-action="onContextAction"
         />
@@ -126,6 +127,7 @@ function onCommandAction(action: string) {
       <InspectorPanel
         @delete-selected="props.actions.handleDeleteSelected"
         @duplicate-selected="props.actions.handleDuplicateSelected"
+        @diff-selected="props.actions.handleDiffSelected"
       />
     </div>
 

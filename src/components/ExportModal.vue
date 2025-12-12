@@ -12,12 +12,14 @@ import {
 } from 'lucide-vue-next'
 import {
   usePdfExport,
+  parsePageRange,
   validatePageRange,
   type PdfMetadata,
   type ExportOptions,
 } from '@/composables/usePdfExport'
 import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const props = defineProps<{
   open: boolean
@@ -40,6 +42,9 @@ const {
 } = usePdfExport()
 
 const { isMobile, onBackButton } = useMobile()
+
+const dialogRef = ref<HTMLElement | null>(null)
+const filenameInputRef = ref<HTMLInputElement | null>(null)
 
 // Form state
 const filename = ref('')
@@ -108,7 +113,6 @@ const pageCount = computed(() => {
   if (pageRangeMode.value === 'custom' && customPageRange.value) {
     const validation = validatePageRange(customPageRange.value, store.pageCount)
     if (validation.valid) {
-      const { parsePageRange } = usePdfExport()
       return parsePageRange(customPageRange.value, store.pageCount).length
     }
   }
@@ -222,7 +226,7 @@ async function handleExport() {
       exportStats.value.sizeKB,
       exportStats.value.durationMs,
     )
-  } catch (error) {
+  } catch {
     // Error is handled in composable
   }
 }
@@ -236,6 +240,15 @@ function handleClose() {
 function resetError() {
   exportError.value = null
 }
+
+useFocusTrap(
+  computed(() => props.open),
+  dialogRef,
+  {
+    onEscape: handleClose,
+    initialFocus: () => filenameInputRef.value,
+  },
+)
 
 if (isMobile.value) {
   onBackButton(
@@ -251,17 +264,25 @@ if (isMobile.value) {
       <div
         v-if="open"
         class="fixed inset-0 z-50 flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-dialog-title"
         @click.self="handleClose"
       >
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50" />
 
         <!-- Modal -->
-        <div class="relative bg-surface rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        <div
+          ref="dialogRef"
+          class="relative bg-surface rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+        >
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 class="text-lg font-semibold text-text">Export PDF</h2>
+            <h2 id="export-dialog-title" class="text-lg font-semibold text-text">Export PDF</h2>
             <button
+              type="button"
+              aria-label="Close export dialog"
               class="p-1 rounded-lg hover:bg-muted/10 transition-colors"
               :disabled="isExporting"
               @click="handleClose"
@@ -343,6 +364,7 @@ if (isMobile.value) {
                 <div class="flex items-center gap-2">
                   <input
                     id="filename"
+                    ref="filenameInputRef"
                     v-model="filename"
                     type="text"
                     class="flex-1 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
@@ -502,6 +524,7 @@ if (isMobile.value) {
           >
             <button
               v-if="!exportComplete && !exportError"
+              type="button"
               class="px-4 py-2 text-sm text-text hover:bg-muted/20 rounded-lg transition-colors"
               :disabled="isExporting"
               @click="handleClose"
@@ -511,6 +534,7 @@ if (isMobile.value) {
 
             <button
               v-if="exportComplete"
+              type="button"
               class="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               @click="handleClose"
             >
@@ -519,6 +543,7 @@ if (isMobile.value) {
 
             <button
               v-else-if="!exportError"
+              type="button"
               class="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!canExport"
               @click="handleExport"

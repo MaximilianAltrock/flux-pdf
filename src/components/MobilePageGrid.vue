@@ -61,13 +61,13 @@ const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
 }))
 
-// Visible pages (non-deleted, non-divider) for page numbering
-const visiblePagesList = computed(() => localPages.value.filter((p) => !p.deleted && !p.isDivider))
+// Visible pages (non-divider) for page numbering
+const visiblePagesList = computed(() => localPages.value.filter((p) => !p.isDivider))
 
 // === Touch Handlers ===
 
 function handleTouchStart(pageRef: PageReference) {
-  if (isDragging.value || pageRef.deleted || pageRef.isDivider) return
+  if (isDragging.value || pageRef.isDivider) return
 
   // Only start long press in normal mode
   if (!props.selectionMode) {
@@ -98,7 +98,7 @@ function handleTouchEnd() {
 }
 
 function handlePageTap(pageRef: PageReference, event: Event) {
-  if (isDragging.value || pageRef.deleted || pageRef.isDivider) return
+  if (isDragging.value || pageRef.isDivider) return
   event.preventDefault()
 
   if (props.selectionMode) {
@@ -225,7 +225,7 @@ function handlePinchEnd() {
 function getVisiblePageNumber(pageRef: PageReference): number {
   let count = 0
   for (const p of localPages.value) {
-    if (p.deleted || p.isDivider) continue
+    if (p.isDivider) continue
     count++
     if (p.id === pageRef.id) return count
   }
@@ -236,13 +236,13 @@ function shouldShowJumpTarget(index: number): boolean {
   if (!jumpModeActive.value) return false
 
   const page = localPages.value[index]
-  if (!page || page.deleted || page.isDivider) return false
+  if (!page || page.isDivider) return false
 
   if (isSelected(page.id)) return false
 
   for (let i = index - 1; i >= 0; i--) {
     const prev = localPages.value[i]
-    if (!prev || prev.deleted || prev.isDivider) continue
+    if (!prev || prev.isDivider) continue
     return !isSelected(prev.id)
   }
 
@@ -323,8 +323,6 @@ onUnmounted(() => {
           </div>
           <div class="h-px flex-1 bg-border" />
         </div>
-
-        <div v-else-if="pageRef.deleted" class="hidden" />
 
         <div
           v-else

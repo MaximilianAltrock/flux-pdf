@@ -208,6 +208,30 @@ export function useAppActions(state: AppState) {
     }
   }
 
+  /**
+   * Handle Diff (Ghost Overlay) Action
+   */
+  function handleDiffSelected() {
+    // 1. Validate
+    if (store.selectedCount !== 2) {
+      // 2. Feedback (Crucial for the 'D' shortcut fix)
+      toast.warning(
+        'Diff requires 2 pages',
+        `You have ${store.selectedCount} selected. Select exactly 2 pages to compare.`,
+      )
+      return
+    }
+
+    // 3. Execute
+    const selectedIds = Array.from(store.selection.selectedIds)
+    const pageA = store.pages.find((p) => p.id === selectedIds[0])
+    const pageB = store.pages.find((p) => p.id === selectedIds[1])
+
+    if (pageA && pageB) {
+      state.openDiffModal(pageA, pageB)
+    }
+  }
+
   // ============================================
   // Source Management
   // ============================================
@@ -288,6 +312,9 @@ export function useAppActions(state: AppState) {
       case UserAction.DELETE:
         handleDeleteSelected()
         break
+      case UserAction.DIFF:
+        handleDiffSelected()
+        break
     }
   }
 
@@ -313,8 +340,17 @@ export function useAppActions(state: AppState) {
       case UserAction.DUPLICATE:
         handleDuplicateSelected()
         break
+      case UserAction.ROTATE_LEFT:
+        handleRotateSelected(-90)
+        break
+      case UserAction.ROTATE_RIGHT:
+        handleRotateSelected(90)
+        break
       case UserAction.NEW_PROJECT:
         handleNewProject()
+        break
+      case UserAction.DIFF:
+        handleDiffSelected()
         break
       case UserAction.PREVIEW:
         if (store.selectedCount === 1) {
@@ -380,6 +416,7 @@ export function useAppActions(state: AppState) {
     handleDeleteSelected,
     handleDuplicateSelected,
     handleRotateSelected,
+    handleDiffSelected,
 
     // Source Management
     handleRemoveSource,

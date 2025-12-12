@@ -8,6 +8,7 @@ export enum UserAction {
   ROTATE_RIGHT = 'rotate-right',
   DELETE = 'delete',
   DUPLICATE = 'duplicate',
+  DIFF = 'diff',
 
   // File / Project
   EXPORT = 'export',
@@ -18,4 +19,7 @@ export enum UserAction {
   // Selection
   SELECT_ALL = 'select-all',
   PREVIEW = 'preview',
+
+  // UI Triggers
+  OPEN_COMMAND_PALETTE = 'open-command-palette',
 }

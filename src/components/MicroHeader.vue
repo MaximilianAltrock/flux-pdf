@@ -47,7 +47,7 @@ function finishEditing() {
     val = 'Untitled Project' // Revert to default if empty
   }
   // Strip illegal chars
-  val = val.replace(/[\/\\:]/g, '-')
+  val = val.replace(/[/\\:]/g, '-')
   store.projectTitle = val
 }
 
@@ -174,13 +174,16 @@ const emit = defineEmits<{
           class="absolute inset-0 w-full h-full bg-transparent border border-border hover:border-selection/50 rounded flex items-center px-2 gap-2 transition-colors group cursor-text disabled:cursor-wait disabled:opacity-80"
           :class="store.isLoading ? 'border-primary/30' : 'bg-background'"
         >
-          <Loader2 v-if="store.isLoading" class="w-3.5 h-3.5 text-primary animate-spin" />
+          <Loader2 v-if="store.isLoading" class="w-3.5 h-3.5 text-primary animate-spin shrink-0" />
           <Search
             v-else
-            class="w-3.5 h-3.5 text-text-muted group-hover:text-text transition-colors"
+            class="w-3.5 h-3.5 text-text-muted group-hover:text-text transition-colors shrink-0"
           />
 
-          <span class="text-xs" :class="store.isLoading ? 'text-primary' : 'text-text-muted'">
+          <span
+            class="text-xs truncate min-w-0 flex-1 text-left"
+            :class="store.isLoading ? 'text-primary' : 'text-text-muted'"
+          >
             {{
               store.isLoading
                 ? store.loadingMessage || 'Processing...'
@@ -188,9 +191,9 @@ const emit = defineEmits<{
             }}
           </span>
 
-          <div v-if="!store.isLoading" class="ml-auto">
+          <div v-if="!store.isLoading" class="ml-auto shrink-0 flex items-center">
             <kbd
-              class="hidden sm:inline-flex h-4 items-center gap-0.5 px-1 rounded bg-surface border border-border font-mono text-[10px] text-text-muted"
+              class="hidden sm:inline-flex h-4 items-center gap-0.5 px-1.5 rounded bg-surface border border-border font-mono text-[10px] text-text-muted whitespace-nowrap"
               >⌘K</kbd
             >
           </div>

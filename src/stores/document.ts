@@ -30,7 +30,7 @@ export const useDocumentStore = defineStore('document', () => {
   // Getters
   // ============================================
 
-  // Divider logic remains, but we no longer check for p.deleted
+  // Divider logic: dividers are virtual pages
   const pageCount = computed(() => pages.value.filter((p) => !p.isDivider).length)
   const hasPages = computed(() => pageCount.value > 0)
 

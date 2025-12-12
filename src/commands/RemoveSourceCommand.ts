@@ -100,4 +100,5 @@ export class RemoveSourceCommand extends BaseCommand {
   }
 }
 
+// Self-register with the command registry
 registerCommand(CommandType.REMOVE_SOURCE, RemoveSourceCommand)
