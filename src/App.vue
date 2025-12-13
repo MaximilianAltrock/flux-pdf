@@ -50,14 +50,17 @@ const state = useAppState()
 const actions = useAppActions(state)
 
 // Initialize keyboard shortcuts (desktop only)
-useKeyboardShortcuts((action: UserAction) => {
-  if (action === UserAction.OPEN_COMMAND_PALETTE) {
-    state.openCommandPalette()
-  } else {
-    // Delegate all other actions (diff, duplicate, etc.) to the central Action handler
-    actions.handleCommandAction(action)
-  }
-})
+useKeyboardShortcuts(
+  (action: UserAction) => {
+    if (action === UserAction.OPEN_COMMAND_PALETTE) {
+      state.openCommandPalette()
+    } else {
+      // Delegate all other actions (diff, duplicate, etc.) to the central Action handler
+      actions.handleCommandAction(action)
+    }
+  },
+  { isModalOpen: state.hasOpenModal }
+)
 
 // ============================================
 // Lifecycle

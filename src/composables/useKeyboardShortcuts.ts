@@ -1,9 +1,17 @@
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, type Ref } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { UserAction } from '@/types/actions'
 
-export function useKeyboardShortcuts(handleAction: (action: UserAction) => void) {
+type KeyboardShortcutOptions = {
+  /** When true, all shortcuts are blocked (e.g., when a modal is open) */
+  isModalOpen?: Ref<boolean>
+}
+
+export function useKeyboardShortcuts(
+  handleAction: (action: UserAction) => void,
+  options?: KeyboardShortcutOptions
+) {
   const store = useDocumentStore()
   const { undo, redo } = useCommandManager()
 
@@ -13,6 +21,11 @@ export function useKeyboardShortcuts(handleAction: (action: UserAction) => void)
       (e.target as HTMLElement).tagName === 'INPUT' ||
       (e.target as HTMLElement).tagName === 'TEXTAREA'
     ) {
+      return
+    }
+
+    // Block all shortcuts when a modal is open (modals handle their own keys)
+    if (options?.isModalOpen?.value) {
       return
     }
 
@@ -51,7 +64,7 @@ export function useKeyboardShortcuts(handleAction: (action: UserAction) => void)
       return
     }
 
-    // Deselect
+    // Deselect (Escape)
     if (e.key === 'Escape') {
       store.clearSelection()
       return
@@ -115,27 +128,97 @@ export function useKeyboardShortcuts(handleAction: (action: UserAction) => void)
       }
     }
 
-    // Arrow Navigation (Simple implementation)
-    // For full grid navigation, we'd need to know the grid layout dimensions.
-    // Here we just implementing "Next/Prev" logic based on selection index.
-    if (['ArrowLeft', 'ArrowRight'].includes(e.key) && store.selection.lastSelectedId) {
+    // ============================================================
+    // Home/End: Jump to first/last page
+    // ============================================================
+    if (e.key === 'Home' || e.key === 'End') {
       e.preventDefault()
-      const allPages = store.pages
-      const index = allPages.findIndex((p) => p.id === store.selection.lastSelectedId)
+      const contentPages = store.pages.filter((p) => !p.isDivider)
+      if (contentPages.length === 0) return
 
-      if (index === -1) return
+      const targetPage = e.key === 'Home' ? contentPages[0] : contentPages[contentPages.length - 1]
+      if (targetPage) {
+        store.selectPage(targetPage.id, false)
+        requestAnimationFrame(() => {
+          const thumbnail = document.querySelector(`[data-page-id="${targetPage.id}"]`)
+          thumbnail?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
+      }
+      return
+    }
 
-      let newIndex = index
-      if (e.key === 'ArrowLeft') newIndex = Math.max(0, index - 1)
-      if (e.key === 'ArrowRight') newIndex = Math.min(allPages.length - 1, index + 1)
+    //
+    // Full Grid Arrow Navigation (Up/Down/Left/Right)
+    // ============================================================
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault()
 
-      const newPage = allPages[newIndex]
-      if (newPage) {
+      // Get content pages only (skip dividers for navigation)
+      const contentPages = store.pages.filter((p) => !p.isDivider)
+      if (contentPages.length === 0) return
+
+      // Find current index in content pages
+      const currentId = store.selection.lastSelectedId
+      const currentIndex = currentId
+        ? contentPages.findIndex((p) => p.id === currentId)
+        : -1
+
+      // If nothing is selected, start from the first page
+      if (currentIndex === -1) {
+        store.selectPage(contentPages[0]!.id, false)
+        return
+      }
+
+      // Calculate grid columns based on container width and thumbnail size
+      const gridContainer = document.querySelector('.grid.gap-4') as HTMLElement | null
+      let columns = 4 // Default fallback
+      if (gridContainer) {
+        const containerWidth = gridContainer.clientWidth - 48 // Account for padding
+        const thumbnailWidth = store.zoom + 20 + 16 // zoom + minmax offset + gap
+        columns = Math.max(1, Math.floor(containerWidth / thumbnailWidth))
+      }
+
+      // Calculate new index based on arrow direction
+      let newIndex = currentIndex
+      switch (e.key) {
+        case 'ArrowLeft':
+          if (currentIndex > 0) {
+            newIndex = currentIndex - 1
+          }
+          break
+        case 'ArrowRight':
+          if (currentIndex < contentPages.length - 1) {
+            newIndex = currentIndex + 1
+          }
+          break
+        case 'ArrowUp':
+          // Only move up if there's a row above (index >= columns)
+          if (currentIndex >= columns) {
+            newIndex = currentIndex - columns
+          }
+          break
+        case 'ArrowDown':
+          // Only move down if the target would be a valid page
+          if (currentIndex + columns < contentPages.length) {
+            newIndex = currentIndex + columns
+          }
+          break
+      }
+
+      // Select the new page
+      const newPage = contentPages[newIndex]
+      if (newPage && newIndex !== currentIndex) {
         if (isShift) {
-          store.selectRange(store.selection.lastSelectedId, newPage.id)
+          store.selectRange(currentId!, newPage.id)
         } else {
           store.selectPage(newPage.id, false)
         }
+
+        // Scroll the selected page into view
+        requestAnimationFrame(() => {
+          const thumbnail = document.querySelector(`[data-page-id="${newPage.id}"]`)
+          thumbnail?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
       }
     }
   }

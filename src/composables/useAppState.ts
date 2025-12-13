@@ -49,6 +49,14 @@ export function useAppState() {
   const isLoading = computed(() => store.isLoading)
   const loadingMessage = computed(() => store.loadingMessage)
 
+  // Track if any modal is open (for blocking global shortcuts)
+  const hasOpenModal = computed(() =>
+    showExportModal.value ||
+    showPreviewModal.value ||
+    showDiffModal.value ||
+    showCommandPalette.value
+  )
+
   // ============================================
   // State Setters (for cleaner event handling)
   // ============================================
@@ -78,11 +86,17 @@ export function useAppState() {
   }
 
   function openPreviewModal(pageRef: PageReference) {
+    // Ensure the page is selected so navigation continues from here
+    store.selectPage(pageRef.id, false)
     previewPageRef.value = pageRef
     showPreviewModal.value = true
   }
 
   function closePreviewModal() {
+    // Restore selection to the last viewed page for keyboard navigation continuity
+    if (previewPageRef.value) {
+      store.selectPage(previewPageRef.value.id, false)
+    }
     showPreviewModal.value = false
     previewPageRef.value = null
   }
@@ -191,6 +205,7 @@ export function useAppState() {
     selectedCount,
     isLoading,
     loadingMessage,
+    hasOpenModal,
     isMobile,
 
     // Desktop Actions

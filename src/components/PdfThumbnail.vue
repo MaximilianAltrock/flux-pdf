@@ -130,6 +130,7 @@ function handleRetry() {
 <template>
   <div
     ref="containerRef"
+    :data-page-id="pageRef.id"
     class="page-thumbnail flex flex-col items-center gap-2 p-2 rounded-lg cursor-pointer select-none relative group h-fit transition-all duration-300"
     :class="{
       'w-full': !fixedSize,
