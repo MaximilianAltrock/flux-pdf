@@ -36,7 +36,11 @@ export function useFocusTrap(open: Ref<boolean>, containerRef: Ref<HTMLElement |
   let restoreFocusEl: HTMLElement | null = null
   let cleanup: (() => void) | null = null
 
-  function activate() {
+  async function activate() {
+    // Wait for DOM to update before checking containerRef
+    // This fixes timing issues when the container is conditionally rendered
+    await nextTick()
+
     const container = containerRef.value
     if (!container) return
 
@@ -91,14 +95,13 @@ export function useFocusTrap(open: Ref<boolean>, containerRef: Ref<HTMLElement |
       document.removeEventListener('keydown', onKeydown, true)
     }
 
-    nextTick(() => {
-      if (!open.value) return
-      const currentContainer = containerRef.value
-      if (!currentContainer) return
+    // Set initial focus
+    if (!open.value) return
+    const currentContainer = containerRef.value
+    if (!currentContainer) return
 
-      const target = initialFocus?.() ?? getFocusableElements(currentContainer)[0] ?? currentContainer
-      target.focus()
-    })
+    const target = initialFocus?.() ?? getFocusableElements(currentContainer)[0] ?? currentContainer
+    target.focus()
   }
 
   function deactivate() {

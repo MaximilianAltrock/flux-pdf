@@ -103,6 +103,16 @@ export function useKeyboardShortcuts(handleAction: (action: UserAction) => void)
         }
         return
       }
+
+      // ----------------------------------------------------
+      // PREVIEW (Enter / Space)
+      // ----------------------------------------------------
+      // Open preview modal for the selected page (requires exactly 1 page)
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        handleAction(UserAction.PREVIEW)
+        return
+      }
     }
 
     // Arrow Navigation (Simple implementation)
