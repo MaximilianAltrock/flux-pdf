@@ -84,7 +84,7 @@ async function handleDrop(e: DragEvent) {
 
 <template>
   <aside
-    class="bg-surface border-r border-border flex flex-col shrink-0 transition-all duration-300 relative group/rail"
+    class="bg-surface border-r border-border flex flex-col shrink-0 transition-[width] duration-300 relative group/rail"
     :class="isCollapsed ? 'w-12' : 'w-[240px]'"
     @dragover="handleDragOver"
     @dragenter="handleDragEnter"
