@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { SourceFile, PageReference, SelectionState } from '@/types'
+import { ref, computed, watch } from 'vue'
+import type { SourceFile, PageReference, SelectionState, UiBookmarkNode } from '@/types'
+import { autoGenBookmarksFromPages } from '@/utils/autoGen'
+
+export interface DocumentMetadata {
+  title: string
+  author: string
+  subject: string
+  keywords: string[]
+  pdfVersion?: '1.4' | '1.7' | '2.0' | 'PDF/A' // optional: you may not support these yet
+}
 
 export const useDocumentStore = defineStore('document', () => {
   // ============================================
@@ -9,6 +18,14 @@ export const useDocumentStore = defineStore('document', () => {
 
   const sources = ref<Map<string, SourceFile>>(new Map())
   const pages = ref<PageReference[]>([])
+  const metadata = ref<DocumentMetadata>({
+    title: 'Untitled Project',
+    author: '',
+    subject: '',
+    keywords: [],
+  })
+  const bookmarksTree = ref<UiBookmarkNode[]>([])
+  const bookmarksDirty = ref(false)
 
   const selection = ref<SelectionState>({
     selectedIds: new Set(),
@@ -143,6 +160,60 @@ export const useDocumentStore = defineStore('document', () => {
     loadingMessage.value = message
   }
 
+  function setMetadata(next: Partial<DocumentMetadata>) {
+    metadata.value = { ...metadata.value, ...next }
+  }
+
+  function addKeyword(keyword: string) {
+    const k = keyword.trim()
+    if (!k) return
+    if (!metadata.value.keywords.includes(k)) {
+      metadata.value.keywords.push(k)
+    }
+  }
+
+  function removeKeyword(keyword: string) {
+    metadata.value.keywords = metadata.value.keywords.filter((k) => k !== keyword)
+  }
+
+  function clearKeywords() {
+    metadata.value.keywords = []
+  }
+
+  function resetMetadata() {
+    metadata.value = { title: '', author: '', subject: '', keywords: [] }
+  }
+
+  function setBookmarksTree(tree: UiBookmarkNode[], markDirty = false) {
+    bookmarksTree.value = tree
+    if (markDirty) bookmarksDirty.value = true
+  }
+
+  function markBookmarksDirty() {
+    bookmarksDirty.value = true
+  }
+
+  function resetBookmarks() {
+    bookmarksTree.value = []
+    bookmarksDirty.value = false
+  }
+
+  function setPages(newPages: PageReference[]) {
+    pages.value = newPages
+  }
+
+  function addBookmarkForPage(pageId: string, title = 'New Bookmark') {
+    const node: UiBookmarkNode = {
+      id: crypto.randomUUID(),
+      title,
+      pageId,
+      children: [],
+      expanded: true,
+    }
+
+    setBookmarksTree([...bookmarksTree.value, node], true)
+  }
+
   function reset() {
     sources.value.clear()
     pages.value = []
@@ -151,6 +222,8 @@ export const useDocumentStore = defineStore('document', () => {
     loadingMessage.value = ''
     projectTitle.value = 'Untitled Project'
     isTitleLocked.value = false
+    resetMetadata()
+    resetBookmarks()
   }
 
   const projectTitle = ref('Untitled Project')
@@ -165,6 +238,15 @@ export const useDocumentStore = defineStore('document', () => {
   function zoomOut() {
     setZoom(zoom.value - ZOOM_STEP)
   }
+
+  watch(
+    [pages, sources, bookmarksDirty],
+    () => {
+      if (bookmarksDirty.value) return
+      bookmarksTree.value = autoGenBookmarksFromPages(pages.value, sources.value)
+    },
+    { deep: true },
+  )
 
   return {
     sources,
@@ -196,10 +278,23 @@ export const useDocumentStore = defineStore('document', () => {
     clearSelection,
     setLoading,
     reset,
+    setPages,
     setZoom,
     zoomIn,
     zoomOut,
     projectTitle,
     isTitleLocked,
+    bookmarksTree,
+    bookmarksDirty,
+    setBookmarksTree,
+    markBookmarksDirty,
+    resetBookmarks,
+    addBookmarkForPage,
+    metadata,
+    setMetadata,
+    addKeyword,
+    removeKeyword,
+    clearKeywords,
+    resetMetadata,
   }
 })

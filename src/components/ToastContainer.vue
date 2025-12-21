@@ -14,28 +14,27 @@ const icons = {
 }
 
 // Colors per type (from spec)
-// These define the Status Strip and Icon colors.
-// We keep them as hex/specific values to maintain Semantic meaning across themes.
+// Strip uses fixed values; icon/action use palette utilities for easier maintenance.
 const typeStyles = {
   success: {
     strip: '#10B981', // Neon Green
-    icon: 'text-[#10B981]',
-    action: 'text-[#10B981] hover:text-[#34D399]',
+    icon: 'text-emerald-500',
+    action: 'text-emerald-500 hover:text-emerald-400',
   },
   destructive: {
     strip: '#F43F5E', // Muted Coral
-    icon: 'text-[#F43F5E]',
-    action: 'text-[#F43F5E] hover:text-[#FB7185]',
+    icon: 'text-rose-500',
+    action: 'text-rose-500 hover:text-rose-400',
   },
   warning: {
     strip: '#F59E0B', // Amber
-    icon: 'text-[#F59E0B]',
-    action: 'text-[#F59E0B] hover:text-[#FBBF24]',
+    icon: 'text-amber-500',
+    action: 'text-amber-500 hover:text-amber-400',
   },
   info: {
     strip: '#6366F1', // Electric Indigo
-    icon: 'text-[#6366F1]',
-    action: 'text-[#6366F1] hover:text-[#818CF8]',
+    icon: 'text-indigo-500',
+    action: 'text-indigo-500 hover:text-indigo-400',
   },
 }
 

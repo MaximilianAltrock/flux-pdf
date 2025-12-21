@@ -5,9 +5,12 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-interactive: var(--interactive);
+  --color-interactive-hover: var(--interactive-hover);
   --color-border: var(--border);
   --color-text: var(--text);
+  --color-text-primary: var(--text-primary);
   --color-text-muted: var(--text-muted);
   --color-danger: var(--danger);
   --color-selection: var(--selection);
@@ -173,4 +176,36 @@
   .font-data {
     @apply font-mono;
   }
+}
+
+@utility ui-label {
+  @apply text-[10px] uppercase font-bold text-text-muted tracking-wider;
+}
+
+@utility ui-label-muted {
+  @apply text-[10px] uppercase font-bold text-text-muted/70 tracking-wider;
+}
+
+@utility ui-input {
+  @apply w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-text-primary focus:border-primary outline-none transition-colors;
+}
+
+@utility ui-input-compact {
+  @apply w-full bg-background border border-border rounded px-2 py-1 text-xs text-text-primary focus:border-primary outline-none transition-colors;
+}
+
+@utility ui-chip {
+  @apply inline-flex items-center px-1.5 py-0.5 rounded text-xs border border-border bg-interactive text-text-primary;
+}
+
+@utility ui-tab {
+  @apply flex-1 flex items-center justify-center gap-1.5 text-[10px] font-medium tracking-wide uppercase relative transition-all;
+}
+
+@utility ui-tab-active {
+  @apply text-text-primary bg-border;
+}
+
+@utility ui-tab-inactive {
+  @apply text-text-muted hover:text-text hover:bg-surface/50;
 }

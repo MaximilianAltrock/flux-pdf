@@ -44,6 +44,7 @@ export function useCommandManager() {
     )
 
     // Construct session object
+    const bookmarksDirty = Boolean(store.bookmarksDirty)
     const sessionData: SessionState = {
       id: 'current-session',
       projectTitle: String(store.projectTitle ?? ''),
@@ -53,6 +54,8 @@ export function useCommandManager() {
       historyPointer: historyPointer.value,
       zoom: Number(store.zoom),
       updatedAt: Date.now(),
+      bookmarksTree: bookmarksDirty ? toPlain(store.bookmarksTree) : [],
+      bookmarksDirty,
     }
 
     // Write to DB
@@ -73,7 +76,14 @@ export function useCommandManager() {
    * Watch for state changes to trigger auto-save
    */
   watch(
-    [historyPointer, () => store.pages, () => store.projectTitle, () => store.zoom],
+    [
+      historyPointer,
+      () => store.pages,
+      () => store.projectTitle,
+      () => store.zoom,
+      () => store.bookmarksTree,
+      () => store.bookmarksDirty,
+    ],
     () => {
       saveSession()
     },

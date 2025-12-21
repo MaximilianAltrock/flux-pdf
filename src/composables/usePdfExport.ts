@@ -4,6 +4,7 @@ import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from './usePdfManager'
 import JSZip from 'jszip'
 import type { PageReference } from '@/types'
+import { mapUiBookmarksToExport, addBookmarks } from '@/utils/pdf-outline'
 
 /**
  * PDF metadata options
@@ -177,6 +178,17 @@ export function usePdfExport() {
       // Allow UI updates
       await new Promise((resolve) => setTimeout(resolve, 0))
     }
+
+    // Build mapping AFTER pages are finalized
+    const pageIdToIndex = new Map<string, number>()
+    let idx = 0
+    for (const p of pages) {
+      if (p.isDivider) continue
+      pageIdToIndex.set(p.id, idx++)
+    }
+
+    const exportBookmarks = mapUiBookmarksToExport(store.bookmarksTree as any, pageIdToIndex)
+    await addBookmarks(finalPdf, exportBookmarks)
 
     // Generate the final PDF bytes
     return await finalPdf.save({

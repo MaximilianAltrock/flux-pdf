@@ -18,6 +18,8 @@ export interface SourceFile {
   addedAt: number
   /** Color theme for this source (Tailwind color name) */
   color: string
+  /** Optional outline extracted from the source PDF */
+  outline?: PdfOutlineNode[]
 }
 
 /**
@@ -74,6 +76,26 @@ export interface RenderResponse {
 export interface SelectionState {
   selectedIds: Set<string>
   lastSelectedId: string | null
+}
+
+/**
+ * UI bookmark node used by the Structure panel.
+ */
+export interface UiBookmarkNode {
+  id: string
+  title: string
+  pageId: string
+  children: UiBookmarkNode[]
+  expanded: boolean
+}
+
+/**
+ * Outline node extracted from a PDF (pageIndex is 0-based in the source file).
+ */
+export interface PdfOutlineNode {
+  title: string
+  pageIndex: number
+  children?: PdfOutlineNode[]
 }
 
 /**

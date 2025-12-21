@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, reactive } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   X,
   Download,
@@ -8,13 +8,11 @@ import {
   AlertCircle,
   ChevronDown,
   Settings,
-  FileType,
 } from 'lucide-vue-next'
 import {
   usePdfExport,
   parsePageRange,
   validatePageRange,
-  type PdfMetadata,
   type ExportOptions,
 } from '@/composables/usePdfExport'
 import { useDocumentStore } from '@/stores/document'
@@ -60,13 +58,6 @@ const pageRangeMode = ref<'all' | 'selected' | 'custom'>('all')
 const customPageRange = ref('')
 const pageRangeError = ref<string | null>(null)
 
-// Metadata
-const metadata = reactive<PdfMetadata>({
-  title: '',
-  author: '',
-  subject: '',
-  keywords: [],
-})
 const keywordsInput = ref('')
 
 // Options
@@ -93,11 +84,6 @@ watch(
       customPageRange.value = ''
       pageRangeError.value = null
 
-      // Reset metadata
-      metadata.title = ''
-      metadata.author = ''
-      metadata.subject = ''
-      metadata.keywords = []
       keywordsInput.value = ''
 
       compress.value = true
@@ -174,22 +160,6 @@ function buildExportOptions(): ExportOptions {
     options.pageRange = selectedIndices.join(', ')
   } else if (pageRangeMode.value === 'custom') {
     options.pageRange = customPageRange.value
-  }
-
-  // Metadata (only include non-empty values)
-  const meta: PdfMetadata = {}
-  if (metadata.title?.trim()) meta.title = metadata.title.trim()
-  if (metadata.author?.trim()) meta.author = metadata.author.trim()
-  if (metadata.subject?.trim()) meta.subject = metadata.subject.trim()
-  if (keywordsInput.value.trim()) {
-    meta.keywords = keywordsInput.value
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean)
-  }
-
-  if (Object.keys(meta).length > 0) {
-    options.metadata = meta
   }
 
   return options
@@ -295,10 +265,10 @@ if (isMobile.value) {
           <div class="px-6 py-4 max-h-[60vh] overflow-y-auto">
             <!-- Export complete state -->
             <div v-if="exportComplete" class="text-center py-8">
-              <CheckCircle class="w-16 h-16 text-[#10B981] mx-auto mb-4" />
+              <CheckCircle class="w-16 h-16 text-emerald-500 mx-auto mb-4" />
               <h3 class="text-lg font-medium text-text mb-2">Export Complete!</h3>
               <p class="text-sm text-text-muted">Your PDF has been downloaded successfully.</p>
-              <p v-if="exportStats" class="text-xs font-mono text-[#10B981] mt-2">
+              <p v-if="exportStats" class="text-xs font-mono text-emerald-500 mt-2">
                 {{ exportStats.filename }} • {{ exportStats.durationMs }}ms
               </p>
             </div>
@@ -449,53 +419,6 @@ if (isMobile.value) {
 
               <!-- Advanced Options -->
               <div v-if="showAdvanced" class="space-y-4 pl-2 border-l-2 border-border">
-                <!-- Metadata Section -->
-                <div>
-                  <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">
-                    <FileType class="w-4 h-4" />
-                    PDF Metadata
-                  </h4>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="block text-xs text-text-muted mb-1">Title</label>
-                      <input
-                        v-model="metadata.title"
-                        type="text"
-                        placeholder="Document title"
-                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-xs text-text-muted mb-1">Author</label>
-                      <input
-                        v-model="metadata.author"
-                        type="text"
-                        placeholder="Author name"
-                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-xs text-text-muted mb-1">Subject</label>
-                      <input
-                        v-model="metadata.subject"
-                        type="text"
-                        placeholder="Document subject"
-                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-xs text-text-muted mb-1">Keywords</label>
-                      <input
-                        v-model="keywordsInput"
-                        type="text"
-                        placeholder="keyword1, keyword2, keyword3"
-                        class="w-full px-3 py-1.5 text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
-                      />
-                      <p class="text-xs text-text-muted mt-1">Separate with commas</p>
-                    </div>
-                  </div>
-                </div>
-
                 <!-- Options Section -->
                 <div>
                   <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">

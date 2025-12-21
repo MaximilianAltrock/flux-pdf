@@ -1,56 +1,39 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { RotateCw, RotateCcw, Trash2, Copy, Layers } from 'lucide-vue-next'
-import { RotatePagesCommand } from '@/commands'
-import PdfThumbnail from './PdfThumbnail.vue'
+import BookmarkTree from './BookmarkTree.vue'
+import { FileText, Tag, Lock, Eye, EyeOff, CheckSquare, Square } from 'lucide-vue-next'
 
 const store = useDocumentStore()
-const { execute, historyList, jumpTo } = useCommandManager()
+const { historyList, jumpTo } = useCommandManager()
 
-const hasSelection = computed(() => store.selectedCount > 0)
-const singleSelectedPage = computed(() => {
-  if (store.selectedCount !== 1) return null
-  return store.pages.find((p) => p.id === store.selection.lastSelectedId)
-})
+// === TABS LOGIC ===
+type TabId = 'structure' | 'metadata' | 'security'
+const activeTab = ref<TabId>('structure')
 
-const totalSize = computed(() => {
-  let size = 0
-  for (const source of store.sources.values()) {
-    size += source.fileSize
+function addCustomBookmark() {
+  const pageId = store.selection.lastSelectedId
+  if (!pageId) return
+  store.addBookmarkForPage(pageId)
+}
+
+// === METADATA TAB LOGIC ===
+const keywordInput = ref('')
+function addKeyword() {
+  const val = keywordInput.value.trim()
+  if (val && !store.metadata.keywords.includes(val)) {
+    store.metadata.keywords.push(val)
   }
-  return size
-})
-
-function getSourceName(sourceId?: string) {
-  if (!sourceId) return 'Unknown'
-  const source = store.sources.get(sourceId)
-  return source?.filename || 'Unknown'
+  keywordInput.value = ''
+}
+function removeKeyword(k: string) {
+  store.metadata.keywords = store.metadata.keywords.filter((item) => item !== k)
 }
 
-function rotate(degrees: 90 | -90) {
-  if (!hasSelection.value) return
-  execute(new RotatePagesCommand(Array.from(store.selection.selectedIds), degrees))
-}
-
-const emit = defineEmits<{
-  (e: 'delete-selected'): void
-  (e: 'duplicate-selected'): void
-  (e: 'diff-selected'): void
-}>()
-
-function handleDelete() {
-  emit('delete-selected')
-}
-
-function handleDuplicate() {
-  emit('duplicate-selected')
-}
-
-function handleDiff() {
-  emit('diff-selected')
-}
+// === SECURITY TAB LOGIC ===
+const showUserPassword = ref(false)
+const showOwnerPassword = ref(false)
 
 // Format timestamp
 function formatTime(ts: number) {
@@ -64,154 +47,237 @@ function formatTime(ts: number) {
 
 <template>
   <aside class="w-[260px] bg-surface border-l border-border flex flex-col shrink-0 overflow-hidden">
-    <!-- Top Half: Properties -->
-    <div class="flex-1 flex flex-col min-h-0 border-b border-border">
-      <div class="h-12 border-b border-border flex items-center px-4 bg-surface/50">
-        <h2 class="text-xs font-bold text-text-muted uppercase tracking-wider">Properties</h2>
+    <!-- Top Half: Document Controller -->
+    <div class="flex-1 flex flex-col min-h-0 bg-background">
+      <!-- TAB BAR -->
+      <div class="flex h-8 shrink-0 bg-background border-b border-border">
+        <button
+          v-for="tab in ['structure', 'metadata', 'security'] as const"
+          :key="tab"
+          @click="activeTab = tab"
+          class="ui-tab"
+          :class="
+            activeTab === tab
+              ? 'ui-tab-active'
+              : 'ui-tab-inactive'
+          "
+        >
+          <FileText v-if="tab === 'structure'" class="w-3 h-3" />
+          <Tag v-if="tab === 'metadata'" class="w-3 h-3" />
+          <Lock v-if="tab === 'security'" class="w-3 h-3" />
+          {{ tab }}
+
+          <!-- Active Indicator -->
+          <div
+            v-if="activeTab === tab"
+            class="absolute bottom-0 left-0 right-0 h-[2px] bg-primary"
+          ></div>
+        </button>
       </div>
 
-      <div class="p-4 overflow-y-auto">
-        <!-- SELECTION STATE -->
-        <div v-if="hasSelection">
-          <!-- SINGLE SELECTION -->
-          <div v-if="store.selectedCount === 1" class="mb-6">
-            <h3 class="text-sm font-semibold text-text-primary mb-2">Properties</h3>
+      <!-- TAB CONTENT AREA -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar relative">
+        <!-- A. STRUCTURE TAB (Auto-Generated TOC) -->
+        <div v-if="activeTab === 'structure'" class="flex flex-col h-full">
+          <div v-if="store.pageCount === 0" class="p-8 text-center">
+            <p class="text-xs text-text-muted italic">Import files to see structure</p>
+          </div>
 
-            <!-- Medium Preview -->
-            <div class="flex justify-center mb-4 bg-background p-4 rounded border border-border">
-              <PdfThumbnail
-                v-if="singleSelectedPage"
-                :page-ref="singleSelectedPage"
-                :page-number="singleSelectedPage.sourcePageIndex + 1"
-                :width="140"
-                :is-start-of-file="false"
-                :selected="false"
-                class="pointer-events-none shadow-md"
+          <div v-else class="py-2 flex flex-col min-h-0">
+            <div class="px-4 pb-2">
+              <p class="ui-label">Table of Contents</p>
+              <p class="text-[10px] text-text-muted opacity-60">
+                Drag & drop to reorder; drop into the indented area to nest
+              </p>
+            </div>
+
+            <div class="flex-1 min-h-0 overflow-y-auto">
+              <BookmarkTree
+                :nodes="store.bookmarksTree"
+                @update:nodes="(val) => store.setBookmarksTree(val, true)"
               />
             </div>
 
-            <div class="space-y-3">
-              <!-- Source File -->
-              <div>
-                <label
-                  class="text-[10px] uppercase font-bold text-text-muted mb-1 block tracking-wider"
-                  >Source File</label
-                >
-                <div
-                  class="text-xs text-text truncate bg-background border border-border rounded px-2 py-1.5"
-                  :title="getSourceName(singleSelectedPage?.sourceFileId)"
-                >
-                  {{ getSourceName(singleSelectedPage?.sourceFileId) }}
-                </div>
-              </div>
-
-              <!-- Rotation Display -->
-              <div>
-                <label
-                  class="text-[10px] uppercase font-bold text-text-muted mb-1 block tracking-wider"
-                  >Rotation</label
-                >
-                <div
-                  class="text-xs text-text bg-background border border-border rounded px-2 py-1.5 font-mono"
-                >
-                  {{ singleSelectedPage?.rotation }}°
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- MULTI SELECTION -->
-          <div v-else class="mb-6">
-            <h3 class="text-sm font-semibold text-text-primary mb-1">Selection</h3>
-            <p class="text-xs text-text-muted">{{ store.selectedCount }} Pages Selected</p>
-          </div>
-
-          <div class="space-y-4">
-            <!-- Actions Grid -->
-            <div>
-              <span
-                class="text-[10px] uppercase font-bold text-text-muted mb-2 block tracking-wider"
-                >Actions</span
-              >
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  @click="rotate(-90)"
-                  class="flex flex-col items-center justify-center p-3 rounded bg-background border border-border hover:bg-background/80 hover:border-selection transition-all active:scale-95"
-                  title="Rotate Left"
-                >
-                  <RotateCcw class="w-5 h-5 mb-1.5 text-text-muted hover:text-text" />
-                  <span class="text-xs text-text font-medium">Left</span>
-                </button>
-                <button
-                  @click="rotate(90)"
-                  class="flex flex-col items-center justify-center p-3 rounded bg-background border border-border hover:bg-background/80 hover:border-selection transition-all active:scale-95"
-                  title="Rotate Right"
-                >
-                  <RotateCw class="w-5 h-5 mb-1.5 text-text-muted hover:text-text" />
-                  <span class="text-xs text-text font-medium">Right</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Management -->
-            <div class="space-y-2">
+            <div class="mt-3 px-4 border-t border-border/50 pt-3">
               <button
-                v-if="store.selectedCount === 2"
-                @click="handleDiff"
-                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-medium text-text bg-background border border-border hover:bg-surface transition-colors"
-                title="Compare pages (D)"
+                class="w-full py-1.5 text-xs text-text-muted border border-dashed border-border rounded hover:bg-surface hover:text-text transition-colors flex items-center justify-center gap-2"
+                @click="addCustomBookmark"
               >
-                <!-- Icon -->
-                <Layers class="w-3.5 h-3.5 text-text-muted" />
-                <span>Compare Pages</span>
+                <span>+ Add Bookmark to Selected Page</span>
               </button>
-              <button
-                @click="handleDuplicate"
-                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-medium text-text bg-background border border-border hover:bg-surface transition-colors"
-              >
-                <Copy class="w-3.5 h-3.5 text-text-muted" />
-                <span>Duplicate {{ store.selectedCount > 1 ? 'Selection' : 'Page' }}</span>
-              </button>
-
-              <button
-                @click="handleDelete"
-                class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-medium text-danger bg-background border border-border hover:bg-danger/10 hover:border-danger/30 transition-colors"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-                <span>Delete {{ store.selectedCount > 1 ? 'Selection' : 'Page' }}</span>
-              </button>
+              <p class="text-[9px] text-text-muted mt-2 text-center opacity-50">
+                Select a page, then add a bookmark.
+              </p>
             </div>
           </div>
         </div>
 
-        <!-- NO SELECTION: DOCUMENT SUMMARY -->
-        <div v-else class="space-y-6">
-          <div>
-            <h3 class="text-sm font-semibold text-text-primary mb-1">Document Summary</h3>
-            <p class="text-xs text-text-muted">No pages selected</p>
+        <!-- B. METADATA TAB -->
+        <div v-else-if="activeTab === 'metadata'" class="p-4 space-y-5">
+          <!-- Title -->
+          <div class="space-y-1">
+            <label class="ui-label">Document Title</label>
+            <input
+              v-model="store.projectTitle"
+              type="text"
+              class="ui-input"
+              placeholder="e.g. Final Contract 2024"
+            />
           </div>
 
-          <div class="bg-background border border-border rounded-lg p-3 space-y-3">
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-text-muted">Total Pages</span>
-              <span class="font-mono text-text">{{ store.pageCount }}</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-text-muted">Sources</span>
-              <span class="font-mono text-text">{{ store.sources.size }}</span>
-            </div>
+          <!-- Author -->
+          <div class="space-y-1">
+            <label class="ui-label">Author</label>
+            <input
+              v-model="store.metadata.author"
+              type="text"
+              class="ui-input"
+              placeholder="e.g. John Doe"
+            />
+          </div>
 
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-text-muted">Page Size</span>
-              <span class="font-mono text-text">A4 / Mixed</span>
-            </div>
+          <!-- Subject -->
+          <div class="space-y-1">
+            <label class="ui-label">Subject</label>
+            <textarea
+              v-model="store.metadata.subject"
+              rows="2"
+              class="ui-input resize-none"
+              placeholder="Brief description..."
+            ></textarea>
+          </div>
 
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-text-muted">Est. Size</span>
-              <!-- Simple estimation: Sum of source file sizes -->
-              <span class="font-mono text-text"
-                >~{{ (totalSize / 1024 / 1024).toFixed(1) }} MB</span
+          <!-- Keywords (Token Input) -->
+          <div class="space-y-1">
+            <label class="ui-label">Keywords</label>
+
+            <div class="flex flex-wrap gap-1.5 mb-2" v-if="store.metadata.keywords.length > 0">
+              <span
+                v-for="k in store.metadata.keywords"
+                :key="k"
+                class="ui-chip"
               >
+                {{ k }}
+                <button @click="removeKeyword(k)" class="ml-1 hover:text-danger">&times;</button>
+              </span>
+            </div>
+
+            <input
+              v-model="keywordInput"
+              @keydown.enter.prevent="addKeyword"
+              @keydown.tab.prevent="addKeyword"
+              @blur="addKeyword"
+              type="text"
+              class="ui-input"
+              placeholder="Type and press Enter..."
+            />
+          </div>
+        </div>
+
+        <!-- C. SECURITY TAB -->
+        <div v-else-if="activeTab === 'security'" class="p-4 space-y-6">
+          <!-- Encryption Toggle -->
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-text-primary">Encrypt Document</span>
+            <button
+              @click="store.security.isEncrypted = !store.security.isEncrypted"
+              class="w-9 h-5 rounded-full relative transition-colors duration-200 ease-in-out"
+              :class="store.security.isEncrypted ? 'bg-primary' : 'bg-border'"
+            >
+              <div
+                class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full shadow-sm transition-transform duration-200"
+                :class="store.security.isEncrypted ? 'translate-x-4' : 'translate-x-0'"
+              ></div>
+            </button>
+          </div>
+
+          <!-- Password Fields (Animated) -->
+          <div
+            class="space-y-4 overflow-hidden transition-all duration-300"
+            :class="
+              store.security.isEncrypted
+                ? 'opacity-100 max-h-[300px]'
+                : 'opacity-30 max-h-0 pointer-events-none'
+            "
+          >
+            <!-- User Pass -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="ui-label">Open Password</label>
+                <button
+                  @click="showUserPassword = !showUserPassword"
+                  class="text-text-muted hover:text-white"
+                >
+                  <Eye v-if="!showUserPassword" class="w-3 h-3" />
+                  <EyeOff v-else class="w-3 h-3" />
+                </button>
+              </div>
+              <input
+                v-model="store.security.userPassword"
+                :type="showUserPassword ? 'text' : 'password'"
+                class="ui-input"
+                placeholder="Required to open"
+              />
+            </div>
+
+            <!-- Owner Pass -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="ui-label">Edit Password</label>
+                <button
+                  @click="showOwnerPassword = !showOwnerPassword"
+                  class="text-text-muted hover:text-white"
+                >
+                  <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
+                  <EyeOff v-else class="w-3 h-3" />
+                </button>
+              </div>
+              <input
+                v-model="store.security.ownerPassword"
+                :type="showOwnerPassword ? 'text' : 'password'"
+                class="ui-input"
+                placeholder="Required to change permissions"
+              />
+            </div>
+
+            <!-- Permissions Matrix -->
+            <div class="pt-2">
+              <label
+                class="ui-label block mb-2"
+                >Allowed Actions</label
+              >
+              <div class="grid grid-cols-1 gap-2">
+                <button
+                  @click="store.security.allowPrinting = !store.security.allowPrinting"
+                  class="flex items-center gap-2 text-xs text-text hover:text-white transition-colors text-left"
+                >
+                  <CheckSquare
+                    v-if="store.security.allowPrinting"
+                    class="w-3.5 h-3.5 text-primary"
+                  />
+                  <Square v-else class="w-3.5 h-3.5 text-text-muted" />
+                  High Quality Printing
+                </button>
+                <button
+                  @click="store.security.allowCopying = !store.security.allowCopying"
+                  class="flex items-center gap-2 text-xs text-text hover:text-white transition-colors text-left"
+                >
+                  <CheckSquare
+                    v-if="store.security.allowCopying"
+                    class="w-3.5 h-3.5 text-primary"
+                  />
+                  <Square v-else class="w-3.5 h-3.5 text-text-muted" />
+                  Copy Text & Graphics
+                </button>
+                <button
+                  @click="store.security.allowModify = !store.security.allowModify"
+                  class="flex items-center gap-2 text-xs text-text hover:text-white transition-colors text-left"
+                >
+                  <CheckSquare v-if="store.security.allowModify" class="w-3.5 h-3.5 text-primary" />
+                  <Square v-else class="w-3.5 h-3.5 text-text-muted" />
+                  Modify Pages
+                </button>
+              </div>
             </div>
           </div>
         </div>

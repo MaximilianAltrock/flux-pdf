@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { PageReference } from '@/types'
+import type { PageReference, PdfOutlineNode } from '@/types'
 import type { SerializedCommand } from '@/commands'
 
 /**
@@ -30,6 +30,12 @@ export interface SessionState {
 
   /** Last update timestamp */
   updatedAt: number
+
+  /** Persisted bookmark tree (custom only) */
+  bookmarksTree?: unknown[] // stored as plain JSON
+
+  /** Whether user has customized bookmarks (stops auto-gen overwrite) */
+  bookmarksDirty?: boolean
 }
 
 /**
@@ -57,6 +63,9 @@ export interface StoredFile {
 
   /** Color assigned to this source for UI */
   color: string
+
+  /** Optional outline extracted from the PDF */
+  outline?: PdfOutlineNode[]
 }
 
 /**

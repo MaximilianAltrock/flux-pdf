@@ -7,6 +7,7 @@ import { db } from '@/db/db'
 import type { StoredFile } from '@/db/db'
 import type { SourceFile, PageReference, FileUploadResult } from '@/types'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { extractPdfOutline } from '@/utils/pdfjs-outline'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
@@ -65,14 +66,20 @@ export function usePdfManager() {
           pageCount: f.pageCount,
           addedAt: f.addedAt,
           color: f.color,
+          outline: f.outline,
         })
       })
 
       // 4. Restore remaining session state
       if (session) {
         store.projectTitle = session.projectTitle
-        store.pages = session.pageMap
         store.setZoom(session.zoom)
+        store.bookmarksDirty = session.bookmarksDirty ?? false
+        store.setPages(session.pageMap)
+
+        if (store.bookmarksDirty) {
+          store.setBookmarksTree((session.bookmarksTree as any[]) ?? [], false)
+        }
       }
     } catch (e) {
       console.error('Session restore failed', e)
@@ -93,6 +100,7 @@ export function usePdfManager() {
       // Parse PDF to get page count
       const loadingTask = pdfjs.getDocument({ data: arrayBuffer.slice(0) })
       const pdfDoc = await loadingTask.promise
+      const outline = await extractPdfOutline(pdfDoc)
 
       const sourceFileId = crypto.randomUUID()
       const color = getNextColor(store.sources.size)
@@ -106,6 +114,7 @@ export function usePdfManager() {
         pageCount: pdfDoc.numPages,
         addedAt: Date.now(),
         color,
+        outline: outline.length ? outline : undefined,
       })
 
       // B. Add Lightweight Meta to Store
@@ -116,6 +125,7 @@ export function usePdfManager() {
         fileSize: file.size,
         addedAt: Date.now(),
         color,
+        outline: outline.length ? outline : undefined,
       }
 
       // Cache the parsed doc for immediate use

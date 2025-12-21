@@ -136,7 +136,6 @@ function handleRetry() {
       'w-full': !fixedSize,
       'ring-2 ring-selection bg-selection/10': selected,
       'hover:bg-surface/50': !selected,
-      'mt-4': isStartOfFile && pageNumber > 1,
       'razor-cursor': isRazorActive && canSplit,
     }"
     @click="handleClick"
@@ -151,7 +150,7 @@ function handleRetry() {
     </div>
     <!-- Thumbnail container -->
     <div
-      class="thumbnail-paper relative bg-white rounded-none overflow-hidden transition-transform duration-200 border-l-[6px]"
+      class="thumbnail-paper relative bg-white rounded-none overflow-hidden transition-transform duration-200 border-l-[10px]"
       :class="{ 'scale-[1.02]': selected, 'w-full': !fixedSize }"
       :style="{ width: cssWidth, borderLeftColor: sourceColor }"
     >
@@ -269,6 +268,9 @@ function handleRetry() {
 <style scoped>
 .thumbnail-paper {
   box-shadow: var(--paper-shadow);
-  border: var(--paper-border);
+  border-top: var(--paper-border);
+  border-right: var(--paper-border);
+  border-bottom: var(--paper-border);
+  border-left-style: solid;
 }
 </style>
