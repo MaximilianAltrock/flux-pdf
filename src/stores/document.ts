@@ -8,7 +8,16 @@ export interface DocumentMetadata {
   author: string
   subject: string
   keywords: string[]
-  pdfVersion?: '1.4' | '1.7' | '2.0' | 'PDF/A' // optional: you may not support these yet
+  pdfVersion?: '1.4' | '1.7' | '2.0' | 'PDF/A'
+}
+
+export interface SecurityMetadata {
+  isEncrypted: boolean
+  userPassword?: string
+  ownerPassword?: string
+  allowPrinting: boolean
+  allowCopying: boolean
+  allowModifying: boolean
 }
 
 export const useDocumentStore = defineStore('document', () => {
@@ -23,6 +32,15 @@ export const useDocumentStore = defineStore('document', () => {
     author: '',
     subject: '',
     keywords: [],
+  })
+
+  const security = ref<SecurityMetadata>({
+    isEncrypted: false,
+    userPassword: '',
+    ownerPassword: '',
+    allowPrinting: true,
+    allowCopying: true,
+    allowModifying: false,
   })
   const bookmarksTree = ref<UiBookmarkNode[]>([])
   const bookmarksDirty = ref(false)
@@ -296,5 +314,6 @@ export const useDocumentStore = defineStore('document', () => {
     removeKeyword,
     clearKeywords,
     resetMetadata,
+    security,
   }
 })

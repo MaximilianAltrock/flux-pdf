@@ -187,7 +187,7 @@ const emit = defineEmits<{
             {{
               store.isLoading
                 ? store.loadingMessage || 'Processing...'
-                : 'Search commands... (Cmd+K)'
+                : 'Search commands...'
             }}
           </span>
 

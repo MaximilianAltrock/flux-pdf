@@ -2,20 +2,39 @@
 import { ref } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
-import BookmarkTree from './BookmarkTree.vue'
-import { FileText, Tag, Lock, Eye, EyeOff, CheckSquare, Square } from 'lucide-vue-next'
+import { Tree, TreeItem } from '@/components/ui/tree'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Stepper,
+  StepperItem,
+  StepperTrigger,
+  StepperSeparator,
+  StepperTitle,
+  StepperDescription,
+} from '@/components/ui/stepper'
+import { FileText, Tag, Lock, Eye, EyeOff, ChevronRight, Crosshair, Check, Circle, Dot } from 'lucide-vue-next'
+import type { UiBookmarkNode } from '@/types'
 
 const store = useDocumentStore()
 const { historyList, jumpTo } = useCommandManager()
-
-// === TABS LOGIC ===
-type TabId = 'structure' | 'metadata' | 'security'
-const activeTab = ref<TabId>('structure')
 
 function addCustomBookmark() {
   const pageId = store.selection.lastSelectedId
   if (!pageId) return
   store.addBookmarkForPage(pageId)
+}
+
+function scrollGridToPage(pageId: string) {
+  const el = document.getElementById(`page-${pageId}`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    store.selectPage(pageId, false)
+  }
 }
 
 // === METADATA TAB LOGIC ===
@@ -50,35 +69,35 @@ function formatTime(ts: number) {
     <!-- Top Half: Document Controller -->
     <div class="flex-1 flex flex-col min-h-0 bg-background">
       <!-- TAB BAR -->
-      <div class="flex h-8 shrink-0 bg-background border-b border-border">
-        <button
-          v-for="tab in ['structure', 'metadata', 'security'] as const"
-          :key="tab"
-          @click="activeTab = tab"
-          class="ui-tab"
-          :class="
-            activeTab === tab
-              ? 'ui-tab-active'
-              : 'ui-tab-inactive'
-          "
-        >
-          <FileText v-if="tab === 'structure'" class="w-3 h-3" />
-          <Tag v-if="tab === 'metadata'" class="w-3 h-3" />
-          <Lock v-if="tab === 'security'" class="w-3 h-3" />
-          {{ tab }}
+      <Tabs default-value="structure" class="flex-1 flex flex-col min-h-0">
+        <TabsList class="flex h-8 shrink-0 bg-background border-b border-border rounded-none p-0">
+          <TabsTrigger
+            value="structure"
+            class="ui-tab flex-1 rounded-none data-[state=active]:ui-tab-active data-[state=inactive]:ui-tab-inactive"
+          >
+            <FileText class="w-3 h-3" />
+            structure
+          </TabsTrigger>
+          <TabsTrigger
+            value="metadata"
+            class="ui-tab flex-1 rounded-none data-[state=active]:ui-tab-active data-[state=inactive]:ui-tab-inactive"
+          >
+            <Tag class="w-3 h-3" />
+            metadata
+          </TabsTrigger>
+          <TabsTrigger
+            value="security"
+            class="ui-tab flex-1 rounded-none data-[state=active]:ui-tab-active data-[state=inactive]:ui-tab-inactive"
+          >
+            <Lock class="w-3 h-3" />
+            security
+          </TabsTrigger>
+        </TabsList>
 
-          <!-- Active Indicator -->
-          <div
-            v-if="activeTab === tab"
-            class="absolute bottom-0 left-0 right-0 h-[2px] bg-primary"
-          ></div>
-        </button>
-      </div>
-
-      <!-- TAB CONTENT AREA -->
-      <div class="flex-1 overflow-y-auto custom-scrollbar relative">
-        <!-- A. STRUCTURE TAB (Auto-Generated TOC) -->
-        <div v-if="activeTab === 'structure'" class="flex flex-col h-full">
+        <!-- TAB CONTENT AREA -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar relative">
+          <!-- A. STRUCTURE TAB (Auto-Generated TOC) -->
+          <TabsContent value="structure" class="flex flex-col h-full mt-0">
           <div v-if="store.pageCount === 0" class="p-8 text-center">
             <p class="text-xs text-text-muted italic">Import files to see structure</p>
           </div>
@@ -92,46 +111,83 @@ function formatTime(ts: number) {
             </div>
 
             <div class="flex-1 min-h-0 overflow-y-auto">
-              <BookmarkTree
-                :nodes="store.bookmarksTree"
-                @update:nodes="(val) => store.setBookmarksTree(val, true)"
-              />
+              <Tree
+                :items="store.bookmarksTree"
+                :get-key="(item) => item.id"
+                @update:items="(val) => store.setBookmarksTree(val as UiBookmarkNode[], true)"
+                class="w-full bg-transparent rounded-md p-2"
+                v-slot="{ flattenItems }"
+              >
+                <TreeItem
+                  v-for="item in flattenItems"
+                  :key="item._id"
+                  :item="item"
+                  v-slot="{ isExpanded }"
+                  class="group flex items-center h-7 px-2 rounded outline-none hover:bg-surface-hover cursor-default transition-colors focus:ring-primary focus:ring-2 data-[selected]:bg-primary/10"
+                  :style="{ paddingLeft: `${10 + item.level * 14}px` }"
+                >
+                  <!-- Expander -->
+                  <button
+                    class="mr-1 text-text-muted/70 hover:text-text transition-colors"
+                    :style="{ opacity: item.hasChildren ? 1 : 0.25 }"
+                    @click.stop
+                  >
+                    <ChevronRight
+                      class="w-3.5 h-3.5 transition-transform"
+                      :class="isExpanded ? 'rotate-90' : ''"
+                    />
+                  </button>
+
+                  <!-- Title -->
+                  <span class="text-xs text-text-primary truncate flex-1 font-medium">
+                    {{ (item.value as UiBookmarkNode).title }}
+                  </span>
+
+                  <!-- Target Action -->
+                  <button
+                    @click.stop="scrollGridToPage((item.value as UiBookmarkNode).pageId)"
+                    class="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-opacity"
+                    title="Jump to section"
+                  >
+                    <Crosshair class="w-3.5 h-3.5" />
+                  </button>
+                </TreeItem>
+              </Tree>
             </div>
 
             <div class="mt-3 px-4 border-t border-border/50 pt-3">
-              <button
-                class="w-full py-1.5 text-xs text-text-muted border border-dashed border-border rounded hover:bg-surface hover:text-text transition-colors flex items-center justify-center gap-2"
+              <Button
+                variant="outline"
+                class="w-full text-xs text-text-muted border-dashed border-border hover:bg-surface hover:text-text transition-colors flex items-center justify-center gap-2 h-auto py-1.5"
                 @click="addCustomBookmark"
               >
                 <span>+ Add Bookmark to Selected Page</span>
-              </button>
+              </Button>
               <p class="text-[9px] text-text-muted mt-2 text-center opacity-50">
                 Select a page, then add a bookmark.
               </p>
             </div>
           </div>
-        </div>
+          </TabsContent>
 
-        <!-- B. METADATA TAB -->
-        <div v-else-if="activeTab === 'metadata'" class="p-4 space-y-5">
+          <!-- B. METADATA TAB -->
+          <TabsContent value="metadata" class="p-4 space-y-5 mt-0">
           <!-- Title -->
           <div class="space-y-1">
-            <label class="ui-label">Document Title</label>
-            <input
+            <Label>Document Title</Label>
+            <Input
               v-model="store.projectTitle"
               type="text"
-              class="ui-input"
               placeholder="e.g. Final Contract 2024"
             />
           </div>
 
           <!-- Author -->
           <div class="space-y-1">
-            <label class="ui-label">Author</label>
-            <input
+            <Label>Author</Label>
+            <Input
               v-model="store.metadata.author"
               type="text"
-              class="ui-input"
               placeholder="e.g. John Doe"
             />
           </div>
@@ -149,7 +205,7 @@ function formatTime(ts: number) {
 
           <!-- Keywords (Token Input) -->
           <div class="space-y-1">
-            <label class="ui-label">Keywords</label>
+            <Label>Keywords</Label>
 
             <div class="flex flex-wrap gap-1.5 mb-2" v-if="store.metadata.keywords.length > 0">
               <span
@@ -158,37 +214,37 @@ function formatTime(ts: number) {
                 class="ui-chip"
               >
                 {{ k }}
-                <button @click="removeKeyword(k)" class="ml-1 hover:text-danger">&times;</button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="ml-1 h-4 w-4 hover:text-danger hover:bg-transparent text-lg leading-none"
+                  @click="removeKeyword(k)"
+                >
+                  &times;
+                </Button>
               </span>
             </div>
 
-            <input
+            <Input
               v-model="keywordInput"
               @keydown.enter.prevent="addKeyword"
               @keydown.tab.prevent="addKeyword"
               @blur="addKeyword"
               type="text"
-              class="ui-input"
               placeholder="Type and press Enter..."
             />
           </div>
-        </div>
+          </TabsContent>
 
-        <!-- C. SECURITY TAB -->
-        <div v-else-if="activeTab === 'security'" class="p-4 space-y-6">
+          <!-- C. SECURITY TAB -->
+          <TabsContent value="security" class="p-4 space-y-6 mt-0">
           <!-- Encryption Toggle -->
           <div class="flex items-center justify-between">
             <span class="text-xs font-medium text-text-primary">Encrypt Document</span>
-            <button
-              @click="store.security.isEncrypted = !store.security.isEncrypted"
-              class="w-9 h-5 rounded-full relative transition-colors duration-200 ease-in-out"
-              :class="store.security.isEncrypted ? 'bg-primary' : 'bg-border'"
-            >
-              <div
-                class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full shadow-sm transition-transform duration-200"
-                :class="store.security.isEncrypted ? 'translate-x-4' : 'translate-x-0'"
-              ></div>
-            </button>
+            <Switch
+              :checked="store.security.isEncrypted"
+              @update:checked="(v: boolean) => store.security.isEncrypted = v"
+            />
           </div>
 
           <!-- Password Fields (Animated) -->
@@ -203,19 +259,20 @@ function formatTime(ts: number) {
             <!-- User Pass -->
             <div class="space-y-1">
               <div class="flex justify-between items-center">
-                <label class="ui-label">Open Password</label>
-                <button
+                <Label>Open Password</Label>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="h-6 w-6"
                   @click="showUserPassword = !showUserPassword"
-                  class="text-text-muted hover:text-white"
                 >
                   <Eye v-if="!showUserPassword" class="w-3 h-3" />
                   <EyeOff v-else class="w-3 h-3" />
-                </button>
+                </Button>
               </div>
-              <input
+              <Input
                 v-model="store.security.userPassword"
                 :type="showUserPassword ? 'text' : 'password'"
-                class="ui-input"
                 placeholder="Required to open"
               />
             </div>
@@ -223,65 +280,75 @@ function formatTime(ts: number) {
             <!-- Owner Pass -->
             <div class="space-y-1">
               <div class="flex justify-between items-center">
-                <label class="ui-label">Edit Password</label>
-                <button
+                <Label>Edit Password</Label>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="h-6 w-6"
                   @click="showOwnerPassword = !showOwnerPassword"
-                  class="text-text-muted hover:text-white"
                 >
                   <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
                   <EyeOff v-else class="w-3 h-3" />
-                </button>
+                </Button>
               </div>
-              <input
+              <Input
                 v-model="store.security.ownerPassword"
                 :type="showOwnerPassword ? 'text' : 'password'"
-                class="ui-input"
                 placeholder="Required to change permissions"
               />
             </div>
 
             <!-- Permissions Matrix -->
             <div class="pt-2">
-              <label
-                class="ui-label block mb-2"
-                >Allowed Actions</label
-              >
-              <div class="grid grid-cols-1 gap-2">
-                <button
-                  @click="store.security.allowPrinting = !store.security.allowPrinting"
-                  class="flex items-center gap-2 text-xs text-text hover:text-white transition-colors text-left"
-                >
-                  <CheckSquare
-                    v-if="store.security.allowPrinting"
-                    class="w-3.5 h-3.5 text-primary"
+              <Label class="block mb-2">Allowed Actions</Label>
+              <div class="grid grid-cols-1 gap-3">
+                <div class="flex items-center gap-2">
+                  <Checkbox
+                    id="perm-print"
+                    :checked="store.security.allowPrinting"
+                    @update:checked="(v: boolean) => store.security.allowPrinting = v"
                   />
-                  <Square v-else class="w-3.5 h-3.5 text-text-muted" />
-                  High Quality Printing
-                </button>
-                <button
-                  @click="store.security.allowCopying = !store.security.allowCopying"
-                  class="flex items-center gap-2 text-xs text-text hover:text-white transition-colors text-left"
-                >
-                  <CheckSquare
-                    v-if="store.security.allowCopying"
-                    class="w-3.5 h-3.5 text-primary"
+                  <label
+                    for="perm-print"
+                    class="text-xs text-text hover:text-white transition-colors cursor-pointer"
+                  >
+                    High Quality Printing
+                  </label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <Checkbox
+                    id="perm-copy"
+                    :checked="store.security.allowCopying"
+                    @update:checked="(v: boolean) => store.security.allowCopying = v"
                   />
-                  <Square v-else class="w-3.5 h-3.5 text-text-muted" />
-                  Copy Text & Graphics
-                </button>
-                <button
-                  @click="store.security.allowModify = !store.security.allowModify"
-                  class="flex items-center gap-2 text-xs text-text hover:text-white transition-colors text-left"
-                >
-                  <CheckSquare v-if="store.security.allowModify" class="w-3.5 h-3.5 text-primary" />
-                  <Square v-else class="w-3.5 h-3.5 text-text-muted" />
-                  Modify Pages
-                </button>
+                  <label
+                    for="perm-copy"
+                    class="text-xs text-text hover:text-white transition-colors cursor-pointer"
+                  >
+                    Copy Text & Graphics
+                  </label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <Checkbox
+                    id="perm-mod"
+                    :checked="store.security.allowModifying"
+                    @update:checked="(v: boolean) => store.security.allowModifying = v"
+                  />
+                  <label
+                    for="perm-mod"
+                    class="text-xs text-text hover:text-white transition-colors cursor-pointer"
+                  >
+                    Modify Pages
+                  </label>
+                </div>
               </div>
             </div>
           </div>
+          </TabsContent>
         </div>
-      </div>
+      </Tabs>
     </div>
 
     <!-- Bottom Half: History -->
@@ -290,53 +357,75 @@ function formatTime(ts: number) {
         <h2 class="text-xs font-bold text-text-muted uppercase tracking-wider">History</h2>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4">
-        <ul
-          class="relative space-y-0 before:absolute before:inset-y-0 before:left-[19px] before:w-px before:bg-border before:z-0"
+      <div class="flex-1 overflow-y-auto p-4 pl-2">
+        <Stepper
+          v-if="historyList.length > 0"
+          orientation="vertical"
+          class="flex w-full flex-col gap-0"
+          :model-value="historyList.findIndex(x => x.isCurrent) + 1"
         >
-          <li
+          <StepperItem
             v-for="(entry, index) in historyList"
             :key="index"
+            :step="index + 1"
+            v-slot="{ state }"
+            class="relative flex w-full items-start gap-3 pb-6 last:pb-0"
             @click="jumpTo(entry.pointer)"
-            class="relative z-10 pl-8 py-2 cursor-pointer group"
           >
-            <!-- Timeline Dot -->
-            <div
-              class="absolute left-[15px] top-3.5 w-[9px] h-[9px] rounded-full border-2 transition-colors z-20 bg-background"
-              :class="
-                entry.isCurrent
-                  ? 'border-selection bg-selection'
-                  : entry.isUndone
-                    ? 'border-text-muted opacity-50'
-                    : 'border-selection bg-background'
-              "
-            ></div>
+            <!-- Connecting Line (Separator) -->
+            <StepperSeparator
+              v-if="index !== historyList.length - 1"
+              class="absolute left-[11px] top-[24px] block h-full w-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary/50"
+            />
 
-            <div
-              class="text-xs font-medium transition-colors"
-              :class="{
-                'text-text-primary': entry.isCurrent,
-                'text-text-muted italic opacity-60': entry.isUndone,
-                'text-text': !entry.isCurrent && !entry.isUndone,
-              }"
-            >
-              {{ entry.command.name }}
-            </div>
-            <div class="text-[10px] text-text-muted opacity-50 font-mono mt-0.5">
-              {{ formatTime(entry.timestamp) }}
-            </div>
-          </li>
+            <!-- Step Indicator (Trigger) -->
+            <StepperTrigger as-child>
+              <Button
+                :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
+                size="icon"
+                class="z-10 h-6 w-6 rounded-full shrink-0 border transition-all"
+                :class="[
+                  state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
+                  state === 'completed' && 'bg-primary border-primary text-primary-foreground',
+                  state === 'inactive' && 'bg-background border-border text-muted-foreground opacity-50'
+                ]"
+              >
+                <Check v-if="state === 'completed'" class="w-3 h-3" />
+                <Circle v-if="state === 'active'" class="w-2.5 h-2.5 fill-current" />
+                <Dot v-if="state === 'inactive'" class="w-4 h-4" />
+              </Button>
+            </StepperTrigger>
 
-          <li
-            v-if="historyList.length === 0"
-            class="pl-8 py-2 text-xs text-text-muted italic opacity-50 relative z-10"
-          >
-            <div
-              class="absolute left-[15px] top-3.5 w-[9px] h-[9px] rounded-full border-2 border-border bg-background z-20"
-            ></div>
-            Start editing to see history
-          </li>
-        </ul>
+            <!-- Content -->
+            <div class="flex flex-col gap-0.5 pt-0.5 min-w-0">
+              <StepperTitle
+                class="text-xs font-medium truncate transition-colors"
+                :class="[
+                    state === 'active' ? 'text-text-primary' : '',
+                    state === 'inactive' ? 'text-text-muted italic opacity-60' : 'text-text'
+                ]"
+              >
+                {{ entry.command.name }}
+              </StepperTitle>
+              <StepperDescription class="text-[10px] text-text-muted opacity-50 font-mono">
+                 {{ formatTime(entry.timestamp) }}
+              </StepperDescription>
+            </div>
+          </StepperItem>
+        </Stepper>
+
+        <!-- Empty State -->
+        <div v-else class="flex flex-col gap-2 pl-1">
+            <div class="flex gap-3 relative pb-4 items-center">
+                <!-- Fake marker -->
+                <div class="relative z-10 w-6 h-6 rounded-full border border-border bg-background shrink-0 flex items-center justify-center text-muted-foreground" >
+                    <Dot class="w-4 h-4" />
+                </div>
+                 <span class="text-xs text-text-muted italic opacity-50">
+                  Start editing to see history
+                </span>
+            </div>
+        </div>
       </div>
     </div>
   </aside>

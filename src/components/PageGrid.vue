@@ -9,7 +9,23 @@
     SplitGroupCommand,
   } from '@/commands'
   import PdfThumbnail from './PdfThumbnail.vue'
-  import ContextMenu from './ContextMenu.vue'
+  import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuShortcut,
+    ContextMenuTrigger,
+  } from '@/components/ui/context-menu'
+  import {
+    RotateCw,
+    RotateCcw,
+    Trash2,
+    Copy,
+    Eye,
+    CheckSquare,
+    Download
+  } from 'lucide-vue-next'
   import type { PageReference } from '@/types'
   import { UserAction } from '@/types/actions'
 
@@ -71,28 +87,6 @@ function handlePageClick(pageRef: PageReference, event: MouseEvent) {
     } else {
       store.selectPage(pageRef.id, false)
     }
-  }
-}
-
-function handlePageContextMenu(pageRef: PageReference, index: number, event: MouseEvent) {
-  event.preventDefault()
-
-  if (!store.selection.selectedIds.has(pageRef.id)) {
-    store.selectPage(pageRef.id, false)
-  }
-
-  contextMenu.value = {
-    visible: true,
-    x: event.clientX,
-    y: event.clientY,
-    pageRef,
-    pageNumber: index + 1,
-  }
-}
-
-function handleContextMenuAction(action: UserAction) {
-  if (contextMenu.value.pageRef) {
-    emit('contextAction', action, contextMenu.value.pageRef)
   }
 }
 
@@ -237,45 +231,93 @@ async function handleFileDrop(event: DragEvent) {
           ></div>
         </div>
 
-        <!-- PDF Thumbnail -->
-        <PdfThumbnail
-          v-else
-          :page-ref="pageRef"
-          :page-number="index + 1"
-          :selected="isSelected(pageRef.id)"
-          :fixed-size="true"
-          :width="store.zoom"
-          :is-start-of-file="
-            index === 0 ||
-            (!localPages[index - 1]?.isDivider &&
-              pageRef.groupId !== localPages[index - 1]?.groupId)
-          "
-          :is-razor-active="store.currentTool === 'razor'"
-          :can-split="index > 0 && !localPages[index - 1]?.isDivider"
-          @click="handlePageClick(pageRef, $event)"
-          @preview="handlePreview(pageRef)"
-          @contextmenu="handlePageContextMenu(pageRef, index, $event)"
-          @delete="handleDelete(pageRef)"
-          @rotate="handleRotate(pageRef)"
-        />
+        <!-- PDF Thumbnail with Context Menu -->
+        <ContextMenu v-else>
+          <ContextMenuTrigger>
+            <PdfThumbnail
+              :page-ref="pageRef"
+              :page-number="index + 1"
+              :selected="isSelected(pageRef.id)"
+              :fixed-size="true"
+              :width="store.zoom"
+              :is-start-of-file="
+                index === 0 ||
+                (!localPages[index - 1]?.isDivider &&
+                  pageRef.groupId !== localPages[index - 1]?.groupId)
+              "
+              :is-razor-active="store.currentTool === 'razor'"
+              :can-split="index > 0 && !localPages[index - 1]?.isDivider"
+              @click="handlePageClick(pageRef, $event)"
+              @preview="handlePreview(pageRef)"
+              @delete="handleDelete(pageRef)"
+              @rotate="handleRotate(pageRef)"
+            />
+          </ContextMenuTrigger>
+
+          <ContextMenuContent>
+            <!-- Header/Label -->
+            <ContextMenuLabel class="text-xs text-text-muted font-medium border-b border-border px-3 py-2">
+              {{ store.selectedCount > 1 ? `${store.selectedCount} pages selected` : `Page ${index + 1}` }}
+            </ContextMenuLabel>
+
+            <ContextMenuItem @select="handlePreview(pageRef)">
+              <Eye class="w-4 h-4 mr-2 text-text-muted" />
+              <span>Preview</span>
+              <ContextMenuShortcut>Space</ContextMenuShortcut>
+            </ContextMenuItem>
+
+            <ContextMenuItem @select="emit('contextAction', UserAction.DUPLICATE, pageRef)">
+              <Copy class="w-4 h-4 mr-2 text-text-muted" />
+              <span>Duplicate</span>
+            </ContextMenuItem>
+
+            <ContextMenuSeparator />
+
+            <ContextMenuItem @select="emit('contextAction', UserAction.ROTATE_LEFT, pageRef)">
+              <RotateCcw class="w-4 h-4 mr-2 text-text-muted" />
+              <span>Rotate Left</span>
+              <ContextMenuShortcut>⇧R</ContextMenuShortcut>
+            </ContextMenuItem>
+
+            <ContextMenuItem @select="emit('contextAction', UserAction.ROTATE_RIGHT, pageRef)">
+              <RotateCw class="w-4 h-4 mr-2 text-text-muted" />
+              <span>Rotate Right</span>
+              <ContextMenuShortcut>R</ContextMenuShortcut>
+            </ContextMenuItem>
+
+            <ContextMenuSeparator />
+
+            <template v-if="store.selectedCount > 0">
+              <ContextMenuItem @select="emit('contextAction', UserAction.SELECT_ALL, pageRef)">
+                <CheckSquare class="w-4 h-4 mr-2 text-text-muted" />
+                <span>Select All</span>
+                <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+              </ContextMenuItem>
+
+              <ContextMenuItem @select="emit('contextAction', UserAction.EXPORT_SELECTED, pageRef)">
+                <Download class="w-4 h-4 mr-2 text-text-muted" />
+                <span>Export Selected</span>
+              </ContextMenuItem>
+
+              <ContextMenuSeparator />
+            </template>
+
+            <ContextMenuItem
+               class="text-danger focus:text-danger focus:bg-danger/10"
+               @select="handleDelete(pageRef)"
+            >
+              <Trash2 class="w-4 h-4 mr-2" />
+              <span>Delete</span>
+              <ContextMenuShortcut class="text-danger/50">Del</ContextMenuShortcut>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       </template>
     </VueDraggable>
 
-    <!-- Empty State / Hint -->
     <p v-if="localPages.length > 0" class="text-center text-sm text-text-muted mt-6">
       Drag to reorder • Double-click to preview • Right-click for more options
     </p>
-
-    <!-- Context Menu -->
-    <ContextMenu
-      :visible="contextMenu.visible"
-      :x="contextMenu.x"
-      :y="contextMenu.y"
-      :selected-count="store.selectedCount"
-      :page-number="contextMenu.pageNumber"
-      @close="contextMenu.visible = false"
-      @action="handleContextMenuAction"
-    />
   </div>
 </template>
 

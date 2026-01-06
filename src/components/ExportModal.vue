@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import {
-  X,
   Download,
   FileText,
   CheckCircle,
@@ -9,6 +8,8 @@ import {
   ChevronDown,
   Settings,
 } from 'lucide-vue-next'
+import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   usePdfExport,
   parsePageRange,
@@ -17,7 +18,16 @@ import {
 } from '@/composables/usePdfExport'
 import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables'
-import { useFocusTrap } from '@/composables/useFocusTrap'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogScrollContent,
+} from '@/components/ui/dialog'
 
 const props = defineProps<{
   open: boolean
@@ -41,7 +51,6 @@ const {
 
 const { isMobile, onBackButton } = useMobile()
 
-const dialogRef = ref<HTMLElement | null>(null)
 const filenameInputRef = ref<HTMLInputElement | null>(null)
 
 // Form state
@@ -207,18 +216,15 @@ function handleClose() {
   }
 }
 
+function onOpenChange(val: boolean) {
+  if (!val) {
+    handleClose()
+  }
+}
+
 function resetError() {
   exportError.value = null
 }
-
-useFocusTrap(
-  computed(() => props.open),
-  dialogRef,
-  {
-    onEscape: handleClose,
-    initialFocus: () => filenameInputRef.value,
-  },
-)
 
 if (isMobile.value) {
   onBackButton(
@@ -229,276 +235,216 @@ if (isMobile.value) {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="open"
-        class="fixed inset-0 z-50 flex items-center justify-center"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="export-dialog-title"
-        @click.self="handleClose"
-      >
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50" />
+  <Dialog :open="open" @update:open="onOpenChange">
+    <DialogScrollContent class="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Export PDF</DialogTitle>
+      </DialogHeader>
 
-        <!-- Modal -->
-        <div
-          ref="dialogRef"
-          class="relative bg-surface rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
-        >
-          <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 id="export-dialog-title" class="text-lg font-semibold text-text">Export PDF</h2>
-            <button
-              type="button"
-              aria-label="Close export dialog"
-              class="p-1 rounded-lg hover:bg-muted/10 transition-colors"
-              :disabled="isExporting"
-              @click="handleClose"
-            >
-              <X class="w-5 h-5 text-text-muted" />
-            </button>
+      <div class="py-4">
+        <!-- Export complete state -->
+        <div v-if="exportComplete" class="text-center py-8">
+          <CheckCircle class="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+          <h3 class="text-lg font-medium text-text mb-2">Export Complete!</h3>
+          <p class="text-sm text-text-muted">Your PDF has been downloaded successfully.</p>
+          <p v-if="exportStats" class="text-xs font-mono text-emerald-500 mt-2">
+            {{ exportStats.filename }} • {{ exportStats.durationMs }}ms
+          </p>
+        </div>
+
+        <!-- Error state -->
+        <div v-else-if="exportError" class="text-center py-8">
+          <AlertCircle class="w-16 h-16 text-danger mx-auto mb-4" />
+          <h3 class="text-lg font-medium text-text mb-2">Export Failed</h3>
+          <p class="text-sm text-danger mb-4">{{ exportError }}</p>
+          <Button
+            variant="ghost"
+            class="bg-muted/10 hover:bg-muted/20"
+            @click="resetError"
+          >
+            Try Again
+          </Button>
+        </div>
+
+        <!-- Exporting state -->
+        <div v-else-if="isExporting" class="py-8">
+          <div class="flex items-center justify-center gap-3 mb-4">
+            <svg class="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            <span class="text-text font-medium">Generating PDF...</span>
+          </div>
+          <div class="w-full bg-muted/20 rounded-full h-2 overflow-hidden">
+            <div
+              class="h-full bg-primary transition-all duration-300 ease-out"
+              :style="{ width: `${exportProgress}%` }"
+            />
+          </div>
+          <p class="text-center text-sm text-text-muted mt-2">{{ exportProgress }}% complete</p>
+        </div>
+
+        <!-- Form -->
+        <div v-else class="space-y-4">
+          <!-- File info summary -->
+          <div class="flex items-center gap-3 p-3 bg-muted/5 rounded-lg">
+            <FileText class="w-8 h-8 text-primary flex-shrink-0" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-text">{{ pageRangeDescription }}</p>
+              <p class="text-xs text-text-muted">Estimated size: {{ getEstimatedSize() }}</p>
+            </div>
           </div>
 
-          <!-- Content -->
-          <div class="px-6 py-4 max-h-[60vh] overflow-y-auto">
-            <!-- Export complete state -->
-            <div v-if="exportComplete" class="text-center py-8">
-              <CheckCircle class="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-text mb-2">Export Complete!</h3>
-              <p class="text-sm text-text-muted">Your PDF has been downloaded successfully.</p>
-              <p v-if="exportStats" class="text-xs font-mono text-emerald-500 mt-2">
-                {{ exportStats.filename }} • {{ exportStats.durationMs }}ms
+          <!-- Filename -->
+          <div>
+            <Label for="filename" class="mb-1 block">
+              Filename
+            </Label>
+            <div class="flex items-center gap-2">
+              <Input
+                id="filename"
+                ref="filenameInputRef"
+                v-model="filename"
+                type="text"
+                placeholder="Enter filename"
+                class="flex-1"
+              />
+              <span class="text-text-muted text-sm">.pdf</span>
+            </div>
+          </div>
+
+          <!-- Page Range -->
+          <div>
+            <Label class="text-text mb-2 block font-medium">Pages to Export</Label>
+            <RadioGroup
+              :model-value="pageRangeMode"
+              @update:model-value="(v) => pageRangeMode = (v as 'all' | 'selected' | 'custom')"
+            >
+              <div class="flex items-center gap-2">
+                <RadioGroupItem id="range-all" value="all" />
+                <Label for="range-all" class="cursor-pointer font-normal">
+                  All pages ({{ store.pageCount }})
+                </Label>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <RadioGroupItem
+                  id="range-selected"
+                  value="selected"
+                  :disabled="store.selectedCount === 0"
+                />
+                <Label
+                  for="range-selected"
+                  class="font-normal"
+                  :class="store.selectedCount > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'"
+                >
+                  Selected pages ({{ store.selectedCount }})
+                </Label>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <RadioGroupItem id="range-custom" value="custom" />
+                <Label for="range-custom" class="cursor-pointer font-normal">
+                  Custom range
+                </Label>
+              </div>
+            </RadioGroup>
+
+              <div v-if="pageRangeMode === 'custom'" class="pl-6 pt-2">
+                <Input
+                  v-model="customPageRange"
+                  type="text"
+                  placeholder="e.g., 1-5, 8, 10-12"
+                  :class="pageRangeError ? 'border-danger' : 'border-border'"
+                />
+                <p v-if="pageRangeError" class="text-xs text-danger mt-1">
+                  {{ pageRangeError }}
+                </p>
+                <p v-else class="text-xs text-text-muted mt-1">
+                  Enter page numbers and/or ranges separated by commas
+                </p>
+              </div>
+          </div>
+
+          <!-- Advanced Options Toggle -->
+          <button
+            type="button"
+            class="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors"
+            @click="showAdvanced = !showAdvanced"
+          >
+            <ChevronDown
+              class="w-4 h-4 transition-transform"
+              :class="showAdvanced ? 'rotate-180' : ''"
+            />
+            Advanced options
+          </button>
+
+          <!-- Advanced Options -->
+          <div v-if="showAdvanced" class="space-y-4 pl-2 border-l-2 border-border">
+            <!-- Options Section -->
+            <div>
+              <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">
+                <Settings class="w-4 h-4" />
+                Export Options
+              </h4>
+              <div class="flex items-center gap-2">
+                <Checkbox
+                  id="opt-compress"
+                  :checked="compress"
+                  @update:checked="(v: boolean) => compress = v"
+                />
+                <Label
+                  for="opt-compress"
+                  class="cursor-pointer"
+                >
+                  Optimize file size
+                </Label>
+              </div>
+              <p class="text-xs text-text-muted mt-1 pl-6">
+                Uses object streams for smaller file size
               </p>
             </div>
-
-            <!-- Error state -->
-            <div v-else-if="exportError" class="text-center py-8">
-              <AlertCircle class="w-16 h-16 text-danger mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-text mb-2">Export Failed</h3>
-              <p class="text-sm text-danger mb-4">{{ exportError }}</p>
-              <button
-                class="px-4 py-2 text-sm bg-muted/10 hover:bg-muted/20 rounded-lg transition-colors"
-                @click="resetError"
-              >
-                Try Again
-              </button>
-            </div>
-
-            <!-- Exporting state -->
-            <div v-else-if="isExporting" class="py-8">
-              <div class="flex items-center justify-center gap-3 mb-4">
-                <svg class="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  />
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span class="text-text font-medium">Generating PDF...</span>
-              </div>
-              <div class="w-full bg-muted/20 rounded-full h-2 overflow-hidden">
-                <div
-                  class="h-full bg-primary transition-all duration-300 ease-out"
-                  :style="{ width: `${exportProgress}%` }"
-                />
-              </div>
-              <p class="text-center text-sm text-text-muted mt-2">{{ exportProgress }}% complete</p>
-            </div>
-
-            <!-- Form -->
-            <div v-else class="space-y-4">
-              <!-- File info summary -->
-              <div class="flex items-center gap-3 p-3 bg-muted/5 rounded-lg">
-                <FileText class="w-8 h-8 text-primary flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-text">{{ pageRangeDescription }}</p>
-                  <p class="text-xs text-text-muted">Estimated size: {{ getEstimatedSize() }}</p>
-                </div>
-              </div>
-
-              <!-- Filename -->
-              <div>
-                <label for="filename" class="block text-sm font-medium text-text mb-1">
-                  Filename
-                </label>
-                <div class="flex items-center gap-2">
-                  <input
-                    id="filename"
-                    ref="filenameInputRef"
-                    v-model="filename"
-                    type="text"
-                    class="flex-1 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
-                    placeholder="Enter filename"
-                  />
-                  <span class="text-text-muted text-sm">.pdf</span>
-                </div>
-              </div>
-
-              <!-- Page Range -->
-              <div>
-                <label class="block text-sm font-medium text-text mb-2">Pages to Export</label>
-                <div class="space-y-2">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                      v-model="pageRangeMode"
-                      type="radio"
-                      value="all"
-                      class="text-primary focus:ring-primary"
-                    />
-                    <span class="text-sm text-text">All pages ({{ store.pageCount }})</span>
-                  </label>
-
-                  <label
-                    class="flex items-center gap-2"
-                    :class="
-                      store.selectedCount > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
-                    "
-                  >
-                    <input
-                      v-model="pageRangeMode"
-                      type="radio"
-                      value="selected"
-                      :disabled="store.selectedCount === 0"
-                      class="text-primary focus:ring-primary"
-                    />
-                    <span class="text-sm text-text">
-                      Selected pages ({{ store.selectedCount }})
-                    </span>
-                  </label>
-
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                      v-model="pageRangeMode"
-                      type="radio"
-                      value="custom"
-                      class="text-primary focus:ring-primary"
-                    />
-                    <span class="text-sm text-text">Custom range</span>
-                  </label>
-
-                  <div v-if="pageRangeMode === 'custom'" class="pl-6">
-                    <input
-                      v-model="customPageRange"
-                      type="text"
-                      placeholder="e.g., 1-5, 8, 10-12"
-                      class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-surface text-text"
-                      :class="pageRangeError ? 'border-danger' : 'border-border'"
-                    />
-                    <p v-if="pageRangeError" class="text-xs text-danger mt-1">
-                      {{ pageRangeError }}
-                    </p>
-                    <p v-else class="text-xs text-text-muted mt-1">
-                      Enter page numbers and/or ranges separated by commas
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Advanced Options Toggle -->
-              <button
-                type="button"
-                class="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors"
-                @click="showAdvanced = !showAdvanced"
-              >
-                <ChevronDown
-                  class="w-4 h-4 transition-transform"
-                  :class="showAdvanced ? 'rotate-180' : ''"
-                />
-                Advanced options
-              </button>
-
-              <!-- Advanced Options -->
-              <div v-if="showAdvanced" class="space-y-4 pl-2 border-l-2 border-border">
-                <!-- Options Section -->
-                <div>
-                  <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">
-                    <Settings class="w-4 h-4" />
-                    Export Options
-                  </h4>
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input
-                      v-model="compress"
-                      type="checkbox"
-                      class="rounded text-primary focus:ring-primary"
-                    />
-                    <span class="text-sm text-text">Optimize file size</span>
-                  </label>
-                  <p class="text-xs text-text-muted mt-1 pl-6">
-                    Uses object streams for smaller file size
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div
-            class="flex items-center justify-end gap-3 px-6 py-4 bg-muted/5 border-t border-border"
-          >
-            <button
-              v-if="!exportComplete && !exportError"
-              type="button"
-              class="px-4 py-2 text-sm text-text hover:bg-muted/20 rounded-lg transition-colors"
-              :disabled="isExporting"
-              @click="handleClose"
-            >
-              Cancel
-            </button>
-
-            <button
-              v-if="exportComplete"
-              type="button"
-              class="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              @click="handleClose"
-            >
-              Done
-            </button>
-
-            <button
-              v-else-if="!exportError"
-              type="button"
-              class="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="!canExport"
-              @click="handleExport"
-            >
-              <Download class="w-4 h-4" />
-              Export {{ pageCount }} Page{{ pageCount === 1 ? '' : 's' }}
-            </button>
           </div>
         </div>
       </div>
-    </Transition>
-  </Teleport>
+
+      <DialogFooter class="gap-2 sm:gap-0">
+        <Button
+          v-if="!exportComplete && !exportError"
+          variant="ghost"
+          :disabled="isExporting"
+          @click="handleClose"
+        >
+          Cancel
+        </Button>
+
+        <Button
+          v-if="exportComplete"
+          @click="handleClose"
+        >
+          Done
+        </Button>
+
+        <Button
+          v-else-if="!exportError"
+          :disabled="!canExport"
+          @click="handleExport"
+        >
+          <Download class="w-4 h-4 mr-2" />
+          Export {{ pageCount }} Page{{ pageCount === 1 ? '' : 's' }}
+        </Button>
+      </DialogFooter>
+    </DialogScrollContent>
+  </Dialog>
 </template>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.modal-enter-active .relative,
-.modal-leave-active .relative {
-  transition: transform 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .relative,
-.modal-leave-to .relative {
-  transform: scale(0.95);
-}
-</style>
