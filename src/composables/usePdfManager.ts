@@ -4,7 +4,7 @@ import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useDocumentStore } from '@/stores/document'
 import { db } from '@/db/db'
 import type { StoredFile } from '@/db/db'
-import type { SourceFile, PageReference, FileUploadResult } from '@/types'
+import type { SourceFile, PageReference, FileUploadResult, DocumentMetadata } from '@/types'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { extractPdfOutline } from '@/utils/pdf-outline-reader'
 import { convertImageToPdf } from '@/utils/image-to-pdf'
@@ -25,6 +25,82 @@ export function usePdfManager() {
   const PALETTE = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#06b6d4']
   function getNextColor(index: number): string {
     return PALETTE[index % PALETTE.length] ?? '#3b82f6'
+  }
+
+  function normalizeMetadataValue(value: unknown): string {
+    if (typeof value === 'string') return value.trim()
+    if (value == null) return ''
+    return String(value).trim()
+  }
+
+  function parseKeywords(value: unknown): string[] {
+    if (!value) return []
+    if (Array.isArray(value)) {
+      return value.map((item) => normalizeMetadataValue(item)).filter(Boolean)
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(/[,;]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    }
+    const normalized = normalizeMetadataValue(value)
+    return normalized ? [normalized] : []
+  }
+
+  function normalizePdfVersion(value: unknown): DocumentMetadata['pdfVersion'] | undefined {
+    const normalized = normalizeMetadataValue(value)
+    if (normalized === '1.4' || normalized === '1.7' || normalized === '2.0') return normalized
+    if (normalized.toUpperCase() === 'PDF/A') return 'PDF/A'
+    return undefined
+  }
+
+  function buildDocumentMetadata(info: Record<string, unknown>): DocumentMetadata | null {
+    const title = normalizeMetadataValue(info.Title ?? info.title)
+    const author = normalizeMetadataValue(info.Author ?? info.author)
+    const subject = normalizeMetadataValue(info.Subject ?? info.subject)
+    const keywords = parseKeywords(info.Keywords ?? info.keywords)
+    const pdfVersion = normalizePdfVersion(info.PDFFormatVersion ?? info.PDFVersion)
+
+    if (!title && !author && !subject && keywords.length === 0) {
+      return null
+    }
+
+    return {
+      title,
+      author,
+      subject,
+      keywords,
+      ...(pdfVersion ? { pdfVersion } : {}),
+    }
+  }
+
+  function buildMetadataUpdates(metadata: DocumentMetadata): Partial<DocumentMetadata> {
+    const updates: Partial<DocumentMetadata> = {}
+    if (metadata.title.trim()) updates.title = metadata.title
+    if (metadata.author.trim()) updates.author = metadata.author
+    if (metadata.subject.trim()) updates.subject = metadata.subject
+    if (metadata.keywords.length > 0) updates.keywords = metadata.keywords
+    if (metadata.pdfVersion) updates.pdfVersion = metadata.pdfVersion
+    return updates
+  }
+
+  function isDefaultMetadata(value: DocumentMetadata): boolean {
+    return (
+      value.title.trim() === 'Untitled Project' &&
+      !value.author.trim() &&
+      !value.subject.trim() &&
+      value.keywords.length === 0
+    )
+  }
+
+  function maybeApplyMetadataFromSource(metadata: DocumentMetadata | null): void {
+    if (!metadata) return
+    if (store.metadataDirty) return
+    if (!isDefaultMetadata(store.metadata)) return
+    const updates = buildMetadataUpdates(metadata)
+    if (Object.keys(updates).length === 0) return
+    store.setMetadata(updates)
   }
 
   /**
@@ -66,6 +142,7 @@ export function usePdfManager() {
           addedAt: f.addedAt,
           color: f.color,
           outline: f.outline,
+          metadata: f.metadata,
         })
       })
 
@@ -75,6 +152,15 @@ export function usePdfManager() {
         store.setZoom(session.zoom)
         store.bookmarksDirty = session.bookmarksDirty ?? false
         store.setPages(session.pageMap)
+        if (session.metadata) {
+          store.setMetadata(session.metadata, false)
+        }
+        store.metadataDirty =
+          session.metadataDirty ??
+          (session.metadata ? !isDefaultMetadata(session.metadata as DocumentMetadata) : false)
+        if (session.security) {
+          store.setSecurity(session.security)
+        }
 
         if (store.bookmarksDirty) {
           store.setBookmarksTree((session.bookmarksTree as any[]) ?? [], false)
@@ -100,6 +186,13 @@ export function usePdfManager() {
       const loadingTask = pdfjs.getDocument({ data: arrayBuffer.slice(0) })
       const pdfDoc = await loadingTask.promise
       const outline = await extractPdfOutline(pdfDoc)
+      let extractedMetadata: DocumentMetadata | null = null
+      try {
+        const meta = await pdfDoc.getMetadata()
+        extractedMetadata = buildDocumentMetadata((meta?.info ?? {}) as Record<string, unknown>)
+      } catch {
+        extractedMetadata = null
+      }
 
       const sourceFileId = crypto.randomUUID()
       const color = getNextColor(store.sources.size + indexOffset)
@@ -114,6 +207,7 @@ export function usePdfManager() {
         addedAt: Date.now(),
         color,
         outline: outline.length ? outline : undefined,
+        metadata: extractedMetadata ?? undefined,
       })
 
       // B. Add Lightweight Meta to Store
@@ -125,6 +219,7 @@ export function usePdfManager() {
         addedAt: Date.now(),
         color,
         outline: outline.length ? outline : undefined,
+        metadata: extractedMetadata ?? undefined,
       }
 
       // Cache the parsed doc for immediate use
@@ -142,6 +237,8 @@ export function usePdfManager() {
           groupId,
         })
       }
+
+      maybeApplyMetadataFromSource(extractedMetadata)
 
       store.setLoading(false)
       return { success: true, sourceFile, pageRefs }

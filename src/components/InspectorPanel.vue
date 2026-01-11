@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { Tree, TreeItem } from '@/components/ui/tree'
@@ -21,12 +21,19 @@ import {
   X,
   Plus,
   History,
+  FileDown,
 } from 'lucide-vue-next'
-import type { UiBookmarkNode } from '@/types'
+import type { BookmarkNode, DocumentMetadata } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const store = useDocumentStore()
 const { historyList, jumpTo } = useCommandManager()
@@ -69,15 +76,46 @@ function scrollGridToPage(pageId: string) {
 
 // === METADATA TAB LOGIC ===
 const keywordInput = ref('')
+const metadataTitle = computed({
+  get: () => store.metadata.title,
+  set: (value) => store.setMetadata({ title: value }),
+})
+const metadataAuthor = computed({
+  get: () => store.metadata.author,
+  set: (value) => store.setMetadata({ author: value }),
+})
+const metadataSubject = computed({
+  get: () => store.metadata.subject,
+  set: (value) => store.setMetadata({ subject: value }),
+})
+
+function hasMeaningfulMetadata(metadata?: DocumentMetadata): metadata is DocumentMetadata {
+  if (!metadata) return false
+  return Boolean(
+    metadata.title.trim() ||
+      metadata.author.trim() ||
+      metadata.subject.trim() ||
+      metadata.keywords.length > 0,
+  )
+}
+
+const metadataSources = computed(() =>
+  store.sourceFileList.filter((source) => hasMeaningfulMetadata(source.metadata)),
+)
+
+function applyMetadataFromSource(sourceId: string) {
+  const source = store.sources.get(sourceId)
+  if (!source?.metadata) return
+  store.setMetadata(source.metadata)
+}
+
 function addKeyword() {
   const val = keywordInput.value.trim()
-  if (val && !store.metadata.keywords.includes(val)) {
-    store.metadata.keywords.push(val)
-  }
+  if (val) store.addKeyword(val)
   keywordInput.value = ''
 }
 function removeKeyword(k: string) {
-  store.metadata.keywords = store.metadata.keywords.filter((item) => item !== k)
+  store.removeKeyword(k)
 }
 
 // === SECURITY TAB LOGIC ===
@@ -174,7 +212,7 @@ function formatTime(ts: number) {
                         :items="store.bookmarksTree"
                         :get-key="(item) => item.id"
                         @update:items="
-                          (val) => store.setBookmarksTree(val as UiBookmarkNode[], true)
+                          (val) => store.setBookmarksTree(val as BookmarkNode[], true)
                         "
                         class="w-full px-2"
                         v-slot="{ flattenItems }"
@@ -206,7 +244,7 @@ function formatTime(ts: number) {
                               <span
                                 class="text-xs truncate font-medium text-foreground/80 group-hover:text-foreground transition-all leading-none py-1"
                               >
-                                {{ (item.value as UiBookmarkNode).title }}
+                                {{ (item.value as BookmarkNode).title }}
                               </span>
 
                               <!-- Target Action - Attached to Title -->
@@ -216,7 +254,7 @@ function formatTime(ts: number) {
                                 class="opacity-0 group-hover:opacity-100 h-6 w-6 shrink-0 p-0 flex items-center justify-center text-muted-foreground hover:text-primary transition-all duration-200 ml-1"
                                 title="Jump to section"
                                 @click.stop="
-                                  scrollGridToPage((item.value as UiBookmarkNode).pageId)
+                                  scrollGridToPage((item.value as BookmarkNode).pageId)
                                 "
                               >
                                 <Crosshair class="w-3.5 h-3.5" />
@@ -251,6 +289,42 @@ function formatTime(ts: number) {
                 <!-- B. METADATA TAB -->
                 <TabsContent value="metadata" class="p-5 m-0 focus-visible:outline-none">
                   <div class="space-y-6">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <p class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold">
+                          Import Metadata
+                        </p>
+                        <p class="text-[9px] text-muted-foreground/50">
+                          Auto-fills once when empty, or apply manually from a source.
+                        </p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            class="h-7 px-2.5 text-[10px]"
+                            :disabled="metadataSources.length === 0"
+                          >
+                            <FileDown class="w-3 h-3 mr-1.5" />
+                            Apply
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="min-w-[220px]">
+                          <DropdownMenuItem
+                            v-for="source in metadataSources"
+                            :key="source.id"
+                            @select="applyMetadataFromSource(source.id)"
+                          >
+                            <span class="truncate">{{ source.filename }}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem v-if="metadataSources.length === 0" disabled>
+                            No metadata found
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
                     <FieldGroup class="gap-5">
                       <Field>
                         <FieldLabel
@@ -261,7 +335,7 @@ function formatTime(ts: number) {
                         <FieldContent>
                           <Input
                             id="metadata-title"
-                            v-model="store.projectTitle"
+                            v-model="metadataTitle"
                             type="text"
                             class="h-8 text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60"
                             placeholder="e.g. Project Specs 2026"
@@ -278,7 +352,7 @@ function formatTime(ts: number) {
                         <FieldContent>
                           <Input
                             id="metadata-author"
-                            v-model="store.metadata.author"
+                            v-model="metadataAuthor"
                             type="text"
                             class="h-8 text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60"
                             placeholder="Full name or organization"
@@ -295,7 +369,7 @@ function formatTime(ts: number) {
                         <FieldContent>
                           <Textarea
                             id="metadata-subject"
-                            v-model="store.metadata.subject"
+                            v-model="metadataSubject"
                             rows="3"
                             class="resize-none text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60 min-h-0"
                             placeholder="Brief description of the document..."

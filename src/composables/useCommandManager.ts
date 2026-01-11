@@ -56,6 +56,9 @@ export function useCommandManager() {
       updatedAt: Date.now(),
       bookmarksTree: bookmarksDirty ? toPlain(store.bookmarksTree) : [],
       bookmarksDirty,
+      metadata: toPlain(store.metadata),
+      security: toPlain(store.security),
+      metadataDirty: Boolean(store.metadataDirty),
     }
 
     // Write to DB
@@ -83,6 +86,9 @@ export function useCommandManager() {
       () => store.zoom,
       () => store.bookmarksTree,
       () => store.bookmarksDirty,
+      () => store.metadata,
+      () => store.security,
+      () => store.metadataDirty,
     ],
     () => {
       saveSession()

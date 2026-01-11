@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { PageReference, PdfOutlineNode } from '@/types'
+import type { PageReference, PdfOutlineNode, DocumentMetadata, SecurityMetadata } from '@/types'
 import type { SerializedCommand } from '@/commands'
 
 /**
@@ -36,6 +36,15 @@ export interface SessionState {
 
   /** Whether user has customized bookmarks (stops auto-gen overwrite) */
   bookmarksDirty?: boolean
+
+  /** Document metadata persisted with the session */
+  metadata?: DocumentMetadata
+
+  /** Security options persisted with the session */
+  security?: SecurityMetadata
+
+  /** Whether user has customized metadata (prevents auto-apply on import) */
+  metadataDirty?: boolean
 }
 
 /**
@@ -66,6 +75,9 @@ export interface StoredFile {
 
   /** Optional outline extracted from the PDF */
   outline?: PdfOutlineNode[]
+
+  /** Optional metadata extracted from the PDF */
+  metadata?: DocumentMetadata
 }
 
 /**

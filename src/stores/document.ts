@@ -1,49 +1,43 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { SourceFile, PageReference, SelectionState, BookmarkNode } from '@/types'
+import type {
+  SourceFile,
+  PageReference,
+  SelectionState,
+  BookmarkNode,
+  DocumentMetadata,
+  SecurityMetadata,
+} from '@/types'
 import { autoGenBookmarksFromPages } from '@/utils/auto-gen-tree'
-
-export interface DocumentMetadata {
-  title: string
-  author: string
-  subject: string
-  keywords: string[]
-  pdfVersion?: '1.4' | '1.7' | '2.0' | 'PDF/A'
-}
-
-export interface SecurityMetadata {
-  isEncrypted: boolean
-  userPassword?: string
-  ownerPassword?: string
-  allowPrinting: boolean
-  allowCopying: boolean
-  allowModifying: boolean
-}
 
 export const useDocumentStore = defineStore('document', () => {
   // ============================================
   // State
   // ============================================
 
-  const sources = ref<Map<string, SourceFile>>(new Map())
-  const pages = ref<PageReference[]>([])
-  const metadata = ref<DocumentMetadata>({
+  const DEFAULT_METADATA: DocumentMetadata = {
     title: 'Untitled Project',
     author: '',
     subject: '',
     keywords: [],
-  })
+  }
 
-  const security = ref<SecurityMetadata>({
+  const DEFAULT_SECURITY: SecurityMetadata = {
     isEncrypted: false,
     userPassword: '',
     ownerPassword: '',
     allowPrinting: true,
     allowCopying: true,
     allowModifying: false,
-  })
+  }
+
+  const sources = ref<Map<string, SourceFile>>(new Map())
+  const pages = ref<PageReference[]>([])
+  const metadata = ref<DocumentMetadata>({ ...DEFAULT_METADATA })
+  const security = ref<SecurityMetadata>({ ...DEFAULT_SECURITY })
   const bookmarksTree = ref<BookmarkNode[]>([])
   const bookmarksDirty = ref(false)
+  const metadataDirty = ref(false)
 
   const selection = ref<SelectionState>({
     selectedIds: new Set(),
@@ -178,8 +172,9 @@ export const useDocumentStore = defineStore('document', () => {
     loadingMessage.value = message
   }
 
-  function setMetadata(next: Partial<DocumentMetadata>) {
+  function setMetadata(next: Partial<DocumentMetadata>, markDirty = true) {
     metadata.value = { ...metadata.value, ...next }
+    if (markDirty) metadataDirty.value = true
   }
 
   function addKeyword(keyword: string) {
@@ -187,19 +182,31 @@ export const useDocumentStore = defineStore('document', () => {
     if (!k) return
     if (!metadata.value.keywords.includes(k)) {
       metadata.value.keywords.push(k)
+      metadataDirty.value = true
     }
   }
 
   function removeKeyword(keyword: string) {
     metadata.value.keywords = metadata.value.keywords.filter((k) => k !== keyword)
+    metadataDirty.value = true
   }
 
   function clearKeywords() {
     metadata.value.keywords = []
+    metadataDirty.value = true
   }
 
   function resetMetadata() {
-    metadata.value = { title: '', author: '', subject: '', keywords: [] }
+    metadata.value = { ...DEFAULT_METADATA }
+    metadataDirty.value = false
+  }
+
+  function setSecurity(next: Partial<SecurityMetadata>) {
+    security.value = { ...security.value, ...next }
+  }
+
+  function resetSecurity() {
+    security.value = { ...DEFAULT_SECURITY }
   }
 
   function setBookmarksTree(tree: BookmarkNode[], markDirty = false) {
@@ -241,6 +248,7 @@ export const useDocumentStore = defineStore('document', () => {
     projectTitle.value = 'Untitled Project'
     isTitleLocked.value = false
     resetMetadata()
+    resetSecurity()
     resetBookmarks()
   }
 
@@ -309,11 +317,14 @@ export const useDocumentStore = defineStore('document', () => {
     resetBookmarks,
     addBookmarkForPage,
     metadata,
+    metadataDirty,
     setMetadata,
     addKeyword,
     removeKeyword,
     clearKeywords,
     resetMetadata,
     security,
+    setSecurity,
+    resetSecurity,
   }
 })

@@ -20,6 +20,31 @@ export interface SourceFile {
   color: string
   /** Optional outline extracted from the source PDF */
   outline?: PdfOutlineNode[]
+  /** Optional metadata extracted from the source PDF */
+  metadata?: DocumentMetadata
+}
+
+/**
+ * Document-level metadata for export and session persistence.
+ */
+export interface DocumentMetadata {
+  title: string
+  author: string
+  subject: string
+  keywords: string[]
+  pdfVersion?: '1.4' | '1.7' | '2.0' | 'PDF/A'
+}
+
+/**
+ * Security options for export and session persistence.
+ */
+export interface SecurityMetadata {
+  isEncrypted: boolean
+  userPassword?: string
+  ownerPassword?: string
+  allowPrinting: boolean
+  allowCopying: boolean
+  allowModifying: boolean
 }
 
 /**

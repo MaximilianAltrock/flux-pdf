@@ -1,9 +1,9 @@
-import type { PageReference, SourceFile, UiBookmarkNode, PdfOutlineNode } from '@/types'
+import type { PageReference, SourceFile, BookmarkNode, PdfOutlineNode } from '@/types'
 
 export function autoGenBookmarksFromPages(
   pages: PageReference[],
   sources: Map<string, SourceFile>,
-): UiBookmarkNode[] {
+): BookmarkNode[] {
   const blocks: { sourceId: string; pages: PageReference[] }[] = []
   let currentBlock: { sourceId: string; pages: PageReference[] } | null = null
 
@@ -20,7 +20,7 @@ export function autoGenBookmarksFromPages(
 
   if (currentBlock) blocks.push(currentBlock)
 
-  const roots: UiBookmarkNode[] = []
+  const roots: BookmarkNode[] = []
 
   for (const block of blocks) {
     const src = sources.get(block.sourceId)
@@ -38,9 +38,7 @@ export function autoGenBookmarksFromPages(
     }
 
     const outlineNodes = src?.outline ?? []
-    let children = outlineNodes.length
-      ? mapOutlineToBookmarks(outlineNodes, pageIdByIndex)
-      : []
+    let children = outlineNodes.length ? mapOutlineToBookmarks(outlineNodes, pageIdByIndex) : []
 
     if (!children.length) {
       children = mapPagesToBookmarks(block.pages)
@@ -61,8 +59,8 @@ export function autoGenBookmarksFromPages(
 function mapOutlineToBookmarks(
   outline: PdfOutlineNode[],
   pageIdByIndex: Map<number, string>,
-): UiBookmarkNode[] {
-  const nodes: UiBookmarkNode[] = []
+): BookmarkNode[] {
+  const nodes: BookmarkNode[] = []
 
   for (const item of outline) {
     const children = mapOutlineToBookmarks(item.children ?? [], pageIdByIndex)
@@ -87,7 +85,7 @@ function mapOutlineToBookmarks(
   return nodes
 }
 
-function mapPagesToBookmarks(pages: PageReference[]): UiBookmarkNode[] {
+function mapPagesToBookmarks(pages: PageReference[]): BookmarkNode[] {
   return pages.map((page) => ({
     id: crypto.randomUUID(),
     title: `Page ${page.sourcePageIndex + 1}`,

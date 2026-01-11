@@ -188,10 +188,17 @@ watch(customPageRange, (value) => {
 
 // Methods
 function buildExportOptions(): ExportOptions {
+  const title = store.metadata.title?.trim() || store.projectTitle?.trim()
+  const exportMetadata = {
+    ...store.metadata,
+    title: title ?? store.metadata.title,
+  }
+
   const options: ExportOptions = {
     filename: filename.value.trim(),
     compress: compress.value,
     compressionQuality: compressionQuality.value,
+    metadata: exportMetadata,
   }
 
   // Page range
