@@ -2,12 +2,12 @@ import { ref } from 'vue'
 import * as pdfjs from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useDocumentStore } from '@/stores/document'
-import { useConverter } from './useConverter'
 import { db } from '@/db/db'
 import type { StoredFile } from '@/db/db'
 import type { SourceFile, PageReference, FileUploadResult } from '@/types'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { extractPdfOutline } from '@/utils/pdfjs-outline'
+import { extractPdfOutline } from '@/utils/pdf-outline-reader'
+import { convertImageToPdf } from '@/utils/image-to-pdf'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
@@ -19,7 +19,6 @@ const pdfDocCache = new Map<string, PDFDocumentProxy>()
 
 export function usePdfManager() {
   const store = useDocumentStore()
-  const { convertImageToPdf } = useConverter()
   const isInitialized = ref(false)
 
   // --- Helper: Color Palette ---
@@ -92,7 +91,7 @@ export function usePdfManager() {
   /**
    * 2. Load File: Save Blob to IDB -> Add Meta to Store
    */
-  async function loadPdfFile(file: File): Promise<FileUploadResult> {
+  async function loadPdfFile(file: File, indexOffset = 0): Promise<FileUploadResult> {
     try {
       store.setLoading(true, `Processing ${file.name}...`)
       const arrayBuffer = await file.arrayBuffer()
@@ -103,7 +102,7 @@ export function usePdfManager() {
       const outline = await extractPdfOutline(pdfDoc)
 
       const sourceFileId = crypto.randomUUID()
-      const color = getNextColor(store.sources.size)
+      const color = getNextColor(store.sources.size + indexOffset)
 
       // A. Save HEAVY data to IndexedDB
       await db.files.add({
@@ -176,13 +175,16 @@ export function usePdfManager() {
   // Wrapper for multiple files (unchanged logic, just calls loadPdfFile)
   async function loadPdfFiles(files: FileList | File[]) {
     const results = []
+    let offset = 0
     for (const file of Array.from(files)) {
       if (file.type === 'application/pdf') {
-        results.push(await loadPdfFile(file))
+        results.push(await loadPdfFile(file, offset))
+        offset++
       } else if (file.type.startsWith('image/')) {
         const conversion = await convertImageToPdf(file)
         if (conversion.success && conversion.file) {
-          results.push(await loadPdfFile(conversion.file))
+          results.push(await loadPdfFile(conversion.file, offset))
+          offset++
         }
       }
     }

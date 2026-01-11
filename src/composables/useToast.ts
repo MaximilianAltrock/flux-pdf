@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { toast } from 'vue-sonner'
 
 export type ToastType = 'success' | 'destructive' | 'warning' | 'info'
 
@@ -7,167 +7,85 @@ export interface ToastAction {
   onClick: () => void
 }
 
-export interface Toast {
-  id: string
-  type: ToastType
-  title: string
-  detail?: string
-  duration: number // 0 = infinite (manual dismiss required)
-  action?: ToastAction
-  createdAt: number
-}
-
-interface ToastOptions {
-  title: string
-  detail?: string
-  type?: ToastType
-  duration?: number
-  action?: ToastAction
-}
-
-const toasts = ref<Toast[]>([])
-const MAX_VISIBLE = 3
-
-// Default durations per type (from spec)
-const DEFAULT_DURATIONS: Record<ToastType, number> = {
-  success: 4000,
-  destructive: 6000, // Extra time for panic-undo
-  warning: 0, // Infinite - must be manually dismissed
-  info: 3000,
-}
-
 /**
  * Composable for managing toast notifications
- * Designed to match the FluxPDF IDE-style notification system
+ * Updated to use vue-sonner while keeping the existing API
  */
 export function useToast() {
-  // Only show max 3, newest on top
-  const activeToasts = computed(() => toasts.value.slice(0, MAX_VISIBLE))
-
-  function addToast(options: ToastOptions): string {
-    const id = crypto.randomUUID()
-    const type = options.type ?? 'info'
-
-    const toast: Toast = {
-      id,
-      type,
-      title: options.title,
-      detail: options.detail,
-      duration: options.duration ?? DEFAULT_DURATIONS[type],
-      action: options.action,
-      createdAt: Date.now(),
-    }
-
-    // Add to beginning (newest on top)
-    toasts.value.unshift(toast)
-
-    // Auto-dismiss after duration (if not infinite)
-    if (toast.duration > 0) {
-      setTimeout(() => {
-        dismiss(id)
-      }, toast.duration)
-    }
-
-    return id
-  }
-
-  function dismiss(id: string): void {
-    const index = toasts.value.findIndex((t) => t.id === id)
-    if (index !== -1) {
-      toasts.value.splice(index, 1)
-    }
-  }
-
-  function dismissAll(): void {
-    toasts.value = []
-  }
-
-  // === Convenience methods matching the spec ===
-
   /**
    * Type A: "Efficiency Flex" - Export success with timing
    */
-  function success(title: string, detail?: string, action?: ToastAction): string {
-    return addToast({
-      title,
-      detail,
-      type: 'success',
-      action,
+  function success(title: string, detail?: string, action?: ToastAction): string | number {
+    return toast.success(title, {
+      description: detail,
+      action: action
+        ? {
+            label: action.label,
+            onClick: action.onClick,
+          }
+        : undefined,
     })
   }
 
   /**
    * Type B: "Safety Net" - Destructive action with UNDO
    */
-  function destructive(title: string, detail?: string, onUndo?: () => void): string {
-    const id = crypto.randomUUID()
-
-    const toast: Toast = {
-      id,
-      type: 'destructive',
-      title,
-      detail,
-      duration: DEFAULT_DURATIONS.destructive,
-      createdAt: Date.now(),
+  function destructive(title: string, detail?: string, onUndo?: () => void): string | number {
+    return toast.error(title, {
+      description: detail,
       action: onUndo
         ? {
             label: 'UNDO',
-            onClick: () => {
-              onUndo()
-              dismiss(id) // Instantly remove toast on undo
-            },
+            onClick: onUndo,
           }
         : undefined,
-    }
-
-    toasts.value.unshift(toast)
-
-    setTimeout(() => {
-      dismiss(id)
-    }, toast.duration)
-
-    return id
+      duration: 6000,
+    })
   }
 
   /**
-   * Type C: "System Alert" - Error/Warning (infinite, must dismiss)
+   * Type C: "System Alert" - Error/Warning
    */
-  function warning(title: string, detail?: string): string {
-    return addToast({
-      title,
-      detail,
-      type: 'warning',
-      duration: 0, // Infinite - must be manually dismissed
+  function warning(title: string, detail?: string): string | number {
+    return toast.warning(title, {
+      description: detail,
+      duration: Infinity,
     })
   }
 
   /**
    * Alias for warning - system errors
    */
-  function error(title: string, detail?: string): string {
-    return warning(title, detail)
+  function error(title: string, detail?: string): string | number {
+    return toast.error(title, {
+      description: detail,
+    })
   }
 
   /**
    * Type D: "Session Restore" - Contextual info
    */
-  function info(title: string, detail?: string): string {
-    return addToast({
-      title,
-      detail,
-      type: 'info',
+  function info(title: string, detail?: string): string | number {
+    return toast.info(title, {
+      description: detail,
     })
   }
 
+  function dismiss(id: string | number): void {
+    toast.dismiss(id)
+  }
+
+  function dismissAll(): void {
+    toast.dismiss()
+  }
+
   return {
-    toasts: activeToasts,
-    addToast,
-    dismiss,
-    dismissAll,
     success,
     destructive,
     warning,
     error,
     info,
+    dismiss,
+    dismissAll,
   }
 }

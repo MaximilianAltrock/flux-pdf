@@ -41,8 +41,7 @@ const instruction = ref<Extract<
 
 const mode = computed<ItemMode>(() => {
   if (props.item.hasChildren) return 'expanded'
-  if (props.item.index + 1 === props.item.parentItem?.children?.length)
-    return 'last-in-group'
+  if (props.item.index + 1 === props.item.parentItem?.children?.length) return 'last-in-group'
   return 'standard'
 })
 
@@ -92,7 +91,7 @@ watchEffect((onCleanup) => {
                 'div',
                 {
                   class:
-                    'bg-surface text-text-primary rounded-md text-sm font-medium px-3 py-1.5 shadow-lg',
+                    'bg-card text-primary rounded-md text-sm font-medium px-3 py-1.5 shadow-lg',
                 },
                 (props.item.value as { title?: string }).title ?? props.item._id,
               ),
@@ -158,11 +157,7 @@ watchEffect((onCleanup) => {
 })
 
 defineSlots<{
-  default(props: {
-    isExpanded: boolean
-    isDragging: boolean
-    isDraggedOver: boolean
-  }): unknown
+  default(props: { isExpanded: boolean; isDragging: boolean; isDraggedOver: boolean }): unknown
 }>()
 </script>
 
@@ -173,27 +168,24 @@ defineSlots<{
       v-slot="{ isExpanded }"
       :value="item.value"
       :level="item.level"
+      class="h-full w-full flex items-center"
     >
-      <slot
-        :is-expanded="isExpanded"
-        :is-dragging="isDragging"
-        :is-dragged-over="isDraggedOver"
-      />
+      <slot :is-expanded="isExpanded" :is-dragging="isDragging" :is-dragged-over="isDraggedOver" />
 
-    <!-- Drop Indicator -->
-    <div
-      v-if="instruction"
-      class="absolute h-full w-full top-0 border-primary pointer-events-none"
-      :style="{
-        left: `${instruction.currentLevel * instruction.indentPerLevel}px`,
-        width: `calc(100% - ${instruction.currentLevel * instruction.indentPerLevel}px)`,
-      }"
-      :class="{
-        'border-b-2': instruction.type === 'reorder-below',
-        'border-t-2': instruction.type === 'reorder-above',
-        'border-2 rounded': instruction.type === 'make-child',
-      }"
-    />
+      <!-- Drop Indicator -->
+      <div
+        v-if="instruction"
+        class="absolute h-full w-full top-0 border-primary pointer-events-none"
+        :style="{
+          left: `${instruction.currentLevel * instruction.indentPerLevel}px`,
+          width: `calc(100% - ${instruction.currentLevel * instruction.indentPerLevel}px)`,
+        }"
+        :class="{
+          'border-b-2': instruction.type === 'reorder-below',
+          'border-t-2': instruction.type === 'reorder-above',
+          'border-2 rounded': instruction.type === 'make-child',
+        }"
+      />
     </RekaTreeItem>
   </div>
 </template>

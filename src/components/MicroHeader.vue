@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import {
   Search,
   Download,
@@ -7,24 +7,30 @@ import {
   Scissors,
   Minus,
   Plus,
-  Loader2,
-  Sun,
-  Moon,
   FilePlus,
   HelpCircle,
 } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
-import { useTheme } from '@/composables/useTheme'
+import ThemeToggle from '@/components/ThemeToggle.vue'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
+import { Spinner } from '@/components/ui/spinner'
 
 const store = useDocumentStore()
-const { isDark, toggleTheme } = useTheme()
 
 const isEditingTitle = ref(false)
-const titleInput = ref<HTMLInputElement | null>(null)
-
-// Logo menu state
-const showLogoMenu = ref(false)
-const logoMenuRef = ref<HTMLElement | null>(null)
+const titleInput = ref<InstanceType<typeof Input> | null>(null)
 
 // Computed for Title to handle store sync and validation
 const displayTitle = computed({
@@ -36,7 +42,12 @@ const displayTitle = computed({
 
 function startEditing() {
   isEditingTitle.value = true
-  setTimeout(() => titleInput.value?.focus(), 0)
+  setTimeout(() => {
+    const el =
+      titleInput.value?.$el?.querySelector?.('input') || titleInput.value?.$el || titleInput.value
+    el?.focus()
+    el?.select?.()
+  }, 0)
 }
 
 function finishEditing() {
@@ -50,35 +61,6 @@ function finishEditing() {
   val = val.replace(/[/\\:]/g, '-')
   store.projectTitle = val
 }
-
-// Logo menu handlers
-function toggleLogoMenu() {
-  showLogoMenu.value = !showLogoMenu.value
-}
-
-function handleNewProject() {
-  showLogoMenu.value = false
-  emit('new-project')
-}
-
-function handleShowHelp() {
-  showLogoMenu.value = false
-  emit('show-help')
-}
-
-function handleClickOutside(event: MouseEvent) {
-  if (logoMenuRef.value && !logoMenuRef.value.contains(event.target as Node)) {
-    showLogoMenu.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 
 // Export logic
 const canExport = computed(() => store.pageCount > 0)
@@ -95,64 +77,49 @@ const emit = defineEmits<{
 
 <template>
   <header
-    class="h-[48px] bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-30 relative select-none"
+    class="h-[48px] border-b border-border flex items-center justify-between px-4 shrink-0 z-30 relative select-none bg-sidebar backdrop-blur-md"
   >
     <!-- Left: Context Zone -->
     <div class="flex items-center gap-4 w-[280px]">
       <!-- Logo with Dropdown -->
-      <div ref="logoMenuRef" class="relative">
-        <button
-          @click.stop="toggleLogoMenu"
-          class="w-6 h-6 bg-primary/20 rounded-sm flex items-center justify-center hover:bg-primary/30 transition-colors cursor-pointer"
-          title="FluxPDF Menu"
-        >
-          <div class="w-3 h-3 bg-primary rounded-[1px]"></div>
-        </button>
-
-        <!-- Logo Dropdown Menu -->
-        <Transition name="menu">
-          <div
-            v-if="showLogoMenu"
-            class="absolute top-full left-0 mt-2 w-48 bg-surface border border-border rounded-lg shadow-xl py-1 z-50"
-          >
-            <button
-              @click="handleNewProject"
-              class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            >
-              <FilePlus class="w-4 h-4 text-text-muted" />
-              <span>New Project</span>
-            </button>
-            <div class="my-1 border-t border-border" />
-            <button
-              @click="handleShowHelp"
-              class="w-full flex items-center gap-3 px-3 py-2 text-sm text-text hover:bg-muted/10 transition-colors"
-            >
-              <HelpCircle class="w-4 h-4 text-text-muted" />
-              <span>Help / Shortcuts</span>
-            </button>
-          </div>
-        </Transition>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="ghost" size="icon" class="w-8 h-8 hover:bg-primary/10 transition-colors">
+            <div class="w-4 h-4 bg-primary rounded-[2px]"></div>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" class="w-48">
+          <DropdownMenuItem @select="emit('new-project')">
+            <FilePlus class="w-4 h-4 mr-2" />
+            <span>New Project</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem @click="emit('show-help')">
+            <HelpCircle class="w-4 h-4 mr-2" />
+            <span>Help / Shortcuts</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <!-- Divider -->
-      <div class="h-4 w-px bg-border"></div>
+      <Separator orientation="vertical" class="!h-4" />
 
       <!-- Title -->
       <div class="flex-1 min-w-0">
         <div v-if="isEditingTitle" class="flex-1">
-          <input
+          <Input
             ref="titleInput"
             v-model="displayTitle"
             @blur="finishEditing"
             @keyup.enter="finishEditing"
-            class="bg-transparent border border-border-focus w-full px-1.5 py-0.5 rounded text-sm text-text-primary font-medium focus:outline-none placeholder-text-muted"
+            class="h-7 text-sm font-medium px-2 focus-visible:ring-1"
           />
         </div>
         <div
           v-else
           @click="startEditing"
-          class="text-sm font-medium text-text-primary px-1.5 py-0.5 rounded cursor-text truncate transition-all border border-transparent"
-          :class="{ 'hover:border-border': !store.isTitleLocked }"
+          class="text-sm font-medium text-primary px-2 py-1 rounded cursor-text truncate transition-all border border-transparent hover:bg-muted/50"
+          :class="{ 'opacity-50 pointer-events-none': store.isTitleLocked }"
           :title="store.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
         >
           {{ displayTitle }}
@@ -162,125 +129,141 @@ const emit = defineEmits<{
 
     <!-- Center: Omnibar -->
     <div class="flex-1 flex justify-center">
-      <div class="relative w-[400px] h-[28px]">
+      <div class="relative w-[400px]">
         <!-- Progress Bar (Background) -->
-        <div v-if="store.isLoading" class="absolute inset-0 bg-primary/10 rounded overflow-hidden">
-          <div class="h-full bg-primary/20 w-full animate-pulse origin-left"></div>
+        <div v-if="store.isLoading" class="absolute inset-0 bg-primary/5 rounded overflow-hidden">
+          <div class="h-full bg-primary/10 w-full animate-pulse origin-left"></div>
         </div>
 
         <button
           @click="$emit('command')"
           :disabled="store.isLoading"
-          class="absolute inset-0 w-full h-full bg-transparent border border-border hover:border-selection/50 rounded flex items-center px-2 gap-2 transition-colors group cursor-text disabled:cursor-wait disabled:opacity-80"
-          :class="store.isLoading ? 'border-primary/30' : 'bg-background'"
+          class="w-full h-[32px] bg-muted border border-border hover:border-primary/50 rounded-md flex items-center px-3 gap-2 transition-all group cursor-text disabled:cursor-wait disabled:opacity-80"
+          :class="{ 'border-primary/30': store.isLoading }"
         >
-          <Loader2 v-if="store.isLoading" class="w-3.5 h-3.5 text-primary animate-spin shrink-0" />
+          <Spinner v-if="store.isLoading" class="w-3.5 h-3.5 text-primary shrink-0" />
           <Search
             v-else
-            class="w-3.5 h-3.5 text-text-muted group-hover:text-text transition-colors shrink-0"
+            class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
           />
 
           <span
             class="text-xs truncate min-w-0 flex-1 text-left"
-            :class="store.isLoading ? 'text-primary' : 'text-text-muted'"
-          >
-            {{
+            :class="
               store.isLoading
-                ? store.loadingMessage || 'Processing...'
-                : 'Search commands...'
-            }}
+                ? 'text-primary font-medium'
+                : 'text-muted-foreground group-hover:text-foreground'
+            "
+          >
+            {{ store.isLoading ? store.loadingMessage || 'Processing...' : 'Search commands...' }}
           </span>
 
-          <div v-if="!store.isLoading" class="ml-auto shrink-0 flex items-center">
-            <kbd
-              class="hidden sm:inline-flex h-4 items-center gap-0.5 px-1.5 rounded bg-surface border border-border font-mono text-[10px] text-text-muted whitespace-nowrap"
-              >⌘K</kbd
+          <div v-if="!store.isLoading" class="ml-auto shrink-0 flex items-center gap-1.5">
+            <Kbd
+              class="hidden sm:inline-flex rounded bg-background border border-border font-mono text-[9px] text-muted-foreground whitespace-nowrap"
             >
+              ⌘K
+            </Kbd>
           </div>
         </button>
       </div>
     </div>
 
     <!-- Right: Action Zone -->
-    <div class="flex items-center justify-end gap-4 w-[280px]">
+    <div class="flex items-center justify-end gap-3 w-[280px]">
       <!-- Tool Switcher -->
-      <div class="flex items-center gap-1 bg-surface rounded p-0.5 border border-border">
-        <button
-          class="p-1 rounded transition-colors"
-          :class="
-            store.currentTool === 'select'
-              ? 'bg-interactive text-text-primary'
-              : 'text-text-muted hover:text-text hover:bg-interactive'
-          "
-          @click="store.currentTool = 'select'"
-        >
-          <MousePointer2 class="w-3.5 h-3.5" />
-        </button>
-        <button
-          class="p-1 rounded transition-colors"
-          :class="
-            store.currentTool === 'razor'
-              ? 'bg-interactive text-text-primary'
-              : 'text-text-muted hover:text-text hover:bg-interactive'
-          "
-          @click="store.currentTool = 'razor'"
-        >
-          <Scissors class="w-3.5 h-3.5" />
-        </button>
-      </div>
+      <ToggleGroup type="single" v-model="store.currentTool" variant="outline" class="h-8">
+        <ToggleGroupItem value="select" aria-label="Select tool" class="px-2 h-7">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <span class="flex items-center justify-center">
+                <MousePointer2 class="w-3.5 h-3.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" :side-offset="8">
+              <p>Select Tool <span class="text-muted-foreground ml-1 text-xxs">(V)</span></p>
+            </TooltipContent>
+          </Tooltip>
+        </ToggleGroupItem>
+        <ToggleGroupItem value="razor" aria-label="Razor tool" class="px-2 h-7">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <span class="flex items-center justify-center">
+                <Scissors class="w-3.5 h-3.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" :side-offset="8">
+              <p>Razor Tool <span class="text-muted-foreground ml-1 text-xxs">(R)</span></p>
+            </TooltipContent>
+          </Tooltip>
+        </ToggleGroupItem>
+      </ToggleGroup>
+
+      <Separator orientation="vertical" class="!h-4" />
 
       <!-- Theme Toggle -->
-      <button
-        @click="toggleTheme()"
-        class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors"
-        :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
-      >
-        <Sun v-if="isDark" class="w-4 h-4" />
-        <Moon v-else class="w-4 h-4" />
-      </button>
+      <ThemeToggle />
+
+      <Separator orientation="vertical" class="!h-4" />
 
       <!-- Zoom -->
-      <div class="flex items-center gap-2">
-        <button
-          @click="$emit('zoom-out')"
-          class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors"
-        >
-          <Minus class="w-4 h-4" />
-        </button>
-        <span class="text-xs font-mono w-9 text-center text-text"
-          >{{ Math.round(store.zoomPercentage) }}%</span
-        >
-        <button
-          @click="$emit('zoom-in')"
-          class="p-1 hover:bg-interactive rounded text-text-muted hover:text-text transition-colors"
-        >
-          <Plus class="w-4 h-4" />
-        </button>
+      <div class="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 text-muted-foreground hover:text-foreground"
+              @click="$emit('zoom-out')"
+            >
+              <Minus class="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" :side-offset="8">
+            <p>Zoom Out <span class="text-muted-foreground ml-1 text-xxs">(⌘-)</span></p>
+          </TooltipContent>
+        </Tooltip>
+
+        <span class="text-[11px] font-mono w-10 text-center text-muted-foreground select-none">
+          {{ Math.round(store.zoomPercentage) }}%
+        </span>
+
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 text-muted-foreground hover:text-foreground"
+              @click="$emit('zoom-in')"
+            >
+              <Plus class="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" :side-offset="8">
+            <p>Zoom In <span class="text-muted-foreground ml-1 text-xxs">(⌘+)</span></p>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
+      <Separator orientation="vertical" class="!h-4" />
+
       <!-- Export CTA -->
-      <button
-        @click="$emit('export')"
-        :disabled="!canExport"
-        class="h-[28px] text-xs font-semibold px-3 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-muted"
-        :class="canExport ? 'bg-primary hover:bg-primary-hover text-white' : ''"
-      >
-        <Download class="w-3.5 h-3.5" />
-        <span>Export</span>
-      </button>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button
+            @click="$emit('export')"
+            :disabled="!canExport"
+            size="sm"
+            class="h-[30px] font-bold px-4 gap-2 shadow-sm"
+          >
+            <Download class="w-3.5 h-3.5" />
+            <span>Export</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent v-if="!canExport" side="bottom" :side-offset="8">
+          <p>Import files to export</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   </header>
 </template>
-
-<style scoped>
-.menu-enter-active,
-.menu-leave-active {
-  transition: all 0.15s ease-out;
-}
-
-.menu-enter-from,
-.menu-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-</style>

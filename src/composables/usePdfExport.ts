@@ -2,9 +2,11 @@ import { ref } from 'vue'
 import { PDFDocument, degrees } from 'pdf-lib'
 import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from './usePdfManager'
+import { usePdfCompression, type CompressionQuality } from './usePdfCompression'
 import JSZip from 'jszip'
 import type { PageReference } from '@/types'
-import { mapUiBookmarksToExport, addBookmarks } from '@/utils/pdf-outline'
+import { mapBookmarksToExport, addBookmarks } from '@/utils/pdf-outline-export'
+import { parsePageRange } from '@/utils/page-range'
 
 /**
  * PDF metadata options
@@ -18,6 +20,13 @@ export interface PdfMetadata {
   producer?: string
 }
 
+export interface ExportResult {
+  filename: string
+  size: number
+  originalSize?: number
+  compressionRatio?: number
+}
+
 /**
  * Export options
  */
@@ -25,7 +34,8 @@ export interface ExportOptions {
   filename: string
   pageRange?: string // e.g., "1-5, 8, 10-12"
   metadata?: PdfMetadata
-  compress?: boolean
+  compress?: boolean // Object stream compression (pdf-lib)
+  compressionQuality?: CompressionQuality | 'none' // Ghostscript WASM compression
 }
 
 /**
@@ -35,64 +45,6 @@ export interface GeneratorOptions {
   metadata?: PdfMetadata
   compress?: boolean
   onProgress?: (percent: number) => void
-}
-
-/**
- * Parse a page range string into an array of 0-based indices
- * e.g., "1-5, 8, 10-12" => [0, 1, 2, 3, 4, 7, 9, 10, 11]
- */
-export function parsePageRange(rangeStr: string, maxPages: number): number[] {
-  const indices: Set<number> = new Set()
-
-  // Split by comma
-  const parts = rangeStr
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-
-  for (const part of parts) {
-    if (part.includes('-')) {
-      // Range: "1-5"
-      const [startStr, endStr] = part.split('-').map((s) => s.trim())
-      if (!startStr || !endStr) continue
-      const start = parseInt(startStr, 10)
-      const end = parseInt(endStr, 10)
-
-      if (!isNaN(start) && !isNaN(end)) {
-        for (let i = Math.max(1, start); i <= Math.min(maxPages, end); i++) {
-          indices.add(i - 1) // Convert to 0-based
-        }
-      }
-    } else {
-      // Single page: "8"
-      const pageNum = parseInt(part, 10)
-      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= maxPages) {
-        indices.add(pageNum - 1) // Convert to 0-based
-      }
-    }
-  }
-
-  return Array.from(indices).sort((a, b) => a - b)
-}
-
-/**
- * Validate a page range string
- */
-export function validatePageRange(
-  rangeStr: string,
-  maxPages: number,
-): { valid: boolean; error?: string } {
-  if (!rangeStr.trim()) {
-    return { valid: false, error: 'Page range is required' }
-  }
-
-  const indices = parsePageRange(rangeStr, maxPages)
-
-  if (indices.length === 0) {
-    return { valid: false, error: 'No valid pages in range' }
-  }
-
-  return { valid: true }
 }
 
 /**
@@ -137,46 +89,79 @@ export function usePdfExport() {
     // Cache loaded PDFs to avoid reloading
     const loadedPdfs = new Map<string, PDFDocument>()
 
-    // Track progress
+    // Group pages by source file to perform batch operations
+    const pagesBySource = new Map<string, { pageRef: PageReference; finalIndex: number }[]>()
+
+    // 1. Group pages by source
+    pages.forEach((page, index) => {
+      if (!pagesBySource.has(page.sourceFileId)) {
+        pagesBySource.set(page.sourceFileId, [])
+      }
+      pagesBySource.get(page.sourceFileId)!.push({ pageRef: page, finalIndex: index })
+    })
+
+    // Array to hold the resulting PDFPage objects in their correct visual order
+    const importedPages: any[] = Array.from({ length: pages.length })
+
+    // 2. Process each source file batch
     let processedPages = 0
     const totalPages = pages.length
 
-    // Process pages in their virtual order
-    for (const pageRef of pages) {
+    for (const [sourceId, items] of pagesBySource) {
       // Get or load the source PDF
-      let sourcePdf = loadedPdfs.get(pageRef.sourceFileId)
+      let sourcePdf = loadedPdfs.get(sourceId)
 
       if (!sourcePdf) {
-        const sourceBuffer = await pdfManager.getPdfBlob(pageRef.sourceFileId)
+        const sourceBuffer = await pdfManager.getPdfBlob(sourceId)
         if (!sourceBuffer) {
-          throw new Error(`Source file not found: ${pageRef.sourceFileId}`)
+          throw new Error(`Source file not found: ${sourceId}`)
         }
-        sourcePdf = await PDFDocument.load(sourceBuffer)
-        loadedPdfs.set(pageRef.sourceFileId, sourcePdf)
+        sourcePdf = await PDFDocument.load(sourceBuffer, { ignoreEncryption: true })
+        loadedPdfs.set(sourceId, sourcePdf)
       }
 
-      const [copiedPage] = await finalPdf.copyPages(sourcePdf, [pageRef.sourcePageIndex])
+      // Extract indices to copy for this batch
+      const sourceIndices = items.map((item) => item.pageRef.sourcePageIndex)
 
-      if (!copiedPage) {
-        throw new Error('Failed to copy page')
+      // Batch copy - this is where the deduplication magic happens
+      const copiedPages = await finalPdf.copyPages(sourcePdf, sourceIndices)
+
+      if (copiedPages.length !== items.length) {
+        throw new Error('Failed to copy some pages')
       }
 
-      // Apply rotation
-      if (pageRef.rotation !== 0) {
-        const currentRotation = copiedPage.getRotation().angle
-        copiedPage.setRotation(degrees(currentRotation + pageRef.rotation))
-      }
+      // 3. Process copied pages (rotation) and place in final array
+      for (let i = 0; i < copiedPages.length; i++) {
+        const pdfPage = copiedPages[i]
+        const item = items[i]
 
-      finalPdf.addPage(copiedPage)
+        if (!item || !pdfPage) continue
 
-      processedPages++
+        const { pageRef, finalIndex } = item
 
-      if (onProgress) {
-        onProgress(Math.round((processedPages / totalPages) * 90))
+        // Apply rotation
+        if (pageRef.rotation !== 0) {
+          const currentRotation = pdfPage.getRotation().angle
+          pdfPage.setRotation(degrees(currentRotation + pageRef.rotation))
+        }
+
+        importedPages[finalIndex] = pdfPage
+        processedPages++
+
+        if (onProgress) {
+          onProgress(Math.round((processedPages / totalPages) * 90))
+        }
       }
 
       // Allow UI updates
       await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    // 4. Add pages to final document in correct order
+    for (const page of importedPages) {
+      if (page) {
+        finalPdf.addPage(page)
+      }
     }
 
     // Build mapping AFTER pages are finalized
@@ -187,7 +172,7 @@ export function usePdfExport() {
       pageIdToIndex.set(p.id, idx++)
     }
 
-    const exportBookmarks = mapUiBookmarksToExport(store.bookmarksTree as any, pageIdToIndex)
+    const exportBookmarks = mapBookmarksToExport(store.bookmarksTree as any, pageIdToIndex)
     await addBookmarks(finalPdf, exportBookmarks)
 
     // Generate the final PDF bytes
@@ -200,7 +185,7 @@ export function usePdfExport() {
   /**
    * Export with full options (Handles ZIP splitting and Downloads)
    */
-  async function exportWithOptions(options: ExportOptions): Promise<void> {
+  async function exportWithOptions(options: ExportOptions): Promise<ExportResult> {
     const { filename, pageRange, metadata, compress } = options
 
     // Determine which pages to export
@@ -270,21 +255,88 @@ export function usePdfExport() {
         exportProgress.value = 100
 
         downloadFile(zipContent, `${filename}.zip`, 'application/zip')
+
+        return {
+          filename: `${filename}.zip`,
+          size: zipContent.byteLength,
+        }
       } else {
         // SINGLE PDF EXPORT (Segment 0)
         const segmentPages = segments[0]
         if (segmentPages) {
-          const pdfBytes = await generateRawPdf(segmentPages, {
+          let pdfBytes = await generateRawPdf(segmentPages, {
             metadata,
             compress,
             onProgress: (val) => {
-              exportProgress.value = val
+              // Scale to 70% for PDF generation, leave 30% for compression
+              const scaledProgress =
+                options.compressionQuality && options.compressionQuality !== 'none'
+                  ? Math.round(val * 0.7)
+                  : val
+              exportProgress.value = scaledProgress
             },
           })
 
+          let originalSize = pdfBytes.byteLength
+          let compressionRatio = 0
+
+          // CHECK: Are we exporting all pages from the source files?
+          // If so, we should report the "Original Size" as the sum of the source files (consistent with SourceRail)
+          // rather than the pdf-lib generated buffer size (which might be optimized/repacked).
+          const pagesBySource = new Map<string, number>()
+          for (const p of segmentPages) {
+            if (p.isDivider) continue
+            const count = pagesBySource.get(p.sourceFileId) || 0
+            pagesBySource.set(p.sourceFileId, count + 1)
+          }
+
+          let isFullSourceExport = true
+          for (const [sId, count] of pagesBySource) {
+            const source = store.sources.get(sId)
+            // If we are missing pages from this source, it's a partial export
+            if (source && count !== source.pageCount) {
+              isFullSourceExport = false
+              break
+            }
+          }
+
+          // If it's a full export (and we have pages), use the estimated size (which is exact for full exports)
+          if (isFullSourceExport && segmentPages.length > 0) {
+            originalSize = getEstimatedSize(segmentPages)
+          }
+
+          // Apply Ghostscript compression if quality is specified
+          if (options.compressionQuality && options.compressionQuality !== 'none') {
+            exportProgress.value = 75
+            const { compressPdf } = usePdfCompression()
+            const result = await compressPdf(pdfBytes, { quality: options.compressionQuality })
+            pdfBytes = result.data
+
+            // Only update originalSize if we didn't already set a semantic "Source Original"
+            // Or if the compression somehow started from a larger base (unlikely but safe)
+            if (!isFullSourceExport) {
+              originalSize = result.originalSize
+            }
+
+            // Recalculate ratio based on our Truth Original Size
+            if (originalSize > 0) {
+              compressionRatio = 1 - pdfBytes.byteLength / originalSize
+            }
+            exportProgress.value = 95
+          }
+
+          exportProgress.value = 100
           // Trigger download
           downloadFile(pdfBytes, `${filename}.pdf`, 'application/pdf')
+
+          return {
+            filename: `${filename}.pdf`,
+            size: pdfBytes.byteLength,
+            originalSize: originalSize !== pdfBytes.byteLength ? originalSize : undefined,
+            compressionRatio: compressionRatio > 0 ? compressionRatio : undefined,
+          }
         }
+        throw new Error('No pages generated')
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Export failed'
@@ -299,14 +351,14 @@ export function usePdfExport() {
   /**
    * Simple export wrapper
    */
-  async function exportPdf(filename = 'document'): Promise<void> {
+  async function exportPdf(filename = 'document'): Promise<ExportResult> {
     return exportWithOptions({ filename })
   }
 
   /**
    * Export only selected pages wrapper
    */
-  async function exportSelectedPages(filename = 'selected-pages'): Promise<void> {
+  async function exportSelectedPages(filename = 'selected-pages'): Promise<ExportResult> {
     if (store.selectedCount === 0) {
       throw new Error('No pages selected')
     }
@@ -363,18 +415,35 @@ export function usePdfExport() {
   /**
    * Get estimated file size (rough approximation)
    */
-  function getEstimatedSize(): string {
-    let totalSize = 0
-    for (const source of store.sourceFileList) {
-      totalSize += source.fileSize
+  function getEstimatedSize(pagesToEstimate?: PageReference[]): number {
+    const pagesList = pagesToEstimate || store.pages
+    let totalEstimatedSize = 0
+
+    // Group pages by source file to check for full file inclusion
+    const pagesBySource = new Map<string, number>()
+
+    for (const page of pagesList) {
+      if (page.isDivider) continue
+      const currentCount = pagesBySource.get(page.sourceFileId) || 0
+      pagesBySource.set(page.sourceFileId, currentCount + 1)
     }
 
-    const avgPageSize = totalSize / Math.max(1, store.pages.length)
-    const estimatedSize = avgPageSize * store.pages.length
+    for (const [sourceId, count] of pagesBySource) {
+      const source = store.sources.get(sourceId)
+      if (!source) continue
 
-    if (estimatedSize < 1024) return `${estimatedSize} B`
-    if (estimatedSize < 1024 * 1024) return `~${(estimatedSize / 1024).toFixed(1)} KB`
-    return `~${(estimatedSize / (1024 * 1024)).toFixed(1)} MB`
+      // If exporting exactly the number of pages the source has, assume full file size
+      // This ensures 1:1 match with SourceRail display for "whole file" exports
+      if (count === source.pageCount) {
+        totalEstimatedSize += source.fileSize
+      } else {
+        // Otherwise use proportional estimation
+        const avgPageSize = source.fileSize / Math.max(1, source.pageCount)
+        totalEstimatedSize += count * avgPageSize
+      }
+    }
+
+    return totalEstimatedSize
   }
 
   return {
@@ -387,7 +456,5 @@ export function usePdfExport() {
     exportSelectedPages,
     getSuggestedFilename,
     getEstimatedSize,
-    parsePageRange,
-    validatePageRange,
   }
 }

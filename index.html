@@ -20,16 +20,6 @@
     />
   </head>
   <body>
-    <!-- Flash prevention: apply theme before first paint -->
-    <script>
-      ;(function () {
-        const saved = localStorage.getItem('flux_theme_preference')
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        if (saved === 'light' || (!saved && !systemDark)) {
-          document.documentElement.classList.add('light-theme')
-        }
-      })()
-    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

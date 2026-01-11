@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Upload, Layers } from 'lucide-vue-next'
+import { Card } from '@/components/ui/card'
 
 const emit = defineEmits<{
   filesSelected: [files: FileList]
@@ -81,8 +82,8 @@ function openFileDialog() {
 </script>
 
 <template>
-  <div
-    class="relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer"
+  <Card
+    class="relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer shadow-none gap-0"
     :class="
       isDragging
         ? 'border-primary bg-primary/5 scale-[1.02]'
@@ -106,17 +107,17 @@ function openFileDialog() {
     <!-- Icon -->
     <div
       class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors"
-      :class="isDragging ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-text-muted'"
+      :class="isDragging ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'"
     >
       <component :is="dropIcon" class="w-8 h-8" />
     </div>
 
     <!-- Text -->
-    <h3 class="text-lg font-semibold mb-2" :class="isDragging ? 'text-primary' : 'text-text'">
+    <h3 class="text-lg font-semibold mb-2" :class="isDragging ? 'text-primary' : 'text-foreground'">
       {{ isDragging ? dropMessage : 'Upload PDF files' }}
     </h3>
 
-    <p class="text-sm text-text-muted mb-4">
+    <p class="text-sm text-muted-foreground mb-4">
       {{
         isDragging && dragType === 'source'
           ? 'Release to add all pages from this source'
@@ -125,7 +126,7 @@ function openFileDialog() {
     </p>
 
     <!-- Supported formats hint -->
-    <p v-if="!isDragging" class="text-xs text-text-muted">Supports: .pdf files</p>
+    <p v-if="!isDragging" class="text-xs text-muted-foreground">Supports: .pdf files</p>
 
     <!-- Drag overlay animation -->
     <div
@@ -133,7 +134,7 @@ function openFileDialog() {
       class="absolute inset-4 border-2 border-primary/50 rounded-lg pointer-events-none"
       style="animation: dropzone-pulse 1s ease-in-out infinite"
     />
-  </div>
+  </Card>
 </template>
 
 <style scoped>
@@ -147,3 +148,4 @@ function openFileDialog() {
   }
 }
 </style>
+

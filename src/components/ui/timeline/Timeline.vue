@@ -1,31 +1,55 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import type { HTMLAttributes } from 'vue'
+import { computed, provide } from 'vue'
+import { cva } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
+import { timelineContextKey, type TimelineVariant, type TimelineSize } from './context'
+
+const timelineVariants = cva('relative flex flex-col list-none p-0 m-0', {
+  variants: {
+    size: {
+      sm: 'gap-4',
+      md: 'gap-6',
+      lg: 'gap-8',
+    },
+    variant: {
+      default: '',
+      history:
+        'gap-0 before:absolute before:inset-y-0 before:left-[19px] before:w-px before:rounded-full before:bg-border before:z-0',
+    },
+  },
+  defaultVariants: {
+    size: 'md',
+    variant: 'default',
+  },
+})
 
 interface Props {
-  /** Alignment of content relative to the line */
-  align?: 'left' | 'right' | 'alternate'
-  /** Orientation of the timeline */
-  orientation?: 'vertical' | 'horizontal'
-  class?: string
+  size?: TimelineSize
+  variant?: TimelineVariant
+  class?: HTMLAttributes['class']
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  align: 'left',
-  orientation: 'vertical',
+  size: 'md',
+  variant: 'default',
 })
 
 const timelineClass = computed(() =>
-  cn(
-    'relative',
-    props.orientation === 'vertical' ? 'flex flex-col' : 'flex flex-row',
-    props.class,
-  ),
+  cn(timelineVariants({ size: props.size, variant: props.variant }), props.class),
+)
+
+provide(
+  timelineContextKey,
+  computed(() => ({
+    size: props.size,
+    variant: props.variant,
+  })),
 )
 </script>
 
 <template>
-  <div :class="timelineClass" :data-align="align" :data-orientation="orientation">
+  <ol aria-label="Timeline" :class="timelineClass">
     <slot />
-  </div>
+  </ol>
 </template>

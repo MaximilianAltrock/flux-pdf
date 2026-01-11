@@ -10,9 +10,6 @@ export { useCommandManager } from './useCommandManager'
 export { useToast } from './useToast'
 export { useConfirm } from './useConfirm'
 
-// Theming & visual
-export { useTheme } from './useTheme'
-
 // Input handling
 export { useKeyboardShortcuts } from './useKeyboardShortcuts'
 export { useFileHandler } from './useFileHandler'

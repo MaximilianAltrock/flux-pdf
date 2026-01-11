@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { SourceFile, PageReference, SelectionState, UiBookmarkNode } from '@/types'
-import { autoGenBookmarksFromPages } from '@/utils/autoGen'
+import type { SourceFile, PageReference, SelectionState, BookmarkNode } from '@/types'
+import { autoGenBookmarksFromPages } from '@/utils/auto-gen-tree'
 
 export interface DocumentMetadata {
   title: string
@@ -42,7 +42,7 @@ export const useDocumentStore = defineStore('document', () => {
     allowCopying: true,
     allowModifying: false,
   })
-  const bookmarksTree = ref<UiBookmarkNode[]>([])
+  const bookmarksTree = ref<BookmarkNode[]>([])
   const bookmarksDirty = ref(false)
 
   const selection = ref<SelectionState>({
@@ -202,7 +202,7 @@ export const useDocumentStore = defineStore('document', () => {
     metadata.value = { title: '', author: '', subject: '', keywords: [] }
   }
 
-  function setBookmarksTree(tree: UiBookmarkNode[], markDirty = false) {
+  function setBookmarksTree(tree: BookmarkNode[], markDirty = false) {
     bookmarksTree.value = tree
     if (markDirty) bookmarksDirty.value = true
   }
@@ -221,7 +221,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function addBookmarkForPage(pageId: string, title = 'New Bookmark') {
-    const node: UiBookmarkNode = {
+    const node: BookmarkNode = {
       id: crypto.randomUUID(),
       title,
       pageId,

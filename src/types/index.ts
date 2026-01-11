@@ -81,11 +81,11 @@ export interface SelectionState {
 /**
  * UI bookmark node used by the Structure panel.
  */
-export interface UiBookmarkNode {
+export interface BookmarkNode {
   id: string
   title: string
   pageId: string
-  children: UiBookmarkNode[]
+  children: BookmarkNode[]
   expanded: boolean
 }
 

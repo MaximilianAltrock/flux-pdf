@@ -12,8 +12,13 @@ import {
   CheckSquare,
   XSquare,
   Undo2,
-  Redo2
+  Redo2,
 } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
 
 defineOptions({ name: 'AppToolbar' })
 
@@ -52,144 +57,168 @@ function clearSelection() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2 px-4 py-3 bg-surface border-b border-border">
-    <!-- Add files button -->
-    <button
-      class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-      title="Add PDF files"
-      @click="emit('addFiles')"
+  <TooltipProvider :delay-duration="400">
+    <div
+      class="flex items-center gap-2 px-4 py-2 bg-background border-b border-border shadow-sm z-10 relative"
     >
-      <FilePlus class="w-4 h-4" />
-      <span>Add PDF</span>
-    </button>
+      <!-- Add files button -->
+      <Button variant="default" size="sm" class="gap-2" @click="emit('addFiles')">
+        <FilePlus class="w-4 h-4" />
+        <span class="hidden sm:inline">Add PDF</span>
+      </Button>
 
-    <!-- Divider -->
-    <div class="w-px h-6 bg-border mx-2" />
+      <Separator orientation="vertical" class="h-6 mx-1" />
 
-    <!-- Undo/Redo -->
-    <div class="flex items-center gap-1">
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="canUndo ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!canUndo"
-        :title="undoName ? `Undo: ${undoName} (Ctrl+Z)` : 'Nothing to undo'"
-        @click="undo"
-      >
-        <Undo2 class="w-5 h-5" />
-      </button>
+      <!-- Undo/Redo -->
+      <ButtonGroup class="gap-1 [&_[data-slot=button]]:rounded-md">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button variant="ghost" size="icon-sm" :disabled="!canUndo" @click="undo">
+              <Undo2 class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            <span v-if="undoName">Undo: {{ undoName }}</span>
+            <span v-else>Nothing to undo</span>
+            <Kbd>⌘Z</Kbd>
+          </TooltipContent>
+        </Tooltip>
 
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="canRedo ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!canRedo"
-        :title="redoName ? `Redo: ${redoName} (Ctrl+Shift+Z)` : 'Nothing to redo'"
-        @click="redo"
-      >
-        <Redo2 class="w-5 h-5" />
-      </button>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button variant="ghost" size="icon-sm" :disabled="!canRedo" @click="redo">
+              <Redo2 class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            <span v-if="redoName">Redo: {{ redoName }}</span>
+            <span v-else>Nothing to redo</span>
+            <Kbd>⇧⌘Z</Kbd>
+          </TooltipContent>
+        </Tooltip>
+      </ButtonGroup>
+
+      <Separator orientation="vertical" class="h-6 mx-1" />
+
+      <!-- Selection actions -->
+      <ButtonGroup class="gap-1 [&_[data-slot=button]]:rounded-md">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button variant="ghost" size="icon-sm" :disabled="!hasPages" @click="selectAll">
+              <CheckSquare class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            Select All <Kbd>⌘A</Kbd>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!hasSelection"
+              @click="clearSelection"
+            >
+              <XSquare class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            Clear Selection <Kbd>Esc</Kbd>
+          </TooltipContent>
+        </Tooltip>
+      </ButtonGroup>
+
+      <Separator orientation="vertical" class="h-6 mx-1" />
+
+      <!-- Page actions -->
+      <ButtonGroup class="gap-1 [&_[data-slot=button]]:rounded-md">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!hasSelection"
+              @click="rotateSelected('ccw')"
+            >
+              <RotateCcw class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            Rotate Left <Kbd>⇧R</Kbd>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!hasSelection"
+              @click="rotateSelected('cw')"
+            >
+              <RotateCw class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            Rotate Right <Kbd>R</Kbd>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="hover:bg-destructive/10 hover:text-destructive"
+              :disabled="!hasSelection"
+              @click="handleDeleteSelected"
+            >
+              <Trash2 class="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent class="flex items-center gap-2">
+            Delete Selected <Kbd>Del</Kbd>
+          </TooltipContent>
+        </Tooltip>
+      </ButtonGroup>
+
+      <!-- Spacer -->
+      <div class="flex-1" />
+
+      <!-- Selection info -->
+      <div v-if="hasPages" class="text-xs text-muted-foreground mr-4 hidden md:block">
+        <span v-if="hasSelection">
+          {{ store.selectedCount }} of {{ store.pageCount }} selected
+        </span>
+        <span v-else> {{ store.pageCount }} page{{ store.pageCount === 1 ? '' : 's' }} </span>
+      </div>
+
+      <!-- Export buttons -->
+      <ButtonGroup class="gap-2 [&_[data-slot=button]]:rounded-md">
+        <Button
+          v-if="hasSelection"
+          variant="outline"
+          size="sm"
+          class="gap-2"
+          @click="emit('exportSelected')"
+        >
+          <Download class="w-4 h-4" />
+          <span class="hidden lg:inline">Export Selected</span>
+        </Button>
+
+        <Button
+          variant="default"
+          size="sm"
+          class="gap-2 bg-foreground text-background hover:bg-foreground/90"
+          :disabled="!hasPages"
+          @click="emit('export')"
+        >
+          <Download class="w-4 h-4" />
+          <span class="hidden sm:inline">Export PDF</span>
+        </Button>
+      </ButtonGroup>
     </div>
-
-    <!-- Divider -->
-    <div class="w-px h-6 bg-border mx-2" />
-
-    <!-- Selection actions -->
-    <div class="flex items-center gap-1">
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="hasPages ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!hasPages"
-        title="Select All (Ctrl+A)"
-        @click="selectAll"
-      >
-        <CheckSquare class="w-5 h-5" />
-      </button>
-
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!hasSelection"
-        title="Clear Selection (Esc)"
-        @click="clearSelection"
-      >
-        <XSquare class="w-5 h-5" />
-      </button>
-    </div>
-
-    <!-- Divider -->
-    <div class="w-px h-6 bg-border mx-2" />
-
-    <!-- Page actions -->
-    <div class="flex items-center gap-1">
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!hasSelection"
-        title="Rotate Left (Shift+R)"
-        @click="rotateSelected('ccw')"
-      >
-        <RotateCcw class="w-5 h-5" />
-      </button>
-
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-muted/20 text-text' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!hasSelection"
-        title="Rotate Right (R)"
-        @click="rotateSelected('cw')"
-      >
-        <RotateCw class="w-5 h-5" />
-      </button>
-
-      <button
-        class="p-2 rounded-lg transition-colors"
-        :class="hasSelection ? 'hover:bg-danger/10 text-danger' : 'text-text-muted/50 cursor-not-allowed'"
-        :disabled="!hasSelection"
-        title="Delete Selected (Delete)"
-        @click="handleDeleteSelected"
-      >
-        <Trash2 class="w-5 h-5" />
-      </button>
-    </div>
-
-    <!-- Spacer -->
-    <div class="flex-1" />
-
-    <!-- Selection info -->
-    <div v-if="hasPages" class="text-sm text-text-muted mr-4">
-      <span v-if="hasSelection">
-        {{ store.selectedCount }} of {{ store.pageCount }} selected
-      </span>
-      <span v-else>
-        {{ store.pageCount }} page{{ store.pageCount === 1 ? '' : 's' }}
-      </span>
-    </div>
-
-    <!-- Export buttons -->
-    <div class="flex items-center gap-2">
-      <!-- Export selected (only shown when there's a selection) -->
-      <button
-        v-if="hasSelection"
-        class="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted/20 transition-colors text-text"
-        title="Export only the selected pages"
-        @click="emit('exportSelected')"
-      >
-        <Download class="w-4 h-4" />
-        <span>Export Selected</span>
-      </button>
-
-      <!-- Export all -->
-      <button
-        class="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
-        :class="hasPages
-          ? 'bg-text text-background hover:bg-text/90'
-          : 'bg-muted/20 text-text-muted cursor-not-allowed'"
-        :disabled="!hasPages"
-        title="Export all pages as PDF"
-        @click="emit('export')"
-      >
-        <Download class="w-4 h-4" />
-        <span>Export PDF</span>
-      </button>
-    </div>
-  </div>
+  </TooltipProvider>
 </template>

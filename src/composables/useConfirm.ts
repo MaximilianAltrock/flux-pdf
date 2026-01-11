@@ -41,20 +41,18 @@ export function useConfirm() {
    * Handle user confirming
    */
   function handleConfirm(): void {
-    if (state.value) {
-      state.value.resolve(true)
-    }
+    const resolver = state.value?.resolve
     close()
+    if (resolver) resolver(true)
   }
 
   /**
    * Handle user canceling
    */
   function handleCancel(): void {
-    if (state.value) {
-      state.value.resolve(false)
-    }
+    const resolver = state.value?.resolve
     close()
+    if (resolver) resolver(false)
   }
 
   /**

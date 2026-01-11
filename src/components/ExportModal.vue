@@ -7,20 +7,24 @@ import {
   AlertCircle,
   ChevronDown,
   Settings,
+  X,
 } from 'lucide-vue-next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import {
-  usePdfExport,
-  parsePageRange,
-  validatePageRange,
-  type ExportOptions,
-} from '@/composables/usePdfExport'
+import { usePdfExport, type ExportOptions } from '@/composables/usePdfExport'
+import type { PageReference } from '@/types'
+import type { CompressionQuality } from '@/composables/usePdfCompression'
 import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from '@/components/ui/input-group'
 import {
   Dialog,
   DialogFooter,
@@ -28,7 +32,10 @@ import {
   DialogTitle,
   DialogScrollContent,
 } from '@/components/ui/dialog'
-
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { parsePageRange, validatePageRange } from '@/utils/page-range'
+import { formatBytes } from '@/utils/format-size'
 const props = defineProps<{
   open: boolean
   exportSelected?: boolean
@@ -60,7 +67,13 @@ const activeTab = ref<'basic' | 'pages' | 'metadata' | 'options'>('basic')
 const showAdvanced = ref(false)
 
 // Export stats for the success toast
-const exportStats = ref<{ filename: string; sizeKB: number; durationMs: number } | null>(null)
+const exportStats = ref<{
+  filename: string
+  sizeKB: number
+  durationMs: number
+  originalSizeKB?: number
+  compressionRatio?: number
+} | null>(null)
 
 // Page range
 const pageRangeMode = ref<'all' | 'selected' | 'custom'>('all')
@@ -71,6 +84,7 @@ const keywordsInput = ref('')
 
 // Options
 const compress = ref(true)
+const compressionQuality = ref<CompressionQuality | 'none'>('ebook')
 
 // Reset state when modal opens
 watch(
@@ -96,6 +110,7 @@ watch(
       keywordsInput.value = ''
 
       compress.value = true
+      compressionQuality.value = 'ebook'
     }
   },
 )
@@ -112,6 +127,23 @@ const pageCount = computed(() => {
     }
   }
   return store.pageCount
+})
+
+const pagesToExport = computed(() => {
+  if (pageRangeMode.value === 'all') {
+    return store.pages
+  }
+  if (pageRangeMode.value === 'selected') {
+    return store.pages.filter((p) => store.selection.selectedIds.has(p.id))
+  }
+  if (pageRangeMode.value === 'custom' && customPageRange.value) {
+    const validation = validatePageRange(customPageRange.value, store.pageCount)
+    if (validation.valid) {
+      const indices = parsePageRange(customPageRange.value, store.pageCount)
+      return indices.map((i) => store.pages[i]).filter((p): p is PageReference => !!p)
+    }
+  }
+  return []
 })
 
 const canExport = computed(() => {
@@ -159,6 +191,7 @@ function buildExportOptions(): ExportOptions {
   const options: ExportOptions = {
     filename: filename.value.trim(),
     compress: compress.value,
+    compressionQuality: compressionQuality.value,
   }
 
   // Page range
@@ -179,24 +212,20 @@ async function handleExport() {
 
   try {
     const options = buildExportOptions()
-    await exportWithOptions(options)
+    // ...
+    const result = await exportWithOptions(options)
 
     const endTime = performance.now()
     const durationMs = Math.round(endTime - startTime)
 
-    // Estimate file size (rough approximation based on source files)
-    let totalSize = 0
-    for (const source of store.sourceFileList) {
-      totalSize += source.fileSize
-    }
-    const avgPageSize = totalSize / Math.max(1, store.pages.length)
-    const estimatedSizeKB = Math.round((avgPageSize * pageCount.value) / 1024)
-
     exportStats.value = {
-      filename: `${options.filename}.pdf`,
-      sizeKB: estimatedSizeKB,
+      filename: result.filename,
+      sizeKB: Math.round(result.size / 1024),
       durationMs,
+      originalSizeKB: result.originalSize ? Math.round(result.originalSize / 1024) : undefined,
+      compressionRatio: result.compressionRatio,
     }
+    // ...
 
     exportComplete.value = true
     emit(
@@ -236,213 +265,430 @@ if (isMobile.value) {
 
 <template>
   <Dialog :open="open" @update:open="onOpenChange">
-    <DialogScrollContent class="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle>Export PDF</DialogTitle>
+    <DialogScrollContent class="sm:max-w-xl p-0 overflow-hidden bg-background/98">
+      <DialogHeader
+        class="h-14 border-b border-border/40 flex items-center justify-between px-6 bg-card/50 backdrop-blur-md shrink-0 space-y-0 flex-row z-50 antialiased"
+      >
+        <div class="flex flex-col">
+          <span
+            class="text-xxs font-bold tracking-[0.2em] uppercase text-muted-foreground/60 leading-none mb-1"
+          >
+            Production Pipeline
+          </span>
+          <DialogTitle class="text-sm font-semibold flex items-center gap-2">
+            <Download class="w-4 h-4 text-primary" />
+            EXPORT PDF
+          </DialogTitle>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          class="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 hover:rotate-90"
+          :disabled="isExporting"
+          @click="handleClose"
+        >
+          <X class="w-4 h-4" />
+        </Button>
       </DialogHeader>
 
-      <div class="py-4">
-        <!-- Export complete state -->
-        <div v-if="exportComplete" class="text-center py-8">
-          <CheckCircle class="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-text mb-2">Export Complete!</h3>
-          <p class="text-sm text-text-muted">Your PDF has been downloaded successfully.</p>
-          <p v-if="exportStats" class="text-xs font-mono text-emerald-500 mt-2">
-            {{ exportStats.filename }} • {{ exportStats.durationMs }}ms
-          </p>
-        </div>
-
-        <!-- Error state -->
-        <div v-else-if="exportError" class="text-center py-8">
-          <AlertCircle class="w-16 h-16 text-danger mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-text mb-2">Export Failed</h3>
-          <p class="text-sm text-danger mb-4">{{ exportError }}</p>
-          <Button
-            variant="ghost"
-            class="bg-muted/10 hover:bg-muted/20"
-            @click="resetError"
+      <div class="px-6 py-6 pb-2">
+        <div class="space-y-6">
+          <!-- Export complete state -->
+          <div
+            v-if="exportComplete"
+            class="text-center py-8 bg-card/30 rounded-2xl border border-border/40 shadow-sm backdrop-blur-sm"
           >
-            Try Again
-          </Button>
-        </div>
+            <div class="relative inline-block mb-4">
+              <div class="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full"></div>
+              <CheckCircle class="w-16 h-16 text-emerald-500 relative z-10" />
+            </div>
+            <h3 class="text-lg font-bold tracking-tight text-foreground mb-1">Export Successful</h3>
+            <p class="text-xs text-muted-foreground max-w-[240px] mx-auto mb-4">
+              Your professional document has been generated and downloaded.
+            </p>
 
-        <!-- Exporting state -->
-        <div v-else-if="isExporting" class="py-8">
-          <div class="flex items-center justify-center gap-3 mb-4">
-            <svg class="w-6 h-6 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <span class="text-text font-medium">Generating PDF...</span>
-          </div>
-          <div class="w-full bg-muted/20 rounded-full h-2 overflow-hidden">
             <div
-              class="h-full bg-primary transition-all duration-300 ease-out"
-              :style="{ width: `${exportProgress}%` }"
-            />
-          </div>
-          <p class="text-center text-sm text-text-muted mt-2">{{ exportProgress }}% complete</p>
-        </div>
-
-        <!-- Form -->
-        <div v-else class="space-y-4">
-          <!-- File info summary -->
-          <div class="flex items-center gap-3 p-3 bg-muted/5 rounded-lg">
-            <FileText class="w-8 h-8 text-primary flex-shrink-0" />
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-text">{{ pageRangeDescription }}</p>
-              <p class="text-xs text-text-muted">Estimated size: {{ getEstimatedSize() }}</p>
-            </div>
-          </div>
-
-          <!-- Filename -->
-          <div>
-            <Label for="filename" class="mb-1 block">
-              Filename
-            </Label>
-            <div class="flex items-center gap-2">
-              <Input
-                id="filename"
-                ref="filenameInputRef"
-                v-model="filename"
-                type="text"
-                placeholder="Enter filename"
-                class="flex-1"
-              />
-              <span class="text-text-muted text-sm">.pdf</span>
-            </div>
-          </div>
-
-          <!-- Page Range -->
-          <div>
-            <Label class="text-text mb-2 block font-medium">Pages to Export</Label>
-            <RadioGroup
-              :model-value="pageRangeMode"
-              @update:model-value="(v) => pageRangeMode = (v as 'all' | 'selected' | 'custom')"
+              v-if="exportStats"
+              class="flex flex-col gap-1 p-3 bg-background/80 rounded-xl border border-border/20 text-left w-full max-w-[320px] mx-auto"
             >
-              <div class="flex items-center gap-2">
-                <RadioGroupItem id="range-all" value="all" />
-                <Label for="range-all" class="cursor-pointer font-normal">
-                  All pages ({{ store.pageCount }})
-                </Label>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <RadioGroupItem
-                  id="range-selected"
-                  value="selected"
-                  :disabled="store.selectedCount === 0"
-                />
-                <Label
-                  for="range-selected"
-                  class="font-normal"
-                  :class="store.selectedCount > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'"
+              <div
+                class="flex justify-between items-center text-[8px] font-bold uppercase tracking-wider text-muted-foreground/60 gap-4"
+              >
+                <span class="shrink-0">Output Label</span>
+                <span class="font-mono text-emerald-500 shrink-0"
+                  >{{ exportStats.durationMs }}ms</span
                 >
-                  Selected pages ({{ store.selectedCount }})
+              </div>
+              <div
+                class="text-xs font-mono font-medium truncate text-foreground mb-1 min-w-0"
+                :title="exportStats.filename"
+              >
+                {{ exportStats.filename }}
+              </div>
+              <div class="flex justify-between items-center pt-1.5 border-t border-border/20">
+                <span class="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/60"
+                  >File Size</span
+                >
+                <div class="flex flex-col items-end">
+                  <span class="text-xs font-mono font-bold text-foreground">{{
+                    formatBytes(exportStats.sizeKB * 1024)
+                  }}</span>
+                  <span
+                    v-if="exportStats.compressionRatio"
+                    class="text-[8px] font-mono text-emerald-500"
+                  >
+                    -{{ Math.round(exportStats.compressionRatio * 100) }}% ({{
+                      formatBytes(exportStats.originalSizeKB! * 1024)
+                    }})
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div v-else-if="exportError" class="py-6">
+            <Alert variant="destructive" class="max-w-md mx-auto">
+              <AlertCircle class="w-4 h-4" />
+              <AlertTitle>Export Failed</AlertTitle>
+              <AlertDescription class="mt-2 text-sm">
+                {{ exportError }}
+              </AlertDescription>
+              <div class="mt-3">
+                <Button variant="ghost" class="bg-muted/10 hover:bg-muted/20" @click="resetError">
+                  Try Again
+                </Button>
+              </div>
+            </Alert>
+          </div>
+
+          <!-- Exporting state -->
+          <div v-else-if="isExporting" class="py-8 flex flex-col items-center">
+            <div class="relative w-20 h-20 mb-6">
+              <div class="absolute inset-0 border-4 border-primary/10 rounded-full"></div>
+              <div
+                class="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"
+              ></div>
+              <div
+                class="absolute inset-0 flex items-center justify-center font-mono font-bold text-base text-primary"
+              >
+                {{ exportProgress }}%
+              </div>
+            </div>
+            <div class="text-center space-y-1">
+              <span class="text-base font-bold tracking-tight text-foreground block"
+                >Generating PDF</span
+              >
+              <span
+                class="text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] animate-pulse"
+                >Processing Assets...</span
+              >
+            </div>
+
+            <div class="w-full max-w-xs mt-8 bg-muted/20 rounded-full h-1 overflow-hidden">
+              <div
+                class="h-full bg-primary transition-all duration-300 shadow-[0_0_8px_var(--primary)]"
+                :style="{ width: `${exportProgress}%` }"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Form -->
+          <div v-else class="space-y-6">
+            <!-- File info summary -->
+            <div
+              class="flex items-center gap-4 p-4 bg-card border border-border/40 rounded-xl shadow-sm"
+            >
+              <div
+                class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0"
+              >
+                <FileText class="w-5 h-5 text-primary" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-0.5">
+                  <span
+                    class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60"
+                    >Export Target</span
+                  >
+                  <span
+                    class="text-[9px] font-mono font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded"
+                    >{{ pageCount }} PAGES</span
+                  >
+                </div>
+                <p class="text-sm font-semibold text-foreground truncate">
+                  {{ pageRangeDescription }}
+                </p>
+                <p class="text-[9px] font-mono text-muted-foreground">
+                  Est. size:
+                  <span class="text-foreground/80">{{
+                    formatBytes(getEstimatedSize(pagesToExport))
+                  }}</span>
+                  <span class="ml-1 text-[8px] opacity-50"
+                    >({{ getEstimatedSize(pagesToExport) }} B)</span
+                  >
+                </p>
+              </div>
+            </div>
+
+            <!-- Filename -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between px-1">
+                <Label
+                  for="filename"
+                  class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/80"
+                >
+                  Output Filename
                 </Label>
               </div>
+              <InputGroup class="bg-card/50">
+                <InputGroupInput
+                  id="filename"
+                  ref="filenameInputRef"
+                  v-model="filename"
+                  type="text"
+                  placeholder="untitled-project"
+                  class="h-10 font-mono text-sm border-border/40 focus-visible:ring-primary/20"
+                />
+                <InputGroupAddon align="inline-end" class="border-border/40">
+                  <InputGroupText class="font-mono text-xs opacity-60">.pdf</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
+            </div>
 
-              <div class="flex items-center gap-2">
-                <RadioGroupItem id="range-custom" value="custom" />
-                <Label for="range-custom" class="cursor-pointer font-normal">
-                  Custom range
-                </Label>
+            <!-- Page Range -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between px-1">
+                <Label
+                  class="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/80"
+                  >Page Context</Label
+                >
               </div>
-            </RadioGroup>
 
-              <div v-if="pageRangeMode === 'custom'" class="pl-6 pt-2">
+              <RadioGroup
+                :model-value="pageRangeMode"
+                @update:model-value="(v) => (pageRangeMode = v as 'all' | 'selected' | 'custom')"
+                class="grid grid-cols-1 gap-2"
+              >
+                <div class="relative">
+                  <RadioGroupItem id="range-all" value="all" class="peer sr-only" />
+                  <Label
+                    for="range-all"
+                    class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                  >
+                    <span class="text-sm font-medium">Whole Document</span>
+                    <span class="text-[9px] font-mono text-muted-foreground"
+                      >{{ store.pageCount }} pages</span
+                    >
+                  </Label>
+                </div>
+
+                <div class="relative">
+                  <RadioGroupItem
+                    id="range-selected"
+                    value="selected"
+                    :disabled="store.selectedCount === 0"
+                    class="peer sr-only"
+                  />
+                  <Label
+                    for="range-selected"
+                    class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                    :class="
+                      store.selectedCount > 0
+                        ? 'cursor-pointer hover:bg-muted/40'
+                        : 'opacity-50 cursor-not-allowed grayscale bg-muted/20'
+                    "
+                  >
+                    <span class="text-sm font-medium">Selected Frames</span>
+                    <span class="text-[9px] font-mono text-muted-foreground"
+                      >{{ store.selectedCount }} items</span
+                    >
+                  </Label>
+                </div>
+
+                <div class="relative">
+                  <RadioGroupItem id="range-custom" value="custom" class="peer sr-only" />
+                  <Label
+                    for="range-custom"
+                    class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                  >
+                    <span class="text-sm font-medium">Manual Range</span>
+                    <span class="text-[9px] font-mono text-muted-foreground">User defined</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              <div
+                v-if="pageRangeMode === 'custom'"
+                class="pt-1 animate-in fade-in slide-in-from-top-2 duration-300"
+              >
                 <Input
                   v-model="customPageRange"
                   type="text"
                   placeholder="e.g., 1-5, 8, 10-12"
-                  :class="pageRangeError ? 'border-danger' : 'border-border'"
+                  class="h-10 font-mono text-xs border-border/40 px-4 bg-muted/20"
+                  :class="
+                    pageRangeError
+                      ? 'border-destructive focus-visible:ring-destructive/20'
+                      : 'focus-visible:ring-primary/20'
+                  "
                 />
-                <p v-if="pageRangeError" class="text-xs text-danger mt-1">
-                  {{ pageRangeError }}
-                </p>
-                <p v-else class="text-xs text-text-muted mt-1">
-                  Enter page numbers and/or ranges separated by commas
-                </p>
-              </div>
-          </div>
-
-          <!-- Advanced Options Toggle -->
-          <button
-            type="button"
-            class="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors"
-            @click="showAdvanced = !showAdvanced"
-          >
-            <ChevronDown
-              class="w-4 h-4 transition-transform"
-              :class="showAdvanced ? 'rotate-180' : ''"
-            />
-            Advanced options
-          </button>
-
-          <!-- Advanced Options -->
-          <div v-if="showAdvanced" class="space-y-4 pl-2 border-l-2 border-border">
-            <!-- Options Section -->
-            <div>
-              <h4 class="text-sm font-medium text-text mb-2 flex items-center gap-2">
-                <Settings class="w-4 h-4" />
-                Export Options
-              </h4>
-              <div class="flex items-center gap-2">
-                <Checkbox
-                  id="opt-compress"
-                  :checked="compress"
-                  @update:checked="(v: boolean) => compress = v"
-                />
-                <Label
-                  for="opt-compress"
-                  class="cursor-pointer"
+                <p
+                  v-if="pageRangeError"
+                  class="text-[9px] font-bold text-destructive mt-2 pl-1 uppercase"
                 >
-                  Optimize file size
-                </Label>
+                  Error: {{ pageRangeError }}
+                </p>
+                <p
+                  v-else
+                  class="text-[9px] font-medium text-muted-foreground/60 mt-2 pl-1 tracking-tight"
+                >
+                  Enter comma-separated page numbers or ranges (e.g. 1-4, 7, 12).
+                </p>
               </div>
-              <p class="text-xs text-text-muted mt-1 pl-6">
-                Uses object streams for smaller file size
-              </p>
             </div>
+
+            <!-- Advanced Options Toggle -->
+            <Collapsible
+              v-model:open="showAdvanced"
+              class="bg-muted/10 rounded-xl border border-border/20 overflow-hidden"
+            >
+              <CollapsibleTrigger as-child>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  class="w-full h-10 px-4 py-0 justify-between text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all"
+                >
+                  <div class="flex items-center gap-2">
+                    <Settings class="w-3 h-3" />
+                    System Parameters
+                  </div>
+                  <ChevronDown
+                    class="w-3 h-3 transition-transform duration-300"
+                    :class="showAdvanced ? 'rotate-180' : ''"
+                  />
+                </Button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <!-- Advanced Options -->
+                <div class="p-5 pt-0 grid grid-cols-1 gap-4">
+                  <!-- Object Stream Compression -->
+                  <div
+                    class="flex items-center justify-between p-4 bg-background/50 border border-border/20 rounded-xl"
+                  >
+                    <div class="space-y-0.5">
+                      <Label for="opt-compress" class="text-sm font-semibold cursor-pointer"
+                        >Object Stream Compression</Label
+                      >
+                      <p class="text-xxs text-muted-foreground/70 font-medium">
+                        Internal PDF structure optimization
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="opt-compress"
+                      :checked="compress"
+                      @update:checked="(v: boolean) => (compress = v)"
+                    />
+                  </div>
+
+                  <!-- Ghostscript Compression Quality -->
+                  <div class="p-4 bg-background/50 border border-border/20 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="space-y-0.5">
+                        <Label class="text-sm font-semibold">PDF Compression (Ghostscript)</Label>
+                        <p class="text-xxs text-muted-foreground/70 font-medium">
+                          Reduce file size with image downsampling
+                        </p>
+                      </div>
+                    </div>
+                    <RadioGroup
+                      :model-value="compressionQuality"
+                      @update:model-value="
+                        (v) => (compressionQuality = v as CompressionQuality | 'none')
+                      "
+                      class="grid grid-cols-2 gap-2"
+                    >
+                      <div class="relative">
+                        <RadioGroupItem id="cq-none" value="none" class="peer sr-only" />
+                        <Label
+                          for="cq-none"
+                          class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                        >
+                          <span class="text-xs font-medium">Off</span>
+                          <span class="text-xxs text-muted-foreground">No compression</span>
+                        </Label>
+                      </div>
+                      <div class="relative">
+                        <RadioGroupItem id="cq-screen" value="screen" class="peer sr-only" />
+                        <Label
+                          for="cq-screen"
+                          class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                        >
+                          <span class="text-xs font-medium">Screen</span>
+                          <span class="text-xxs text-muted-foreground"
+                            >72 dpi · Max compression</span
+                          >
+                        </Label>
+                      </div>
+                      <div class="relative">
+                        <RadioGroupItem id="cq-ebook" value="ebook" class="peer sr-only" />
+                        <Label
+                          for="cq-ebook"
+                          class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                        >
+                          <span class="text-xs font-medium">Ebook</span>
+                          <span class="text-xxs text-muted-foreground">150 dpi · Recommended</span>
+                        </Label>
+                      </div>
+                      <div class="relative">
+                        <RadioGroupItem id="cq-printer" value="printer" class="peer sr-only" />
+                        <Label
+                          for="cq-printer"
+                          class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                        >
+                          <span class="text-xs font-medium">Printer</span>
+                          <span class="text-xxs text-muted-foreground">300 dpi · High quality</span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       </div>
 
-      <DialogFooter class="gap-2 sm:gap-0">
+      <DialogFooter
+        class="p-4 border-t border-border/40 glass-surface backdrop-blur-md flex items-center justify-end gap-3 shrink-0 z-50 antialiased"
+      >
         <Button
           v-if="!exportComplete && !exportError"
           variant="ghost"
+          class="h-9 px-4 text-[10px] font-bold uppercase tracking-widest hover:bg-muted transition-all"
           :disabled="isExporting"
           @click="handleClose"
         >
-          Cancel
+          Abort
         </Button>
 
         <Button
           v-if="exportComplete"
+          class="h-9 px-6 text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-primary/10 transition-all"
           @click="handleClose"
         >
-          Done
+          Exit Process
         </Button>
 
         <Button
           v-else-if="!exportError"
           :disabled="!canExport"
+          class="h-9 px-6 text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-95"
           @click="handleExport"
         >
-          <Download class="w-4 h-4 mr-2" />
-          Export {{ pageCount }} Page{{ pageCount === 1 ? '' : 's' }}
+          <Download class="w-3.5 h-3.5 mr-2" />
+          Initialize ({{ pageCount }})
         </Button>
       </DialogFooter>
     </DialogScrollContent>

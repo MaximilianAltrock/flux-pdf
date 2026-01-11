@@ -1,27 +1,57 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { Tree, TreeItem } from '@/components/ui/tree'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Timeline, TimelineItem, TimelineTime, TimelineTitle } from '@/components/ui/timeline'
 import {
-  Stepper,
-  StepperItem,
-  StepperTrigger,
-  StepperSeparator,
-  StepperTitle,
-  StepperDescription,
-} from '@/components/ui/stepper'
-import { FileText, Tag, Lock, Eye, EyeOff, ChevronRight, Crosshair, Check, Circle, Dot } from 'lucide-vue-next'
+  FileText,
+  Tag,
+  Lock,
+  Eye,
+  EyeOff,
+  ChevronRight,
+  Crosshair,
+  X,
+  Plus,
+  History,
+} from 'lucide-vue-next'
 import type { UiBookmarkNode } from '@/types'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable'
 
 const store = useDocumentStore()
 const { historyList, jumpTo } = useCommandManager()
+
+const historyScrollArea = ref<any>(null)
+
+watch(
+  () => historyList.value.length,
+  async (newLength, oldLength) => {
+    if (newLength > oldLength) {
+      await nextTick()
+      if (historyScrollArea.value) {
+        const viewport = historyScrollArea.value.$el.querySelector(
+          '[data-slot="scroll-area-viewport"]',
+        )
+        if (viewport) {
+          viewport.scrollTo({
+            top: viewport.scrollHeight,
+            behavior: 'smooth',
+          })
+        }
+      }
+    }
+  },
+)
 
 function addCustomBookmark() {
   const pageId = store.selection.lastSelectedId
@@ -30,7 +60,7 @@ function addCustomBookmark() {
 }
 
 function scrollGridToPage(pageId: string) {
-  const el = document.getElementById(`page-${pageId}`)
+  const el = document.querySelector(`[data-page-id="${pageId}"]`)
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     store.selectPage(pageId, false)
@@ -65,368 +95,517 @@ function formatTime(ts: number) {
 </script>
 
 <template>
-  <aside class="w-[260px] bg-surface border-l border-border flex flex-col shrink-0 overflow-hidden">
-    <!-- Top Half: Document Controller -->
-    <div class="flex-1 flex flex-col min-h-0 bg-background">
-      <!-- TAB BAR -->
-      <Tabs default-value="structure" class="flex-1 flex flex-col min-h-0">
-        <TabsList class="flex h-8 shrink-0 bg-background border-b border-border rounded-none p-0">
-          <TabsTrigger
-            value="structure"
-            class="ui-tab flex-1 rounded-none data-[state=active]:ui-tab-active data-[state=inactive]:ui-tab-inactive"
-          >
-            <FileText class="w-3 h-3" />
-            structure
-          </TabsTrigger>
-          <TabsTrigger
-            value="metadata"
-            class="ui-tab flex-1 rounded-none data-[state=active]:ui-tab-active data-[state=inactive]:ui-tab-inactive"
-          >
-            <Tag class="w-3 h-3" />
-            metadata
-          </TabsTrigger>
-          <TabsTrigger
-            value="security"
-            class="ui-tab flex-1 rounded-none data-[state=active]:ui-tab-active data-[state=inactive]:ui-tab-inactive"
-          >
-            <Lock class="w-3 h-3" />
-            security
-          </TabsTrigger>
-        </TabsList>
-
-        <!-- TAB CONTENT AREA -->
-        <div class="flex-1 overflow-y-auto custom-scrollbar relative">
-          <!-- A. STRUCTURE TAB (Auto-Generated TOC) -->
-          <TabsContent value="structure" class="flex flex-col h-full mt-0">
-          <div v-if="store.pageCount === 0" class="p-8 text-center">
-            <p class="text-xs text-text-muted italic">Import files to see structure</p>
-          </div>
-
-          <div v-else class="py-2 flex flex-col min-h-0">
-            <div class="px-4 pb-2">
-              <p class="ui-label">Table of Contents</p>
-              <p class="text-[10px] text-text-muted opacity-60">
-                Drag & drop to reorder; drop into the indented area to nest
-              </p>
-            </div>
-
-            <div class="flex-1 min-h-0 overflow-y-auto">
-              <Tree
-                :items="store.bookmarksTree"
-                :get-key="(item) => item.id"
-                @update:items="(val) => store.setBookmarksTree(val as UiBookmarkNode[], true)"
-                class="w-full bg-transparent rounded-md p-2"
-                v-slot="{ flattenItems }"
+  <ResizablePanel as-child :default-size="20" :min-size="15" :max-size="30">
+    <aside
+      class="bg-sidebar border-l border-border flex flex-col overflow-hidden h-full select-none"
+    >
+      <ResizablePanelGroup direction="vertical">
+        <!-- Top Half: Document Controller -->
+        <ResizablePanel :default-size="60" :min-size="30" class="flex flex-col overflow-hidden">
+          <div class="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
+            <!-- TAB BAR -->
+            <Tabs
+              default-value="structure"
+              class="flex-1 min-h-0 flex flex-col gap-0 overflow-hidden"
+            >
+              <div
+                class="h-9 px-1 border-b border-border/60 bg-sidebar/50 backdrop-blur-sm flex items-center"
               >
-                <TreeItem
-                  v-for="item in flattenItems"
-                  :key="item._id"
-                  :item="item"
-                  v-slot="{ isExpanded }"
-                  class="group flex items-center h-7 px-2 rounded outline-none hover:bg-surface-hover cursor-default transition-colors focus:ring-primary focus:ring-2 data-[selected]:bg-primary/10"
-                  :style="{ paddingLeft: `${10 + item.level * 14}px` }"
-                >
-                  <!-- Expander -->
-                  <button
-                    class="mr-1 text-text-muted/70 hover:text-text transition-colors"
-                    :style="{ opacity: item.hasChildren ? 1 : 0.25 }"
-                    @click.stop
+                <TabsList class="bg-transparent h-7 p-0 gap-1 w-full justify-start">
+                  <TabsTrigger
+                    value="structure"
+                    class="h-7 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm transition-all flex items-center gap-1.5"
                   >
-                    <ChevronRight
-                      class="w-3.5 h-3.5 transition-transform"
-                      :class="isExpanded ? 'rotate-90' : ''"
-                    />
-                  </button>
-
-                  <!-- Title -->
-                  <span class="text-xs text-text-primary truncate flex-1 font-medium">
-                    {{ (item.value as UiBookmarkNode).title }}
-                  </span>
-
-                  <!-- Target Action -->
-                  <button
-                    @click.stop="scrollGridToPage((item.value as UiBookmarkNode).pageId)"
-                    class="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-opacity"
-                    title="Jump to section"
+                    <FileText class="w-3 h-3" />
+                    structure
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="metadata"
+                    class="h-7 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm transition-all flex items-center gap-1.5"
                   >
-                    <Crosshair class="w-3.5 h-3.5" />
-                  </button>
-                </TreeItem>
-              </Tree>
-            </div>
+                    <Tag class="w-3 h-3" />
+                    metadata
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="security"
+                    class="h-7 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm transition-all flex items-center gap-1.5"
+                  >
+                    <Lock class="w-3 h-3" />
+                    security
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-            <div class="mt-3 px-4 border-t border-border/50 pt-3">
-              <Button
+              <!-- TAB CONTENT AREA -->
+              <ScrollArea class="flex-1 min-h-0">
+                <!-- A. STRUCTURE TAB (Auto-Generated TOC) -->
+                <TabsContent value="structure" class="m-0 focus-visible:outline-none">
+                  <div v-if="store.pageCount === 0" class="p-12 text-center">
+                    <div
+                      class="bg-muted/30 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 border border-border/40"
+                    >
+                      <FileText class="w-6 h-6 text-muted-foreground/40" />
+                    </div>
+                    <p class="text-xs text-muted-foreground font-medium">No pages imported</p>
+                    <p class="text-xxs text-muted-foreground/60 mt-1">
+                      Import files to see structure
+                    </p>
+                  </div>
+
+                  <div v-else class="flex flex-col min-h-0">
+                    <div class="px-4 py-3 border-b border-border/30 bg-muted/10">
+                      <p
+                        class="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest flex items-center gap-2"
+                      >
+                        Table of Contents
+                        <Badge
+                          variant="outline"
+                          class="text-[9px] h-4 px-1 px-1.5 font-mono opacity-60"
+                          >AUTO</Badge
+                        >
+                      </p>
+                      <p class="text-[10px] text-muted-foreground/60 mt-1 leading-relaxed">
+                        Drag & drop to reorder; nest by dropping into items.
+                      </p>
+                    </div>
+
+                    <div class="flex-1 min-h-0 py-2">
+                      <Tree
+                        :items="store.bookmarksTree"
+                        :get-key="(item) => item.id"
+                        @update:items="
+                          (val) => store.setBookmarksTree(val as UiBookmarkNode[], true)
+                        "
+                        class="w-full px-2"
+                        v-slot="{ flattenItems }"
+                      >
+                        <TreeItem
+                          v-for="item in flattenItems"
+                          :key="item._id"
+                          :item="item"
+                          v-slot="{ isExpanded }"
+                          class="group h-9 px-2 rounded-md outline-none hover:bg-accent/60 cursor-default transition-all focus-visible:ring-1 focus-visible:ring-primary/40 data-[selected]:bg-primary/5 data-[selected]:text-primary overflow-hidden mb-0.5"
+                          :style="{ marginLeft: `${item.level * 12}px` }"
+                        >
+                          <div class="flex items-center w-full h-full gap-0">
+                            <!-- Expander -->
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              class="mr-1 h-6 w-6 shrink-0 flex items-center justify-center text-muted-foreground/50 hover:text-foreground hover:bg-transparent transition-colors p-0"
+                              :style="{ visibility: item.hasChildren ? 'visible' : 'hidden' }"
+                            >
+                              <ChevronRight
+                                class="w-3.5 h-3.5 transition-transform duration-200"
+                                :class="isExpanded ? 'rotate-90' : ''"
+                              />
+                            </Button>
+
+                            <!-- Title Container -->
+                            <div class="flex items-center min-w-0 max-w-full">
+                              <span
+                                class="text-xs truncate font-medium text-foreground/80 group-hover:text-foreground transition-all leading-none py-1"
+                              >
+                                {{ (item.value as UiBookmarkNode).title }}
+                              </span>
+
+                              <!-- Target Action - Attached to Title -->
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                class="opacity-0 group-hover:opacity-100 h-6 w-6 shrink-0 p-0 flex items-center justify-center text-muted-foreground hover:text-primary transition-all duration-200 ml-1"
+                                title="Jump to section"
+                                @click.stop="
+                                  scrollGridToPage((item.value as UiBookmarkNode).pageId)
+                                "
+                              >
+                                <Crosshair class="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        </TreeItem>
+                      </Tree>
+                    </div>
+
+                    <div
+                      class="mx-3 my-4 p-4 rounded-lg bg-muted/20 border border-border/50 text-center"
+                    >
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        class="w-full text-xs font-semibold h-8 bg-background/50 hover:bg-background border border-border/40 shadow-sm transition-all"
+                        @click="addCustomBookmark"
+                      >
+                        <Tag class="w-3 h-3 mr-2 text-primary/70" />
+                        Add Bookmark
+                      </Button>
+                      <p
+                        class="text-[9px] text-muted-foreground/50 mt-2 font-medium uppercase tracking-tight"
+                      >
+                        Sets anchor on selected page
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <!-- B. METADATA TAB -->
+                <TabsContent value="metadata" class="p-5 m-0 focus-visible:outline-none">
+                  <div class="space-y-6">
+                    <FieldGroup class="gap-5">
+                      <Field>
+                        <FieldLabel
+                          for="metadata-title"
+                          class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold mb-1.5"
+                          >Document Title</FieldLabel
+                        >
+                        <FieldContent>
+                          <Input
+                            id="metadata-title"
+                            v-model="store.projectTitle"
+                            type="text"
+                            class="h-8 text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60"
+                            placeholder="e.g. Project Specs 2026"
+                          />
+                        </FieldContent>
+                      </Field>
+
+                      <Field>
+                        <FieldLabel
+                          for="metadata-author"
+                          class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold mb-1.5"
+                          >Author</FieldLabel
+                        >
+                        <FieldContent>
+                          <Input
+                            id="metadata-author"
+                            v-model="store.metadata.author"
+                            type="text"
+                            class="h-8 text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60"
+                            placeholder="Full name or organization"
+                          />
+                        </FieldContent>
+                      </Field>
+
+                      <Field>
+                        <FieldLabel
+                          for="metadata-subject"
+                          class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold mb-1.5"
+                          >Subject</FieldLabel
+                        >
+                        <FieldContent>
+                          <Textarea
+                            id="metadata-subject"
+                            v-model="store.metadata.subject"
+                            rows="3"
+                            class="resize-none text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60 min-h-0"
+                            placeholder="Brief description of the document..."
+                          />
+                        </FieldContent>
+                      </Field>
+
+                      <Field>
+                        <FieldLabel
+                          for="metadata-keywords"
+                          class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold mb-1.5"
+                          >Keywords</FieldLabel
+                        >
+                        <FieldContent class="space-y-2.5">
+                          <div
+                            v-if="store.metadata.keywords.length > 0"
+                            class="flex flex-wrap gap-1.5 items-center"
+                          >
+                            <Badge
+                              v-for="k in store.metadata.keywords"
+                              :key="k"
+                              variant="secondary"
+                              class="pl-2 pr-0.5 h-6 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors"
+                            >
+                              <span class="text-[10px] font-medium leading-none">{{ k }}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                class="h-5 w-5 rounded-full hover:bg-background/50 hover:text-destructive transition-colors"
+                                @click="removeKeyword(k)"
+                              >
+                                <X class="w-3 h-3" />
+                              </Button>
+                            </Badge>
+                          </div>
+
+                          <div class="relative group">
+                            <Input
+                              id="metadata-keywords"
+                              v-model="keywordInput"
+                              @keydown.enter.prevent="addKeyword"
+                              @keydown.tab.prevent="addKeyword"
+                              @blur="addKeyword"
+                              type="text"
+                              class="h-8 text-xs bg-background/50 focus-visible:bg-background transition-colors border-border/60 pr-8"
+                              placeholder="Add tag and press Enter..."
+                            />
+                            <div
+                              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary/40 transition-colors pointer-events-none"
+                            >
+                              <Plus class="w-3 h-3" />
+                            </div>
+                          </div>
+                        </FieldContent>
+                      </Field>
+                    </FieldGroup>
+                  </div>
+                </TabsContent>
+
+                <!-- C. SECURITY TAB -->
+                <TabsContent value="security" class="p-5 m-0 focus-visible:outline-none">
+                  <div class="space-y-6">
+                    <div
+                      class="bg-muted/30 border border-border/50 rounded-lg p-4 transition-all"
+                      :class="
+                        store.security.isEncrypted
+                          ? 'border-primary/20 ring-1 ring-primary/5 bg-primary/[0.02]'
+                          : ''
+                      "
+                    >
+                      <Field orientation="horizontal" class="items-center justify-between gap-4">
+                        <div class="space-y-0.5">
+                          <FieldLabel
+                            for="security-encrypted"
+                            class="text-xs font-bold text-foreground transition-colors"
+                            :class="store.security.isEncrypted ? 'text-primary' : ''"
+                          >
+                            Document Encryption
+                          </FieldLabel>
+                          <p class="text-[10px] text-muted-foreground/60 leading-tight">
+                            Apply password protection to this file
+                          </p>
+                        </div>
+                        <Switch
+                          id="security-encrypted"
+                          :checked="store.security.isEncrypted"
+                          @update:checked="(v: boolean) => (store.security.isEncrypted = v)"
+                          class="data-[state=checked]:bg-primary"
+                        />
+                      </Field>
+                    </div>
+
+                    <!-- Password Fields (Animated) -->
+                    <div
+                      class="space-y-6 overflow-hidden transition-all duration-500 ease-out"
+                      :class="
+                        store.security.isEncrypted
+                          ? 'opacity-100 max-h-[800px] blur-0'
+                          : 'opacity-0 max-h-0 blur-sm pointer-events-none'
+                      "
+                    >
+                      <FieldGroup class="gap-5 px-1">
+                        <!-- User Pass -->
+                        <Field>
+                          <div class="flex justify-between items-center mb-1.5">
+                            <FieldLabel
+                              for="security-user-pass"
+                              class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold"
+                              >Open Password</FieldLabel
+                            >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              class="h-5 w-5 opacity-50 hover:opacity-100 transition-opacity"
+                              @click="showUserPassword = !showUserPassword"
+                            >
+                              <Eye v-if="!showUserPassword" class="w-3 h-3" />
+                              <EyeOff v-else class="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <FieldContent>
+                            <Input
+                              id="security-user-pass"
+                              v-model="store.security.userPassword"
+                              :type="showUserPassword ? 'text' : 'password'"
+                              class="h-8 text-xs bg-background/50 border-border/60"
+                              placeholder="Required to open document"
+                            />
+                          </FieldContent>
+                        </Field>
+
+                        <!-- Owner Pass -->
+                        <Field>
+                          <div class="flex justify-between items-center mb-1.5">
+                            <FieldLabel
+                              for="security-owner-pass"
+                              class="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold"
+                              >Permissions Password</FieldLabel
+                            >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              class="h-5 w-5 opacity-50 hover:opacity-100 transition-opacity"
+                              @click="showOwnerPassword = !showOwnerPassword"
+                            >
+                              <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
+                              <EyeOff v-else class="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <FieldContent>
+                            <Input
+                              id="security-owner-pass"
+                              v-model="store.security.ownerPassword"
+                              :type="showOwnerPassword ? 'text' : 'password'"
+                              class="h-8 text-xs bg-background/50 border-border/60"
+                              placeholder="Required to change settings"
+                            />
+                          </FieldContent>
+                        </Field>
+                      </FieldGroup>
+
+                      <!-- Permissions Matrix -->
+                      <div class="space-y-4 pt-2 border-t border-border/40">
+                        <FieldLabel class="text-[11px] font-bold text-foreground px-1"
+                          >Access Control</FieldLabel
+                        >
+                        <div class="grid gap-3 bg-muted/20 border border-border/30 rounded-md p-3">
+                          <Field orientation="horizontal" class="items-center gap-3">
+                            <Checkbox
+                              id="perm-print"
+                              :checked="store.security.allowPrinting"
+                              @update:checked="(v: boolean) => (store.security.allowPrinting = v)"
+                              class="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            />
+                            <div class="space-y-0.5">
+                              <FieldLabel
+                                for="perm-print"
+                                class="text-xs font-medium text-foreground/80 cursor-pointer"
+                              >
+                                High Quality Printing
+                              </FieldLabel>
+                              <p class="text-[9px] text-muted-foreground/50 leading-none">
+                                Allows high-res print output
+                              </p>
+                            </div>
+                          </Field>
+
+                          <Field orientation="horizontal" class="items-center gap-3">
+                            <Checkbox
+                              id="perm-copy"
+                              :checked="store.security.allowCopying"
+                              @update:checked="(v: boolean) => (store.security.allowCopying = v)"
+                              class="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            />
+                            <div class="space-y-0.5">
+                              <FieldLabel
+                                for="perm-copy"
+                                class="text-xs font-medium text-foreground/80 cursor-pointer"
+                              >
+                                content copying
+                              </FieldLabel>
+                              <p class="text-[9px] text-muted-foreground/50 leading-none">
+                                Extract text and images
+                              </p>
+                            </div>
+                          </Field>
+
+                          <Field orientation="horizontal" class="items-center gap-3">
+                            <Checkbox
+                              id="perm-mod"
+                              :checked="store.security.allowModifying"
+                              @update:checked="(v: boolean) => (store.security.allowModifying = v)"
+                              class="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            />
+                            <div class="space-y-0.5">
+                              <FieldLabel
+                                for="perm-mod"
+                                class="text-xs font-medium text-foreground/80 cursor-pointer"
+                              >
+                                modification
+                              </FieldLabel>
+                              <p class="text-[9px] text-muted-foreground/50 leading-none">
+                                Reorder, delete or insert pages
+                              </p>
+                            </div>
+                          </Field>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </ScrollArea>
+            </Tabs>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle with-handle class="hover:bg-primary/20 transition-colors" />
+
+        <!-- Bottom Half: History -->
+        <ResizablePanel :default-size="40" :min-size="20" class="flex flex-col bg-sidebar/30">
+          <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div
+              class="h-9 px-4 border-b border-border/40 flex items-center justify-between bg-sidebar/50"
+            >
+              <h2
+                class="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest flex items-center gap-2"
+              >
+                Session History
+                <span class="w-1 h-1 rounded-full bg-primary/40"></span>
+              </h2>
+              <Badge
                 variant="outline"
-                class="w-full text-xs text-text-muted border-dashed border-border hover:bg-surface hover:text-text transition-colors flex items-center justify-center gap-2 h-auto py-1.5"
-                @click="addCustomBookmark"
+                class="text-[9px] h-4 font-mono opacity-50 p-0 px-1.5 border-none shadow-none text-muted-foreground/40"
+                >{{ historyList.length }} steps</Badge
               >
-                <span>+ Add Bookmark to Selected Page</span>
-              </Button>
-              <p class="text-[9px] text-text-muted mt-2 text-center opacity-50">
-                Select a page, then add a bookmark.
-              </p>
-            </div>
-          </div>
-          </TabsContent>
-
-          <!-- B. METADATA TAB -->
-          <TabsContent value="metadata" class="p-4 space-y-5 mt-0">
-          <!-- Title -->
-          <div class="space-y-1">
-            <Label>Document Title</Label>
-            <Input
-              v-model="store.projectTitle"
-              type="text"
-              placeholder="e.g. Final Contract 2024"
-            />
-          </div>
-
-          <!-- Author -->
-          <div class="space-y-1">
-            <Label>Author</Label>
-            <Input
-              v-model="store.metadata.author"
-              type="text"
-              placeholder="e.g. John Doe"
-            />
-          </div>
-
-          <!-- Subject -->
-          <div class="space-y-1">
-            <label class="ui-label">Subject</label>
-            <textarea
-              v-model="store.metadata.subject"
-              rows="2"
-              class="ui-input resize-none"
-              placeholder="Brief description..."
-            ></textarea>
-          </div>
-
-          <!-- Keywords (Token Input) -->
-          <div class="space-y-1">
-            <Label>Keywords</Label>
-
-            <div class="flex flex-wrap gap-1.5 mb-2" v-if="store.metadata.keywords.length > 0">
-              <span
-                v-for="k in store.metadata.keywords"
-                :key="k"
-                class="ui-chip"
-              >
-                {{ k }}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="ml-1 h-4 w-4 hover:text-danger hover:bg-transparent text-lg leading-none"
-                  @click="removeKeyword(k)"
-                >
-                  &times;
-                </Button>
-              </span>
             </div>
 
-            <Input
-              v-model="keywordInput"
-              @keydown.enter.prevent="addKeyword"
-              @keydown.tab.prevent="addKeyword"
-              @blur="addKeyword"
-              type="text"
-              placeholder="Type and press Enter..."
-            />
-          </div>
-          </TabsContent>
-
-          <!-- C. SECURITY TAB -->
-          <TabsContent value="security" class="p-4 space-y-6 mt-0">
-          <!-- Encryption Toggle -->
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-text-primary">Encrypt Document</span>
-            <Switch
-              :checked="store.security.isEncrypted"
-              @update:checked="(v: boolean) => store.security.isEncrypted = v"
-            />
-          </div>
-
-          <!-- Password Fields (Animated) -->
-          <div
-            class="space-y-4 overflow-hidden transition-all duration-300"
-            :class="
-              store.security.isEncrypted
-                ? 'opacity-100 max-h-[300px]'
-                : 'opacity-30 max-h-0 pointer-events-none'
-            "
-          >
-            <!-- User Pass -->
-            <div class="space-y-1">
-              <div class="flex justify-between items-center">
-                <Label>Open Password</Label>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-6 w-6"
-                  @click="showUserPassword = !showUserPassword"
-                >
-                  <Eye v-if="!showUserPassword" class="w-3 h-3" />
-                  <EyeOff v-else class="w-3 h-3" />
-                </Button>
-              </div>
-              <Input
-                v-model="store.security.userPassword"
-                :type="showUserPassword ? 'text' : 'password'"
-                placeholder="Required to open"
-              />
-            </div>
-
-            <!-- Owner Pass -->
-            <div class="space-y-1">
-              <div class="flex justify-between items-center">
-                <Label>Edit Password</Label>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  class="h-6 w-6"
-                  @click="showOwnerPassword = !showOwnerPassword"
-                >
-                  <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
-                  <EyeOff v-else class="w-3 h-3" />
-                </Button>
-              </div>
-              <Input
-                v-model="store.security.ownerPassword"
-                :type="showOwnerPassword ? 'text' : 'password'"
-                placeholder="Required to change permissions"
-              />
-            </div>
-
-            <!-- Permissions Matrix -->
-            <div class="pt-2">
-              <Label class="block mb-2">Allowed Actions</Label>
-              <div class="grid grid-cols-1 gap-3">
-                <div class="flex items-center gap-2">
-                  <Checkbox
-                    id="perm-print"
-                    :checked="store.security.allowPrinting"
-                    @update:checked="(v: boolean) => store.security.allowPrinting = v"
-                  />
-                  <label
-                    for="perm-print"
-                    class="text-xs text-text hover:text-white transition-colors cursor-pointer"
+            <ScrollArea ref="historyScrollArea" class="flex-1 min-h-0">
+              <div class="py-6 px-4">
+                <Timeline v-if="historyList.length > 0" size="sm" variant="history" class="w-full">
+                  <TimelineItem
+                    v-for="(entry, index) in historyList"
+                    :key="index"
+                    :status="
+                      entry.isCurrent ? 'in-progress' : entry.isUndone ? 'pending' : 'completed'
+                    "
+                    :show-connector="index !== historyList.length - 1"
+                    icon-size="lg"
+                    class="cursor-pointer group relative"
+                    @click="jumpTo(entry.pointer)"
                   >
-                    High Quality Printing
-                  </label>
-                </div>
+                    <template #title>
+                      <TimelineTitle
+                        class="text-xs font-semibold truncate transition-colors"
+                        :class="[
+                          entry.isCurrent
+                            ? 'text-primary'
+                            : 'text-foreground/70 group-hover:text-foreground',
+                          entry.isUndone
+                            ? 'text-muted-foreground/40 italic line-through decoration-muted-foreground/30'
+                            : '',
+                        ]"
+                      >
+                        {{ entry.command.name }}
+                      </TimelineTitle>
+                    </template>
+                    <template #description>
+                      <TimelineTime
+                        class="mt-1 block text-[10px] text-muted-foreground/40 font-mono tracking-tighter"
+                      >
+                        {{ formatTime(entry.timestamp) }}
+                      </TimelineTime>
+                    </template>
+                  </TimelineItem>
+                </Timeline>
 
-                <div class="flex items-center gap-2">
-                  <Checkbox
-                    id="perm-copy"
-                    :checked="store.security.allowCopying"
-                    @update:checked="(v: boolean) => store.security.allowCopying = v"
-                  />
-                  <label
-                    for="perm-copy"
-                    class="text-xs text-text hover:text-white transition-colors cursor-pointer"
-                  >
-                    Copy Text & Graphics
-                  </label>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <Checkbox
-                    id="perm-mod"
-                    :checked="store.security.allowModifying"
-                    @update:checked="(v: boolean) => store.security.allowModifying = v"
-                  />
-                  <label
-                    for="perm-mod"
-                    class="text-xs text-text hover:text-white transition-colors cursor-pointer"
-                  >
-                    Modify Pages
-                  </label>
+                <div
+                  v-else
+                  class="h-full flex flex-col items-center justify-center p-8 opacity-20 text-center grayscale"
+                >
+                  <div class="bg-muted rounded-full p-3 mb-2 border border-border">
+                    <History class="w-5 h-5" />
+                  </div>
+                  <p class="text-[10px] font-bold uppercase tracking-widest">No Activity</p>
                 </div>
               </div>
-            </div>
+            </ScrollArea>
           </div>
-          </TabsContent>
-        </div>
-      </Tabs>
-    </div>
-
-    <!-- Bottom Half: History -->
-    <div class="h-2/5 min-h-[220px] flex flex-col bg-background border-t border-border">
-      <div class="h-10 border-b border-border flex items-center px-4 bg-surface/50">
-        <h2 class="text-xs font-bold text-text-muted uppercase tracking-wider">History</h2>
-      </div>
-
-      <div class="flex-1 overflow-y-auto p-4 pl-2">
-        <Stepper
-          v-if="historyList.length > 0"
-          orientation="vertical"
-          class="flex w-full flex-col gap-0"
-          :model-value="historyList.findIndex(x => x.isCurrent) + 1"
-        >
-          <StepperItem
-            v-for="(entry, index) in historyList"
-            :key="index"
-            :step="index + 1"
-            v-slot="{ state }"
-            class="relative flex w-full items-start gap-3 pb-6 last:pb-0"
-            @click="jumpTo(entry.pointer)"
-          >
-            <!-- Connecting Line (Separator) -->
-            <StepperSeparator
-              v-if="index !== historyList.length - 1"
-              class="absolute left-[11px] top-[24px] block h-full w-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary/50"
-            />
-
-            <!-- Step Indicator (Trigger) -->
-            <StepperTrigger as-child>
-              <Button
-                :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
-                size="icon"
-                class="z-10 h-6 w-6 rounded-full shrink-0 border transition-all"
-                :class="[
-                  state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
-                  state === 'completed' && 'bg-primary border-primary text-primary-foreground',
-                  state === 'inactive' && 'bg-background border-border text-muted-foreground opacity-50'
-                ]"
-              >
-                <Check v-if="state === 'completed'" class="w-3 h-3" />
-                <Circle v-if="state === 'active'" class="w-2.5 h-2.5 fill-current" />
-                <Dot v-if="state === 'inactive'" class="w-4 h-4" />
-              </Button>
-            </StepperTrigger>
-
-            <!-- Content -->
-            <div class="flex flex-col gap-0.5 pt-0.5 min-w-0">
-              <StepperTitle
-                class="text-xs font-medium truncate transition-colors"
-                :class="[
-                    state === 'active' ? 'text-text-primary' : '',
-                    state === 'inactive' ? 'text-text-muted italic opacity-60' : 'text-text'
-                ]"
-              >
-                {{ entry.command.name }}
-              </StepperTitle>
-              <StepperDescription class="text-[10px] text-text-muted opacity-50 font-mono">
-                 {{ formatTime(entry.timestamp) }}
-              </StepperDescription>
-            </div>
-          </StepperItem>
-        </Stepper>
-
-        <!-- Empty State -->
-        <div v-else class="flex flex-col gap-2 pl-1">
-            <div class="flex gap-3 relative pb-4 items-center">
-                <!-- Fake marker -->
-                <div class="relative z-10 w-6 h-6 rounded-full border border-border bg-background shrink-0 flex items-center justify-center text-muted-foreground" >
-                    <Dot class="w-4 h-4" />
-                </div>
-                 <span class="text-xs text-text-muted italic opacity-50">
-                  Start editing to see history
-                </span>
-            </div>
-        </div>
-      </div>
-    </div>
-  </aside>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </aside>
+  </ResizablePanel>
 </template>

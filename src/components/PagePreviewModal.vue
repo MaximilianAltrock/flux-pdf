@@ -5,8 +5,16 @@ import { useSwipe } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { useDocumentStore } from '@/stores/document'
 import type { PageReference } from '@/types'
-import { useMobile } from '@/composables'
-import { useFocusTrap } from '@/composables/useFocusTrap'
+import { useMobile } from '@/composables/useMobile'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const props = defineProps<{
   open: boolean
@@ -14,7 +22,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  close: []
+  'update:open': [value: boolean]
   navigate: [pageRef: PageReference]
 }>()
 
@@ -22,15 +30,12 @@ const store = useDocumentStore()
 const { renderThumbnail } = useThumbnailRenderer()
 const { isMobile, onBackButton } = useMobile()
 
-const dialogRef = ref<HTMLElement | null>(null)
-const closeButtonRef = ref<HTMLButtonElement | null>(null)
-
 // --- State ---
 const previewUrl = ref<string | null>(null)
 const isLoading = ref(false)
 const zoom = ref(1)
-const containerRef = ref<HTMLElement | null>(null) // For Swipe detection
-const imageRef = ref<HTMLElement | null>(null) // For Zoom calculations
+const containerRef = ref<HTMLElement | null>(null)
+const imageRef = ref<HTMLElement | null>(null)
 
 // --- Computed Helpers ---
 const currentIndex = computed(() => {
@@ -64,8 +69,7 @@ async function loadPreview() {
   zoom.value = 1
 
   try {
-    // Mobile needs less resolution (speed), Desktop needs more (quality)
-    const res = isMobile.value ? 600 : 1000
+    const res = isMobile.value ? 600 : 1200
     const url = await renderThumbnail(props.pageRef, res, 2)
     previewUrl.value = url
   } catch (error) {
@@ -76,20 +80,19 @@ async function loadPreview() {
 }
 
 function handleClose() {
-  emit('close')
+  emit('update:open', false)
 }
 
-// Navigation Helper
-  function findNextContentPage(startIndex: number, direction: 'next' | 'prev'): number {
-    let i = startIndex
-    const delta = direction === 'next' ? 1 : -1
-    while (i >= 0 && i < store.pages.length) {
-      i += delta
-      const page = store.pages[i]
-      if (page && !page.isDivider) return i
-    }
-    return -1
+function findNextContentPage(startIndex: number, direction: 'next' | 'prev'): number {
+  let i = startIndex
+  const delta = direction === 'next' ? 1 : -1
+  while (i >= 0 && i < store.pages.length) {
+    i += delta
+    const page = store.pages[i]
+    if (page && !page.isDivider) return i
   }
+  return -1
+}
 
 function goToPrevious() {
   const prevPage = store.pages[prevContentIndex.value]
@@ -113,12 +116,10 @@ function resetZoom() {
 }
 
 // --- Mobile Gestures (Swipe) ---
-// We attach swipe detection to the container
 const { isSwiping } = useSwipe(containerRef, {
-  threshold: 50, // Pixel distance to trigger
+  threshold: 50,
   onSwipeEnd(e, direction) {
-    if (zoom.value > 1) return // Don't swipe if zoomed in (conflicts with pan)
-
+    if (zoom.value > 1) return
     if (direction === 'left') goToNext()
     if (direction === 'right') goToPrevious()
     if (direction === 'down' || direction === 'up') handleClose()
@@ -151,16 +152,6 @@ function handleKeydown(event: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', handleKeydown))
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
-useFocusTrap(
-  computed(() => props.open),
-  dialogRef,
-  {
-    onEscape: handleClose,
-    initialFocus: () => closeButtonRef.value,
-  },
-)
-
-// Mobile Back Button
 onBackButton(
   computed(() => props.open),
   handleClose,
@@ -168,163 +159,159 @@ onBackButton(
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <!--
-         Responsive Container:
-         Desktop: bg-background/95 (Glassy)
-         Mobile: bg-black (Immersive)
-      -->
-      <div
-        v-if="open && pageRef"
-        ref="dialogRef"
-        class="fixed inset-0 z-[100] flex flex-col touch-none"
-        :class="isMobile ? 'bg-black' : 'bg-background/95'"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="page-preview-title"
+  <Dialog :open="open" @update:open="(val) => emit('update:open', val)">
+    <DialogContent
+      :show-close-button="false"
+      class="max-w-none w-screen h-screen p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none"
+      :class="isMobile ? 'bg-black' : 'bg-background/98'"
+    >
+      <DialogHeader class="sr-only">
+        <DialogTitle>Page Preview - Page {{ pageNumber }}</DialogTitle>
+      </DialogHeader>
+
+      <!-- Header / Controls -->
+      <header
+        class="flex items-center justify-between px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased"
+        :class="[
+          isMobile
+            ? 'absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent text-white'
+            : 'glass-surface border-b border-border/40',
+          isSwiping ? 'opacity-0' : 'opacity-100',
+        ]"
       >
-        <h2 id="page-preview-title" class="sr-only">Page preview</h2>
-        <!-- Header / Controls -->
-        <header
-          class="flex items-center justify-between px-4 py-3 shrink-0 z-20 transition-opacity duration-300"
-          :class="[
-            isMobile
-              ? 'absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent text-white'
-              : 'bg-background border-b border-border',
-            isSwiping ? 'opacity-0' : 'opacity-100',
-          ]"
-        >
-          <div class="flex items-center gap-4">
-            <span class="font-medium" :class="isMobile ? 'text-sm' : 'text-text'">
-              Page {{ pageNumber }} <span class="opacity-60">/ {{ totalPages }}</span>
-            </span>
-
-            <!-- Zoom controls (Desktop Only) -->
-            <div v-if="!isMobile" class="flex items-center gap-1">
-              <button
-                type="button"
-                class="p-2 text-text-muted hover:text-text rounded-lg"
-                aria-label="Zoom out"
-                @click="zoomOut"
-              >
-                <ZoomOut class="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                class="px-3 py-1 text-sm text-text-muted hover:text-text rounded"
-                @click="resetZoom"
-              >
-                {{ Math.round(zoom * 100) }}%
-              </button>
-              <button
-                type="button"
-                class="p-2 text-text-muted hover:text-text rounded-lg"
-                aria-label="Zoom in"
-                @click="zoomIn"
-              >
-                <ZoomIn class="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <button
-            ref="closeButtonRef"
-            type="button"
-            aria-label="Close preview"
-            class="p-2 rounded-lg transition-colors"
-            :class="
-              isMobile
-                ? 'text-white/80 active:bg-white/10'
-                : 'text-text-muted hover:text-text hover:bg-muted/10'
-            "
-            @click="handleClose"
-          >
-            <X class="w-6 h-6" />
-          </button>
-        </header>
-
-        <!-- Main Canvas -->
-        <div
-          ref="containerRef"
-          class="flex-1 overflow-hidden flex items-center justify-center p-4 relative"
-        >
-          <!-- Loading -->
-          <div v-if="isLoading" class="flex flex-col items-center gap-4">
-            <svg
-              class="w-10 h-10 animate-spin"
-              :class="isMobile ? 'text-white' : 'text-primary'"
-              fill="none"
-              viewBox="0 0 24 24"
+        <!-- Left Section: Meta / Page Counter -->
+        <div class="flex items-center gap-6 min-w-[200px]">
+          <div class="flex flex-col">
+            <span
+              class="text-xs font-semibold tracking-wider uppercase text-muted-foreground/80 mb-0.5"
             >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          </div>
-
-          <!-- Image -->
-          <img
-            v-else-if="previewUrl"
-            ref="imageRef"
-            :src="previewUrl"
-            class="max-w-full max-h-full object-contain transition-transform duration-200 select-none"
-            :style="{ transform: `scale(${zoom})` }"
-          />
-
-          <!-- Mobile Swipe Hints (Optional, visible if zoomed out) -->
-          <div
-            v-if="isMobile && !isLoading && zoom === 1"
-            class="absolute inset-0 flex justify-between pointer-events-none px-2 items-center opacity-30"
-          >
-            <ChevronLeft v-if="hasPrevious" class="w-8 h-8 text-white drop-shadow-md" />
-            <div v-else class="w-8"></div>
-            <ChevronRight v-if="hasNext" class="w-8 h-8 text-white drop-shadow-md" />
+              Document Preview
+            </span>
+            <span
+              class="text-sm font-medium font-mono"
+              :class="isMobile ? 'text-white' : 'text-foreground'"
+            >
+              PAGE {{ pageNumber.toString().padStart(2, '0') }}
+              <span class="opacity-40">/ {{ totalPages.toString().padStart(2, '0') }}</span>
+            </span>
           </div>
         </div>
 
-        <!-- Desktop Navigation Arrows -->
-        <button
-          v-if="!isMobile && hasPrevious"
-          type="button"
-          aria-label="Previous page"
-          class="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-surface/80 hover:bg-surface text-text rounded-full shadow-lg border border-border"
+        <!-- Center Section: Zoom Controls (Desktop Only) -->
+        <div
+          v-if="!isMobile"
+          class="flex items-center bg-muted/40 rounded-lg p-0.5 border border-border/40"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/60"
+            title="Zoom Out"
+            @click="zoomOut"
+          >
+            <ZoomOut class="w-4 h-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-8 px-3 text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200"
+            @click="resetZoom"
+          >
+            {{ Math.round(zoom * 100) }}%
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/60"
+            title="Zoom In"
+            @click="zoomIn"
+          >
+            <ZoomIn class="w-4 h-4" />
+          </Button>
+        </div>
+        <div v-else class="flex-1"></div>
+
+        <!-- Right Section: Close -->
+        <div class="flex items-center justify-end min-w-[200px]">
+          <DialogClose as-child>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-10 w-10 transition-all duration-200 hover:rotate-90"
+              :class="
+                isMobile
+                  ? 'text-white/80 active:bg-white/10'
+                  : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
+              "
+            >
+              <X class="w-5 h-5" />
+            </Button>
+          </DialogClose>
+        </div>
+      </header>
+
+      <!-- Main Canvas -->
+      <div
+        ref="containerRef"
+        class="flex-1 overflow-hidden flex items-center justify-center p-4 relative"
+      >
+        <!-- Skeleton for Loading -->
+        <div v-if="isLoading" class="w-full h-full flex items-center justify-center">
+          <Skeleton class="w-[300px] h-[400px] rounded-lg shadow-2xl" />
+        </div>
+
+        <!-- Image -->
+        <img
+          v-else-if="previewUrl"
+          ref="imageRef"
+          :src="previewUrl"
+          class="max-w-full max-h-full object-contain transition-transform duration-200 shadow-2xl bg-white select-none"
+          :style="{ transform: `scale(${zoom})` }"
+        />
+
+        <!-- Mobile Swipe Hints -->
+        <div
+          v-if="isMobile && !isLoading && zoom === 1"
+          class="absolute inset-0 flex justify-between pointer-events-none px-2 items-center opacity-30"
+        >
+          <ChevronLeft v-if="hasPrevious" class="w-8 h-8 text-white drop-shadow-md" />
+          <div v-else class="w-8"></div>
+          <ChevronRight v-if="hasNext" class="w-8 h-8 text-white drop-shadow-md" />
+        </div>
+      </div>
+
+      <!-- Desktop Navigation Arrows -->
+      <div
+        v-if="!isMobile"
+        class="absolute inset-0 pointer-events-none flex items-center justify-between px-12"
+      >
+        <Button
+          v-if="hasPrevious"
+          variant="outline"
+          size="icon"
+          class="pointer-events-auto h-14 w-14 rounded-full glass-surface shadow-2xl transition-all duration-300 hover:scale-110 hover:bg-background active:scale-95 border-border/40 group"
           @click="goToPrevious"
         >
-          <ChevronLeft class="w-6 h-6" />
-        </button>
+          <ChevronLeft
+            class="w-8 h-8 text-muted-foreground group-hover:text-foreground transition-colors"
+          />
+        </Button>
+        <div v-else class="w-14"></div>
 
-        <button
-          v-if="!isMobile && hasNext"
-          type="button"
-          aria-label="Next page"
-          class="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-surface/80 hover:bg-surface text-text rounded-full shadow-lg border border-border"
+        <Button
+          v-if="hasNext"
+          variant="outline"
+          size="icon"
+          class="pointer-events-auto h-14 w-14 rounded-full glass-surface shadow-2xl transition-all duration-300 hover:scale-110 hover:bg-background active:scale-95 border-border/40 group"
           @click="goToNext"
         >
-          <ChevronRight class="w-6 h-6" />
-        </button>
+          <ChevronRight
+            class="w-8 h-8 text-muted-foreground group-hover:text-foreground transition-colors"
+          />
+        </Button>
       </div>
-    </Transition>
-  </Teleport>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-</style>

@@ -1,29 +1,34 @@
 <script setup lang="ts">
-import { Sun, Moon, Monitor } from 'lucide-vue-next'
+import { Sun, Moon } from 'lucide-vue-next'
 import { useColorMode } from '@vueuse/core'
+import { Button } from '@/components/ui/button'
 
 const mode = useColorMode()
 
-const cycleTheme = () => {
-  if (mode.value === 'auto') {
-    mode.value = 'light'
-  } else if (mode.value === 'light') {
-    mode.value = 'dark'
-  } else {
-    mode.value = 'auto'
+const toggleTheme = (event: MouseEvent) => {
+  const { clientX: x, clientY: y } = event
+  const newMode = mode.value === 'dark' ? 'light' : 'dark'
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (!document.startViewTransition || prefersReducedMotion) {
+    mode.value = newMode
+    return
   }
+
+  document.documentElement.style.setProperty('--x', `${x}px`)
+  document.documentElement.style.setProperty('--y', `${y}px`)
+
+  document.startViewTransition(() => {
+    mode.value = newMode
+  })
 }
 </script>
 
 <template>
-  <button
-    class="p-2 rounded-lg transition-colors hover:bg-muted/20"
-    :title="`Theme: ${mode} (click to change)`"
-    @click="cycleTheme"
-  >
-    <Sun v-if="mode === 'light'" class="w-5 h-5 text-amber-500" />
-    <Moon v-else-if="mode === 'dark'" class="w-5 h-5 text-indigo-400" />
-    <Monitor v-else class="w-5 h-5 text-muted-foreground" />
-  </button>
+  <Button variant="ghost" size="icon-sm" @click="toggleTheme">
+    <Sun v-if="mode === 'light'" class="h-4 w-4" />
+    <Moon v-else class="h-4 w-4" />
+    <span class="sr-only">Toggle theme</span>
+  </Button>
 </template>
-

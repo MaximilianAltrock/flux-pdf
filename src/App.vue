@@ -18,7 +18,6 @@ import { onMounted } from 'vue'
 // Composables
 import { usePdfManager } from '@/composables/usePdfManager'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useAppState } from '@/composables/useAppState'
 import { useAppActions } from '@/composables/useAppActions'
@@ -31,9 +30,12 @@ import MobileLayout from '@/layouts/MobileLayout.vue'
 import ExportModal from '@/components/ExportModal.vue'
 import DiffModal from '@/components/DiffModal.vue'
 import PagePreviewModal from '@/components/PagePreviewModal.vue'
-import ToastContainer from '@/components/ToastContainer.vue'
+import Toaster from '@/components/ui/sonner/Sonner.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { UserAction } from '@/types/actions'
+
+import 'vue-sonner/style.css'
 
 // ============================================
 // Initialization
@@ -41,9 +43,6 @@ import { UserAction } from '@/types/actions'
 
 const { initSession } = usePdfManager()
 const { restoreHistory } = useCommandManager()
-
-// Initialize theme (handles flash prevention)
-useTheme()
 
 // Initialize app state and actions
 const state = useAppState()
@@ -59,7 +58,7 @@ useKeyboardShortcuts(
       actions.handleCommandAction(action)
     }
   },
-  { isModalOpen: state.hasOpenModal }
+  { isModalOpen: state.hasOpenModal },
 )
 
 // ============================================
@@ -70,62 +69,63 @@ onMounted(async () => {
   await initSession()
   await restoreHistory()
 })
-
 </script>
-
 <template>
-  <div
-    class="h-[100dvh] w-full flex flex-col bg-background text-text overflow-hidden supports-[height:100dvh]:h-[100dvh]"
-  >
-    <!-- Hidden File Input (shared across layouts) -->
-    <input
-      :ref="(el) => (state.fileInputRef.value = el as HTMLInputElement)"
-      type="file"
-      accept="application/pdf,.pdf,image/jpeg,image/png"
-      multiple
-      class="hidden"
-      @change="actions.handleFileInputChange"
-    />
+  <TooltipProvider>
+    <div
+      class="h-[100dvh] w-full flex flex-col bg-background text-foreground overflow-hidden supports-[height:100dvh]:h-[100dvh]"
+    >
+      <!-- Hidden File Input (shared across layouts) -->
+      <input
+        :ref="(el) => (state.fileInputRef.value = el as HTMLInputElement)"
+        type="file"
+        accept="application/pdf,.pdf,image/jpeg,image/png"
+        multiple
+        class="hidden"
+        @change="actions.handleFileInputChange"
+      />
 
-    <!-- Mobile Layout -->
-    <MobileLayout v-if="state.isMobile.value" :state="state" :actions="actions" />
+      <!-- Mobile Layout -->
+      <MobileLayout v-if="state.isMobile.value" :state="state" :actions="actions" />
 
-    <!-- Desktop Layout -->
-    <DesktopLayout v-else :state="state" :actions="actions" />
+      <!-- Desktop Layout -->
+      <DesktopLayout v-else :state="state" :actions="actions" />
 
-    <!-- ============================================
-         Shared Overlays (render above both layouts)
-         ============================================ -->
+      <!-- ============================================
+           Shared Overlays (render above both layouts)
+           ============================================ -->
 
-    <!-- Export Modal -->
-    <ExportModal
-      :open="state.showExportModal.value"
-      :export-selected="state.exportSelectedOnly.value"
-      @close="state.closeExportModal"
-      @success="actions.handleExportSuccess"
-    />
+      <!-- Export Modal -->
+      <ExportModal
+        :open="state.showExportModal.value"
+        :export-selected="state.exportSelectedOnly.value"
+        @close="state.closeExportModal"
+        @success="actions.handleExportSuccess"
+      />
 
-    <!-- Page Preview Modal -->
-    <PagePreviewModal
-      :open="state.showPreviewModal.value"
-      :page-ref="state.previewPageRef.value"
-      @close="state.closePreviewModal"
-      @navigate="state.navigatePreview"
-    />
+      <!-- Page Preview Modal -->
+      <PagePreviewModal
+        :open="state.showPreviewModal.value"
+        @update:open="(val: boolean) => !val && state.closePreviewModal()"
+        :page-ref="state.previewPageRef.value"
+        @navigate="state.navigatePreview"
+      />
 
-    <!-- Ghost Overlay -->
-    <DiffModal
-      :open="state.showDiffModal.value"
-      :pages="state.diffPages.value"
-      @close="state.closeDiffModal"
-    />
+      <!-- Ghost Overlay -->
+      <DiffModal
+        :open="state.showDiffModal.value"
+        @update:open="(val: boolean) => !val && state.closeDiffModal()"
+        :pages="state.diffPages.value"
+        @close="state.closeDiffModal"
+      />
 
-    <!-- Toast Notifications -->
-    <ToastContainer />
+      <!-- Toast Notifications -->
+      <Toaster />
 
-    <!-- Confirmation Dialog -->
-    <ConfirmDialog />
-  </div>
+      <!-- Confirmation Dialog -->
+      <ConfirmDialog />
+    </div>
+  </TooltipProvider>
 </template>
 
 <style scoped>

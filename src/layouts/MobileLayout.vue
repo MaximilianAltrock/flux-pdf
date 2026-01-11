@@ -3,14 +3,15 @@ import { computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 
 // Mobile Components
-import MobileTopBar from '@/components/MobileTopBar.vue'
-import MobilePageGrid from '@/components/MobilePageGrid.vue'
-import MobileBottomBar from '@/components/MobileBottomBar.vue'
-import MobileFAB from '@/components/MobileFAB.vue'
-import MobileMenuDrawer from '@/components/MobileMenuDrawer.vue'
-import MobileTitleSheet from '@/components/MobileTitleSheet.vue'
-import MobileAddSheet from '@/components/MobileAddSheet.vue'
-import MobileActionSheet from '@/components/MobileActionSheet.vue'
+import MobileTopBar from '@/components/mobile/MobileTopBar.vue'
+import MobilePageGrid from '@/components/mobile/MobilePageGrid.vue'
+import MobileBottomBar from '@/components/mobile/MobileBottomBar.vue'
+import MobileFAB from '@/components/mobile/MobileFAB.vue'
+import MobileMenuDrawer from '@/components/mobile/MobileMenuDrawer.vue'
+import MobileTitleSheet from '@/components/mobile/MobileTitleSheet.vue'
+import MobileAddSheet from '@/components/mobile/MobileAddSheet.vue'
+import MobileActionSheet from '@/components/mobile/MobileActionSheet.vue'
+import { Spinner } from '@/components/ui/spinner'
 
 import type { PageReference } from '@/types'
 import type { AppState } from '@/composables/useAppState'
@@ -67,8 +68,8 @@ function onRemoveSource(sourceId: string) {
             />
           </svg>
         </div>
-        <h2 class="text-xl font-semibold text-text mb-2">No PDFs yet</h2>
-        <p class="text-text-muted text-center mb-6">Tap the + button to add your first PDF</p>
+        <h2 class="text-xl font-semibold text-foreground mb-2">No PDFs yet</h2>
+        <p class="text-muted-foreground text-center mb-6">Tap the + button to add your first PDF</p>
       </div>
 
       <!-- Page Grid -->
@@ -86,22 +87,8 @@ function onRemoveSource(sourceId: string) {
           v-if="isLoading"
           class="absolute inset-0 bg-background/90 flex flex-col items-center justify-center z-50"
         >
-          <svg class="w-12 h-12 text-primary animate-spin mb-4" fill="none" viewBox="0 0 24 24">
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <span class="text-text-muted font-medium">{{ loadingMessage }}</span>
+          <Spinner class="w-12 h-12 text-primary mb-4" />
+          <span class="text-muted-foreground font-medium">{{ loadingMessage }}</span>
         </div>
       </Transition>
     </main>
@@ -131,19 +118,19 @@ function onRemoveSource(sourceId: string) {
     <!-- Mobile Sheets & Drawers -->
     <MobileMenuDrawer
       :open="props.state.showMenuDrawer.value"
-      @close="props.state.closeMenuDrawer"
-      @remove-source="onRemoveSource"
+      @update:open="(val) => !val && props.state.closeMenuDrawer()"
+      @removeSource="onRemoveSource"
       @new-project="props.actions.handleNewProject"
     />
 
     <MobileTitleSheet
       :open="props.state.showTitleSheet.value"
-      @close="props.state.closeTitleSheet"
+      @update:open="(val) => !val && props.state.closeTitleSheet()"
     />
 
     <MobileAddSheet
       :open="props.state.showAddSheet.value"
-      @close="props.state.closeAddSheet"
+      @update:open="(val) => !val && props.state.closeAddSheet()"
       @select-files="props.actions.handleMobileAddFiles"
       @take-photo="props.actions.handleMobileTakePhoto"
     />
@@ -151,7 +138,7 @@ function onRemoveSource(sourceId: string) {
     <MobileActionSheet
       :open="props.state.showActionSheet.value"
       :selected-count="selectedCount"
-      @close="props.state.closeActionSheet"
+      @update:open="(val) => !val && props.state.closeActionSheet()"
       @rotate-left="props.actions.handleRotateSelected(-90)"
       @rotate-right="props.actions.handleRotateSelected(90)"
       @duplicate="props.actions.handleDuplicateSelected"

@@ -1,33 +1,25 @@
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
-  import { Scissors } from 'lucide-vue-next'
-  import { VueDraggable } from 'vue-draggable-plus'
-  import { useCommandManager } from '@/composables/useCommandManager'
-  import { useGridLogic } from '@/composables/useGridLogic'
-  import {
-    ReorderPagesCommand,
-    SplitGroupCommand,
-  } from '@/commands'
-  import PdfThumbnail from './PdfThumbnail.vue'
-  import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuSeparator,
-    ContextMenuShortcut,
-    ContextMenuTrigger,
-  } from '@/components/ui/context-menu'
-  import {
-    RotateCw,
-    RotateCcw,
-    Trash2,
-    Copy,
-    Eye,
-    CheckSquare,
-    Download
-  } from 'lucide-vue-next'
-  import type { PageReference } from '@/types'
-  import { UserAction } from '@/types/actions'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Scissors } from 'lucide-vue-next'
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
+import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+import { useCommandManager } from '@/composables/useCommandManager'
+import { useGridLogic } from '@/composables/useGridLogic'
+import { ReorderPagesCommand, SplitGroupCommand } from '@/commands'
+import PdfThumbnail from './PdfThumbnail.vue'
+import SortableGridItem from './SortableGridItem.vue'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+  ContextMenuLabel,
+} from '@/components/ui/context-menu'
+import { RotateCw, RotateCcw, Trash2, Copy, Eye, CheckSquare, Download } from 'lucide-vue-next'
+import type { PageReference } from '@/types'
+import { UserAction } from '@/types/actions'
 
 // FIX: defineEmits cannot use computed keys ([UserAction.PREVIEW])
 // We must use the string literal 'preview' here.
@@ -42,8 +34,6 @@ const { execute } = useCommandManager()
 const { localPages, isDragging, isSelected, store } = useGridLogic()
 
 // Local state for drag logic
-const draggingEnded = ref(false)
-const dragStartOrder = ref<PageReference[]>([])
 const isFileDragOver = ref(false)
 
 // Context menu state
@@ -58,6 +48,58 @@ const contextMenu = ref({
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${store.zoom + 20}px, 1fr))`,
 }))
+
+// === Pdnd Logic ===
+let cleanup: (() => void) | null = null
+
+onMounted(() => {
+  cleanup = monitorForElements({
+    onDragStart: ({ source }) => {
+      isDragging.value = true
+      contextMenu.value.visible = false
+    },
+    onDrop: ({ source, location }) => {
+      if (source.data.type !== 'grid-item') return
+
+      isDragging.value = false
+      const target = location.current.dropTargets[0]
+      if (!target) {
+        return
+      }
+
+      const sourceIndex = source.data.index as number
+      const targetIndex = target.data.index as number
+
+      if (sourceIndex === targetIndex) return
+
+      const closestEdge = extractClosestEdge(target.data)
+
+      // Calculate new order
+      const ordered = [...localPages.value]
+      const [item] = ordered.splice(sourceIndex, 1)
+      if (!item) return
+
+      let destinationIndex = targetIndex
+      if (sourceIndex < targetIndex) {
+        destinationIndex -= 1 // Adjust for removal
+      }
+
+      if (closestEdge === 'right') {
+        destinationIndex += 1
+      } else if (closestEdge === 'left') {
+        // insert before, no change to destinationIndex
+      }
+
+      ordered.splice(destinationIndex, 0, item)
+
+      execute(new ReorderPagesCommand([...localPages.value], ordered))
+    },
+  })
+})
+
+onUnmounted(() => {
+  cleanup?.()
+})
 
 // === Event Handlers ===
 
@@ -90,34 +132,6 @@ function handlePageClick(pageRef: PageReference, event: MouseEvent) {
   }
 }
 
-// === Drag & Drop (Reordering) ===
-
-function handleDragStart() {
-  isDragging.value = true
-  contextMenu.value.visible = false
-  dragStartOrder.value = [...store.pages]
-}
-
-function handleDragEnd() {
-  isDragging.value = false
-
-  const orderChanged = localPages.value.some(
-    (page, index) => page.id !== dragStartOrder.value[index]?.id,
-  )
-
-  if (orderChanged) {
-    execute(new ReorderPagesCommand(dragStartOrder.value, localPages.value))
-  }
-
-  dragStartOrder.value = []
-
-  // Fix hover state sticking
-  draggingEnded.value = true
-  requestAnimationFrame(() => {
-    draggingEnded.value = false
-  })
-}
-
 // === Page Actions ===
 
 function handlePreview(pageRef: PageReference) {
@@ -135,7 +149,16 @@ function handleRotate(pageRef: PageReference) {
 // === File Drop (Ingestion) ===
 
 function handleFileDragOver(event: DragEvent) {
+  // Always prevent default to allow drops (browser requires this)
   event.preventDefault()
+
+  if (isDragging.value) {
+    // If we are dragging pages, we don't want to show the file overlay
+    // But we MUST preventDefault to allow the drop event to bubble/happen for PDND?
+    // Actually PDND handles its own events, but the container backdrop needs this.
+    return
+  }
+
   if (
     event.dataTransfer?.types.includes('Files') ||
     event.dataTransfer?.types.includes('application/json')
@@ -153,19 +176,22 @@ async function handleFileDrop(event: DragEvent) {
   event.preventDefault()
   isFileDragOver.value = false
 
+  // If internally dragging, ignore this native drop (let monitorForElements handle it via PDND)
+  if (isDragging.value) return
+
   // 1. Check for Internal Reorder/Move (via Drag)
   const jsonData = event.dataTransfer?.getData('application/json')
   if (jsonData) {
     try {
       const data = JSON.parse(jsonData)
-        // If user drags a source file from Left Sidebar -> Grid
-        if (data.type === 'source-file' && data.sourceId) {
-          emit('sourceDropped', data.sourceId)
-          return
-        }
-      } catch {
-        /* ignore invalid json */
+      // If user drags a source file from Left Sidebar -> Grid
+      if (data.type === 'source-file' && data.sourceId) {
+        emit('sourceDropped', data.sourceId)
+        return
       }
+    } catch {
+      /* ignore invalid json */
+    }
   }
 
   // 2. Check for External Files (OS Drop)
@@ -196,39 +222,46 @@ async function handleFileDrop(event: DragEvent) {
     </Transition>
 
     <!-- Grid -->
-    <VueDraggable
-      v-model="localPages"
-      :animation="200"
-      ghost-class="sortable-ghost"
-      drag-class="sortable-drag"
-      chosen-class="sortable-chosen"
+    <div
       class="grid gap-4 min-h-[50vh] pb-20"
       :class="{
         'razor-mode': store.currentTool === 'razor',
-        'pointer-events-none': draggingEnded,
       }"
       :style="gridStyle"
-      @start="handleDragStart"
-      @end="handleDragEnd"
     >
-      <template v-for="(pageRef, index) in localPages" :key="pageRef.id">
-        <!-- Divider (Virtual Page) -->
+      <SortableGridItem
+        v-for="(pageRef, index) in localPages"
+        :key="pageRef.id"
+        :page="pageRef"
+        :index="index"
+        :class="{ 'col-span-full': pageRef.isDivider }"
+      >
+        <!-- High-Fidelity Section Divider -->
         <div
           v-if="pageRef.isDivider"
-          class="col-span-full h-8 flex items-center gap-4 py-2 my-2 group/divider select-none"
+          class="h-full py-10 flex items-center justify-center relative select-none group/divider transition-all duration-300"
         >
+          <!-- Background logic for the divider line (Always slightly visible laser) -->
           <div
-            class="h-px flex-1 bg-border group-hover/divider:bg-danger/40 transition-colors"
+            class="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent group-hover/divider:via-primary transition-all duration-500"
           ></div>
           <div
-            class="flex items-center gap-2 text-xs font-mono font-bold text-text-muted/50 uppercase tracking-widest group-hover/divider:text-danger/70 transition-colors"
+            class="absolute inset-x-1/4 h-[2px] bg-primary/5 blur-sm group-hover/divider:bg-primary/20 group-hover/divider:inset-x-0 group-hover/divider:blur-md transition-all duration-700"
+          ></div>
+
+          <!-- Pill Label -->
+          <div
+            class="relative glass-surface bg-background/90 backdrop-blur-md px-5 py-2 rounded-full border-border/80 shadow-md flex items-center gap-3 transition-all duration-300 group-hover/divider:border-primary/50 group-hover/divider:shadow-lg group-hover/divider:scale-[1.02] -translate-y-0.5"
           >
-            <Scissors class="w-3 h-3" />
-            <span>New Document Section</span>
+            <div class="p-1.5 bg-primary/10 rounded-full">
+              <Scissors class="w-3.5 h-3.5 text-primary animate-pulse" />
+            </div>
+            <span
+              class="text-xxs font-mono font-bold text-muted-foreground uppercase tracking-[0.25em] group-hover/divider:text-foreground transition-colors"
+            >
+              New Document Section
+            </span>
           </div>
-          <div
-            class="h-px flex-1 bg-border group-hover/divider:bg-danger/40 transition-colors"
-          ></div>
         </div>
 
         <!-- PDF Thumbnail with Context Menu -->
@@ -256,8 +289,14 @@ async function handleFileDrop(event: DragEvent) {
 
           <ContextMenuContent>
             <!-- Header/Label -->
-            <ContextMenuLabel class="text-xs text-text-muted font-medium border-b border-border px-3 py-2">
-              {{ store.selectedCount > 1 ? `${store.selectedCount} pages selected` : `Page ${index + 1}` }}
+            <ContextMenuLabel
+              class="text-xs text-text-muted font-medium border-b border-border px-3 py-2"
+            >
+              {{
+                store.selectedCount > 1
+                  ? `${store.selectedCount} pages selected`
+                  : `Page ${index + 1}`
+              }}
             </ContextMenuLabel>
 
             <ContextMenuItem @select="handlePreview(pageRef)">
@@ -297,14 +336,15 @@ async function handleFileDrop(event: DragEvent) {
               <ContextMenuItem @select="emit('contextAction', UserAction.EXPORT_SELECTED, pageRef)">
                 <Download class="w-4 h-4 mr-2 text-text-muted" />
                 <span>Export Selected</span>
+                <ContextMenuShortcut>⌘A</ContextMenuShortcut>
               </ContextMenuItem>
 
               <ContextMenuSeparator />
             </template>
 
             <ContextMenuItem
-               class="text-danger focus:text-danger focus:bg-danger/10"
-               @select="handleDelete(pageRef)"
+              class="text-danger focus:text-danger focus:bg-danger/10"
+              @select="handleDelete(pageRef)"
             >
               <Trash2 class="w-4 h-4 mr-2" />
               <span>Delete</span>
@@ -312,8 +352,8 @@ async function handleFileDrop(event: DragEvent) {
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-      </template>
-    </VueDraggable>
+      </SortableGridItem>
+    </div>
 
     <p v-if="localPages.length > 0" class="text-center text-sm text-text-muted mt-6">
       Drag to reorder • Double-click to preview • Right-click for more options
@@ -343,18 +383,5 @@ async function handleFileDrop(event: DragEvent) {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.sortable-ghost {
-  opacity: 0.3;
-  transform: scale(0.95);
-  filter: grayscale(1);
-}
-.sortable-drag {
-  opacity: 1 !important;
-  transform: scale(1.05) !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-  z-index: 50;
-  cursor: grabbing !important;
 }
 </style>
