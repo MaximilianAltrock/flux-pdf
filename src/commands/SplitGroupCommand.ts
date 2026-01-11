@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
-import type { PageReference } from '@/types'
+import type { DividerReference } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
 /**
@@ -10,7 +10,7 @@ import { useDocumentStore } from '@/stores/document'
 interface SplitGroupPayload {
   id: string
   index: number
-  divider: PageReference
+  divider: DividerReference
 }
 
 /**
@@ -27,9 +27,9 @@ export class SplitGroupCommand extends BaseCommand {
   public readonly index: number
 
   /** The divider page reference (virtual, not a real PDF page) */
-  public readonly divider: PageReference
+  public readonly divider: DividerReference
 
-  constructor(index: number, id?: string, existingDivider?: PageReference, createdAt?: number) {
+  constructor(index: number, id?: string, existingDivider?: DividerReference, createdAt?: number) {
     super(id, createdAt)
 
     // Validate inputs
@@ -46,14 +46,10 @@ export class SplitGroupCommand extends BaseCommand {
   /**
    * Create a new virtual divider page reference
    */
-  private createDivider(): PageReference {
+  private createDivider(): DividerReference {
     return {
       id: crypto.randomUUID(),
-      sourceFileId: 'virtual-divider',
-      sourcePageIndex: -1,
-      rotation: 0,
       isDivider: true,
-      groupId: crypto.randomUUID(),
     }
   }
 

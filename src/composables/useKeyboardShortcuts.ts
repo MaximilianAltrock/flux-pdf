@@ -133,7 +133,7 @@ export function useKeyboardShortcuts(
     // ============================================================
     if (e.key === 'Home' || e.key === 'End') {
       e.preventDefault()
-      const contentPages = store.pages.filter((p) => !p.isDivider)
+      const contentPages = store.contentPages
       if (contentPages.length === 0) return
 
       const targetPage = e.key === 'Home' ? contentPages[0] : contentPages[contentPages.length - 1]
@@ -154,7 +154,7 @@ export function useKeyboardShortcuts(
       e.preventDefault()
 
       // Get content pages only (skip dividers for navigation)
-      const contentPages = store.pages.filter((p) => !p.isDivider)
+      const contentPages = store.contentPages
       if (contentPages.length === 0) return
 
       // Find current index in content pages

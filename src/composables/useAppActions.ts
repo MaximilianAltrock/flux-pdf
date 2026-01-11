@@ -100,7 +100,7 @@ export function useAppActions(state: AppState) {
     try {
       store.setLoading(true, 'Generating PDF...')
 
-      const pagesToExport = store.pages.filter((p) => !p.isDivider)
+      const pagesToExport = store.contentPages
       if (pagesToExport.length === 0) {
         throw new Error('No pages to export')
       }
@@ -224,8 +224,8 @@ export function useAppActions(state: AppState) {
 
     // 3. Execute
     const selectedIds = Array.from(store.selection.selectedIds)
-    const pageA = store.pages.find((p) => p.id === selectedIds[0])
-    const pageB = store.pages.find((p) => p.id === selectedIds[1])
+    const pageA = store.contentPages.find((p) => p.id === selectedIds[0])
+    const pageB = store.contentPages.find((p) => p.id === selectedIds[1])
 
     if (pageA && pageB) {
       state.openDiffModal(pageA, pageB)
@@ -243,7 +243,7 @@ export function useAppActions(state: AppState) {
     const source = store.sources.get(sourceId)
     if (!source) return
 
-    const relatedPages = store.pages.filter((p) => p.sourceFileId === sourceId)
+    const relatedPages = store.contentPages.filter((p) => p.sourceFileId === sourceId)
 
     if (!isMobile.value) {
       const confirmed = await confirmDelete(relatedPages.length, 'page')
@@ -357,7 +357,7 @@ export function useAppActions(state: AppState) {
       case UserAction.PREVIEW:
         if (store.selectedCount === 1) {
           const id = Array.from(store.selection.selectedIds)[0]
-          const page = store.pages.find((p) => p.id === id)
+          const page = store.contentPages.find((p) => p.id === id)
           if (page) handlePagePreview(page)
         }
         break

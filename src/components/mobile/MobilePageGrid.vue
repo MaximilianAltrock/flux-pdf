@@ -7,7 +7,7 @@ import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import { ReorderPagesCommand } from '@/commands'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
-import type { PageReference } from '@/types'
+import type { PageEntry, PageReference } from '@/types'
 
 const props = defineProps<{
   selectionMode: boolean
@@ -25,7 +25,7 @@ const { haptic } = useMobile()
 const { localPages, isDragging, isSelected, store } = useGridLogic()
 
 // Local state for drag tracking
-const dragStartOrder = ref<PageReference[]>([])
+const dragStartOrder = ref<PageEntry[]>([])
 
 // Mobile-specific state
 const columnCount = ref(2)

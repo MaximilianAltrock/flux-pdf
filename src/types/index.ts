@@ -59,7 +59,28 @@ export interface PageReference {
 
   // Grouping
   groupId?: string // specific group/batch ID, defaults to sourceFileId
-  isDivider?: boolean
+  isDivider?: false
+}
+
+/**
+ * Virtual divider used to split exports into segments.
+ */
+export interface DividerReference {
+  id: string
+  isDivider: true
+}
+
+/**
+ * Any entry that can appear in the page list.
+ */
+export type PageEntry = PageReference | DividerReference
+
+export function isDividerEntry(entry: PageEntry): entry is DividerReference {
+  return entry.isDivider === true
+}
+
+export function isPageEntry(entry: PageEntry): entry is PageReference {
+  return entry.isDivider !== true
 }
 
 /**

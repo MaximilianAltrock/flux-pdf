@@ -121,26 +121,26 @@ const pageCount = computed(() => {
     return store.selectedCount
   }
   if (pageRangeMode.value === 'custom' && customPageRange.value) {
-    const validation = validatePageRange(customPageRange.value, store.pageCount)
+    const validation = validatePageRange(customPageRange.value, store.contentPageCount)
     if (validation.valid) {
-      return parsePageRange(customPageRange.value, store.pageCount).length
+      return parsePageRange(customPageRange.value, store.contentPageCount).length
     }
   }
-  return store.pageCount
+  return store.contentPageCount
 })
 
 const pagesToExport = computed(() => {
   if (pageRangeMode.value === 'all') {
-    return store.pages
+    return store.contentPages
   }
   if (pageRangeMode.value === 'selected') {
-    return store.pages.filter((p) => store.selection.selectedIds.has(p.id))
+    return store.selectedPages
   }
   if (pageRangeMode.value === 'custom' && customPageRange.value) {
-    const validation = validatePageRange(customPageRange.value, store.pageCount)
+    const validation = validatePageRange(customPageRange.value, store.contentPageCount)
     if (validation.valid) {
-      const indices = parsePageRange(customPageRange.value, store.pageCount)
-      return indices.map((i) => store.pages[i]).filter((p): p is PageReference => !!p)
+      const indices = parsePageRange(customPageRange.value, store.contentPageCount)
+      return indices.map((i) => store.contentPages[i]).filter((p): p is PageReference => !!p)
     }
   }
   return []
@@ -151,7 +151,7 @@ const canExport = computed(() => {
   if (isExporting.value || exportComplete.value) return false
 
   if (pageRangeMode.value === 'custom') {
-    const validation = validatePageRange(customPageRange.value, store.pageCount)
+    const validation = validatePageRange(customPageRange.value, store.contentPageCount)
     if (!validation.valid) return false
   }
 
@@ -165,21 +165,21 @@ const canExport = computed(() => {
 const pageRangeDescription = computed(() => {
   switch (pageRangeMode.value) {
     case 'all':
-      return `All ${store.pageCount} pages`
+      return `All ${store.contentPageCount} pages`
     case 'selected':
       return `${store.selectedCount} selected page${store.selectedCount === 1 ? '' : 's'}`
     case 'custom':
       if (pageRangeError.value) return pageRangeError.value
       return `${pageCount.value} page${pageCount.value === 1 ? '' : 's'} from custom range`
     default:
-      return `${store.pageCount} pages`
+      return `${store.contentPageCount} pages`
   }
 })
 
 // Watch custom page range for validation
 watch(customPageRange, (value) => {
   if (pageRangeMode.value === 'custom' && value) {
-    const validation = validatePageRange(value, store.pageCount)
+    const validation = validatePageRange(value, store.contentPageCount)
     pageRangeError.value = validation.valid ? null : (validation.error ?? 'Invalid range')
   } else {
     pageRangeError.value = null
@@ -203,7 +203,7 @@ function buildExportOptions(): ExportOptions {
 
   // Page range
   if (pageRangeMode.value === 'selected') {
-    const selectedIndices = store.pages
+    const selectedIndices = store.contentPages
       .map((p, i) => (store.selection.selectedIds.has(p.id) ? i + 1 : null))
       .filter((i): i is number => i !== null)
     options.pageRange = selectedIndices.join(', ')

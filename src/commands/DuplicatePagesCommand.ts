@@ -65,10 +65,13 @@ export class DuplicatePagesCommand extends BaseCommand {
     for (const sourceId of this.sourcePageIds) {
       const index = store.pages.findIndex((p) => p.id === sourceId)
       if (index !== -1) {
-        pagesToDuplicate.push({
-          page: store.pages[index]!,
-          index,
-        })
+        const page = store.pages[index]
+        if (page && !page.isDivider) {
+          pagesToDuplicate.push({
+            page,
+            index,
+          })
+        }
       }
     }
 

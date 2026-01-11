@@ -4,18 +4,14 @@ import { useDocumentStore } from '@/stores/document'
 import { usePdfManager } from './usePdfManager'
 import { usePdfCompression, type CompressionQuality } from './usePdfCompression'
 import JSZip from 'jszip'
-import type { PageReference } from '@/types'
+import type { PageEntry, PageReference, DocumentMetadata } from '@/types'
 import { mapBookmarksToExport, addBookmarks } from '@/utils/pdf-outline-export'
 import { parsePageRange } from '@/utils/page-range'
 
 /**
- * PDF metadata options
+ * Export metadata options (based on DocumentMetadata)
  */
-export interface PdfMetadata {
-  title?: string
-  author?: string
-  subject?: string
-  keywords?: string[]
+export type ExportMetadata = DocumentMetadata & {
   creator?: string
   producer?: string
 }
@@ -33,7 +29,7 @@ export interface ExportResult {
 export interface ExportOptions {
   filename: string
   pageRange?: string // e.g., "1-5, 8, 10-12"
-  metadata?: PdfMetadata
+  metadata?: ExportMetadata
   compress?: boolean // Object stream compression (pdf-lib)
   compressionQuality?: CompressionQuality | 'none' // Ghostscript WASM compression
 }
@@ -42,9 +38,36 @@ export interface ExportOptions {
  * Options for the raw generator
  */
 export interface GeneratorOptions {
-  metadata?: PdfMetadata
+  metadata?: ExportMetadata
   compress?: boolean
   onProgress?: (percent: number) => void
+}
+
+function normalizeExportMetadata(metadata?: ExportMetadata): ExportMetadata | null {
+  if (!metadata) return null
+
+  const title = typeof metadata.title === 'string' ? metadata.title.trim() : ''
+  const author = typeof metadata.author === 'string' ? metadata.author.trim() : ''
+  const subject = typeof metadata.subject === 'string' ? metadata.subject.trim() : ''
+  const keywords = Array.isArray(metadata.keywords)
+    ? metadata.keywords.map((k) => k.trim()).filter(Boolean)
+    : []
+  const creator = metadata.creator?.trim()
+  const producer = metadata.producer?.trim()
+
+  if (!title && !author && !subject && keywords.length === 0 && !creator && !producer) {
+    return null
+  }
+
+  return {
+    ...metadata,
+    title,
+    author,
+    subject,
+    keywords,
+    ...(creator ? { creator } : {}),
+    ...(producer ? { producer } : {}),
+  }
 }
 
 /**
@@ -67,18 +90,19 @@ export function usePdfExport() {
     options: GeneratorOptions = {},
   ): Promise<Uint8Array> {
     const { metadata, compress, onProgress } = options
+    const exportMetadata = normalizeExportMetadata(metadata)
 
     // Create a new PDF document
     const finalPdf = await PDFDocument.create()
 
     // Set metadata if provided
-    if (metadata) {
-      if (metadata.title) finalPdf.setTitle(metadata.title)
-      if (metadata.author) finalPdf.setAuthor(metadata.author)
-      if (metadata.subject) finalPdf.setSubject(metadata.subject)
-      if (metadata.keywords) finalPdf.setKeywords(metadata.keywords)
-      if (metadata.creator) finalPdf.setCreator(metadata.creator)
-      finalPdf.setProducer(metadata.producer ?? 'FluxPDF')
+    if (exportMetadata) {
+      if (exportMetadata.title) finalPdf.setTitle(exportMetadata.title)
+      if (exportMetadata.author) finalPdf.setAuthor(exportMetadata.author)
+      if (exportMetadata.subject) finalPdf.setSubject(exportMetadata.subject)
+      if (exportMetadata.keywords.length) finalPdf.setKeywords(exportMetadata.keywords)
+      if (exportMetadata.creator) finalPdf.setCreator(exportMetadata.creator)
+      finalPdf.setProducer(exportMetadata.producer ?? 'FluxPDF')
       finalPdf.setCreationDate(new Date())
       finalPdf.setModificationDate(new Date())
     } else {
@@ -189,13 +213,12 @@ export function usePdfExport() {
     const { filename, pageRange, metadata, compress } = options
 
     // Determine which pages to export
-    let pagesToExport: PageReference[]
+    let pagesToExport: PageEntry[]
 
     if (pageRange) {
-      const indices = parsePageRange(pageRange, store.pages.length)
+      const indices = parsePageRange(pageRange, store.contentPageCount)
       pagesToExport = indices
-        .map((i) => store.pages[i])
-        // Keep dividers to know where to split
+        .map((i) => store.contentPages[i])
         .filter((p): p is PageReference => !!p)
     } else {
       pagesToExport = store.pages
@@ -363,7 +386,7 @@ export function usePdfExport() {
       throw new Error('No pages selected')
     }
 
-    const selectedIndices = store.pages
+    const selectedIndices = store.contentPages
       .map((p, i) => (store.selection.selectedIds.has(p.id) ? i + 1 : null))
       .filter((i): i is number => i !== null)
 
@@ -416,7 +439,7 @@ export function usePdfExport() {
    * Get estimated file size (rough approximation)
    */
   function getEstimatedSize(pagesToEstimate?: PageReference[]): number {
-    const pagesList = pagesToEstimate || store.pages
+    const pagesList = pagesToEstimate || store.contentPages
     let totalEstimatedSize = 0
 
     // Group pages by source file to check for full file inclusion

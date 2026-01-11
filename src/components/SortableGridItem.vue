@@ -8,10 +8,10 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview'
-import type { PageReference } from '@/types'
+import type { PageEntry } from '@/types'
 
 const props = defineProps<{
-  page: PageReference
+  page: PageEntry
   index: number
 }>()
 

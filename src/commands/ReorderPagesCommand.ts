@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
-import type { PageReference } from '@/types'
+import type { PageEntry } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
 /**
@@ -9,8 +9,8 @@ import { useDocumentStore } from '@/stores/document'
  */
 interface ReorderPagesPayload {
   id: string
-  previousOrder: PageReference[]
-  newOrder: PageReference[]
+  previousOrder: PageEntry[]
+  newOrder: PageEntry[]
 }
 
 /**
@@ -24,14 +24,14 @@ export class ReorderPagesCommand extends BaseCommand {
   public readonly name = 'Reorder pages'
 
   /** Page order before the change */
-  public readonly previousOrder: PageReference[]
+  public readonly previousOrder: PageEntry[]
 
   /** Page order after the change */
-  public readonly newOrder: PageReference[]
+  public readonly newOrder: PageEntry[]
 
   constructor(
-    previousOrder: PageReference[],
-    newOrder: PageReference[],
+    previousOrder: PageEntry[],
+    newOrder: PageEntry[],
     id?: string,
     createdAt?: number,
   ) {

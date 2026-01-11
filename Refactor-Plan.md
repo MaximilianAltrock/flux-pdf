@@ -16,17 +16,17 @@
 3. Add a content-pages selector in the store and use it everywhere
    - Why: `store.pages` includes dividers, but `pageCount` and export ranges want content pages only. Centralizing `contentPages` and `contentPageCount` avoids subtle bugs (export page range currently uses `store.pages.length`).
    - Impact: Medium. Updates in `src/stores/document.ts`, `src/composables/usePdfExport.ts`, and `src/composables/useKeyboardShortcuts.ts`.
-   - Urgency: High.
+   - Urgency: High. (Done)
 
 4. Make divider pages an explicit type (no sentinel values)
    - Why: `SplitGroupCommand` creates dividers with `sourceFileId: 'virtual-divider'` and `sourcePageIndex: -1`. A discriminated union like `PageEntry = PageReference | DividerReference` prevents invalid data and clarifies logic.
    - Impact: Medium. Updates in `src/types/index.ts`, `src/commands/SplitGroupCommand.ts`, and any `isDivider` checks.
-   - Urgency: High.
+   - Urgency: High. (Done)
 
 5. Create a single metadata model and mapping
    - Why: `DocumentMetadata` (store) and `PdfMetadata` (export) overlap. A shared model avoids duplication and clarifies which fields are persisted vs export-only.
    - Impact: Medium. New type module (for example `src/types/document.ts`) and a mapping helper in `src/composables/usePdfExport.ts`.
-   - Urgency: Medium.
+   - Urgency: Medium. (Done)
 
 6. Introduce page factory helpers to avoid repeated page creation logic
    - Why: Page creation is duplicated in `src/composables/usePdfManager.ts` and `src/composables/useAppActions.ts`. A factory keeps IDs, rotation, and group IDs consistent.

@@ -3,11 +3,13 @@ import { ref, computed, watch } from 'vue'
 import type {
   SourceFile,
   PageReference,
+  PageEntry,
   SelectionState,
   BookmarkNode,
   DocumentMetadata,
   SecurityMetadata,
 } from '@/types'
+import { isPageEntry } from '@/types'
 import { autoGenBookmarksFromPages } from '@/utils/auto-gen-tree'
 
 export const useDocumentStore = defineStore('document', () => {
@@ -32,7 +34,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   const sources = ref<Map<string, SourceFile>>(new Map())
-  const pages = ref<PageReference[]>([])
+  const pages = ref<PageEntry[]>([])
   const metadata = ref<DocumentMetadata>({ ...DEFAULT_METADATA })
   const security = ref<SecurityMetadata>({ ...DEFAULT_SECURITY })
   const bookmarksTree = ref<BookmarkNode[]>([])
@@ -60,14 +62,16 @@ export const useDocumentStore = defineStore('document', () => {
   // ============================================
 
   // Divider logic: dividers are virtual pages
-  const pageCount = computed(() => pages.value.filter((p) => !p.isDivider).length)
-  const hasPages = computed(() => pageCount.value > 0)
+  const contentPages = computed(() => pages.value.filter(isPageEntry))
+  const contentPageCount = computed(() => contentPages.value.length)
+  const pageCount = computed(() => contentPageCount.value)
+  const hasPages = computed(() => contentPageCount.value > 0)
 
   const zoomPercentage = computed(() => Math.round((zoom.value / 200) * 100))
   const sourceFileList = computed(() => Array.from(sources.value.values()))
   const selectedCount = computed(() => selection.value.selectedIds.size)
   const selectedPages = computed(() =>
-    pages.value.filter((p) => selection.value.selectedIds.has(p.id)),
+    contentPages.value.filter((p) => selection.value.selectedIds.has(p.id)),
   )
 
   // ============================================
@@ -80,7 +84,7 @@ export const useDocumentStore = defineStore('document', () => {
 
   function removeSourceFile(sourceFileId: string) {
     sources.value.delete(sourceFileId)
-    pages.value = pages.value.filter((p) => p.sourceFileId !== sourceFileId)
+    pages.value = pages.value.filter((p) => (p.isDivider ? true : p.sourceFileId !== sourceFileId))
   }
 
   function removeSourceOnly(sourceFileId: string) {
@@ -91,7 +95,7 @@ export const useDocumentStore = defineStore('document', () => {
     pages.value.push(...newPages)
   }
 
-  function insertPages(index: number, newPages: PageReference[]) {
+  function insertPages(index: number, newPages: PageEntry[]) {
     if (index < 0) index = 0
     if (index > pages.value.length) index = pages.value.length
 
@@ -112,12 +116,12 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
-  function reorderPages(newOrder: PageReference[]) {
+  function reorderPages(newOrder: PageEntry[]) {
     pages.value = newOrder
   }
 
   function rotatePage(pageId: string, degrees: 90 | -90) {
-    const page = pages.value.find((p) => p.id === pageId)
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (page) {
       const current = page.rotation
       const newRotation = ((current + degrees + 360) % 360) as 0 | 90 | 180 | 270
@@ -152,13 +156,15 @@ export const useDocumentStore = defineStore('document', () => {
 
     for (let i = start; i <= end; i++) {
       const page = pages.value[i]
-      if (page) selection.value.selectedIds.add(page.id)
+      if (page && !page.isDivider) {
+        selection.value.selectedIds.add(page.id)
+      }
     }
     selection.value.lastSelectedId = toId
   }
 
   function selectAll() {
-    pages.value.forEach((p) => selection.value.selectedIds.add(p.id))
+    contentPages.value.forEach((p) => selection.value.selectedIds.add(p.id))
   }
 
   function clearSelection() {
@@ -223,7 +229,7 @@ export const useDocumentStore = defineStore('document', () => {
     bookmarksDirty.value = false
   }
 
-  function setPages(newPages: PageReference[]) {
+  function setPages(newPages: PageEntry[]) {
     pages.value = newPages
   }
 
@@ -269,7 +275,7 @@ export const useDocumentStore = defineStore('document', () => {
     [pages, sources, bookmarksDirty],
     () => {
       if (bookmarksDirty.value) return
-      bookmarksTree.value = autoGenBookmarksFromPages(pages.value, sources.value)
+      bookmarksTree.value = autoGenBookmarksFromPages(contentPages.value, sources.value)
     },
     { deep: true },
   )
@@ -283,6 +289,8 @@ export const useDocumentStore = defineStore('document', () => {
     zoom,
     currentTool,
     pageCount,
+    contentPages,
+    contentPageCount,
     zoomPercentage,
     hasPages,
     selectedPages,

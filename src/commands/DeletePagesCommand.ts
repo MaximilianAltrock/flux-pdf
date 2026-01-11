@@ -88,6 +88,7 @@ export class DeletePagesCommand extends BaseCommand {
     const pageIdSet = new Set(this.pageIds)
 
     store.pages.forEach((page, index) => {
+      if (page.isDivider) return
       if (pageIdSet.has(page.id)) {
         this.backupSnapshots.push({
           page: { ...page },

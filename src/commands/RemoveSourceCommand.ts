@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand, PageSnapshot } from './types'
-import type { SourceFile, PageReference } from '@/types'
+import type { SourceFile, PageEntry, PageReference } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
 interface RemoveSourcePayload {
@@ -25,7 +25,7 @@ export class RemoveSourceCommand extends BaseCommand {
 
   constructor(
     sourceFile: SourceFile,
-    pages: PageReference[],
+    pages: PageEntry[],
     id?: string,
     createdAt?: number,
     existingSnapshots?: PageSnapshot[],
@@ -48,7 +48,10 @@ export class RemoveSourceCommand extends BaseCommand {
     } else {
       this.pageSnapshots = pages
         .map((page, index) => ({ page, index }))
-        .filter(({ page }) => page.sourceFileId === sourceFile.id)
+        .filter(
+          (item): item is { page: PageReference; index: number } =>
+            !item.page.isDivider && item.page.sourceFileId === sourceFile.id,
+        )
         .map(({ page, index }) => ({
           page: { ...page },
           index,

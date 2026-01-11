@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { PageReference, PdfOutlineNode, DocumentMetadata, SecurityMetadata } from '@/types'
+import type { PageEntry, PdfOutlineNode, DocumentMetadata, SecurityMetadata } from '@/types'
 import type { SerializedCommand } from '@/commands'
 
 /**
@@ -17,7 +17,7 @@ export interface SessionState {
   activeSourceIds: string[]
 
   /** Current page arrangement */
-  pageMap: PageReference[]
+  pageMap: PageEntry[]
 
   /** Serialized command history */
   history: SerializedCommand[]

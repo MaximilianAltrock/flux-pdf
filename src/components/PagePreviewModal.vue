@@ -38,9 +38,10 @@ const containerRef = ref<HTMLElement | null>(null)
 const imageRef = ref<HTMLElement | null>(null)
 
 // --- Computed Helpers ---
+const contentPages = computed(() => store.contentPages)
 const currentIndex = computed(() => {
   if (!props.pageRef) return -1
-  return store.pages.findIndex((p) => p.id === props.pageRef!.id)
+  return contentPages.value.findIndex((p) => p.id === props.pageRef!.id)
 })
 
 const nextContentIndex = computed(() => findNextContentPage(currentIndex.value, 'next'))
@@ -48,7 +49,7 @@ const prevContentIndex = computed(() => findNextContentPage(currentIndex.value, 
 const hasPrevious = computed(() => prevContentIndex.value !== -1)
 const hasNext = computed(() => nextContentIndex.value !== -1)
 const pageNumber = computed(() => currentIndex.value + 1)
-const totalPages = computed(() => store.pages.length)
+const totalPages = computed(() => contentPages.value.length)
 
 // --- Watchers ---
 watch(
@@ -86,21 +87,21 @@ function handleClose() {
 function findNextContentPage(startIndex: number, direction: 'next' | 'prev'): number {
   let i = startIndex
   const delta = direction === 'next' ? 1 : -1
-  while (i >= 0 && i < store.pages.length) {
+  while (i >= 0 && i < contentPages.value.length) {
     i += delta
-    const page = store.pages[i]
-    if (page && !page.isDivider) return i
+    const page = contentPages.value[i]
+    if (page) return i
   }
   return -1
 }
 
 function goToPrevious() {
-  const prevPage = store.pages[prevContentIndex.value]
+  const prevPage = contentPages.value[prevContentIndex.value]
   if (hasPrevious.value && prevPage) emit('navigate', prevPage)
 }
 
 function goToNext() {
-  const nextPage = store.pages[nextContentIndex.value]
+  const nextPage = contentPages.value[nextContentIndex.value]
   if (hasNext.value && nextPage) emit('navigate', nextPage)
 }
 

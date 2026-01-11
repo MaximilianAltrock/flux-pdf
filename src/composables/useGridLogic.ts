@@ -1,13 +1,13 @@
 import { ref, watch, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
-import type { PageReference } from '@/types'
+import type { PageEntry } from '@/types'
 
 export function useGridLogic() {
   const store = useDocumentStore()
 
   // Local state for drag-and-drop
   // We use this as the v-model for the draggable library
-  const localPages = ref<PageReference[]>([])
+  const localPages = ref<PageEntry[]>([])
   const isDragging = ref(false)
 
   // Sync with store (One-way sync: Store -> Local)
