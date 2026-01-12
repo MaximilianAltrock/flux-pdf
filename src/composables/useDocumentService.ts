@@ -450,7 +450,7 @@ export function useDocumentService(
     return 'merged-document'
   }
 
-  function getEstimatedSize(pagesToEstimate?: PageReference[]): number {
+  function getEstimatedSize(pagesToEstimate?: ReadonlyArray<PageReference>): number {
     const pagesList = pagesToEstimate || store.contentPages
     let totalEstimatedSize = 0
 

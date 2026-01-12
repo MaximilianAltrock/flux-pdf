@@ -1,6 +1,6 @@
 import * as pdfjs from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { PDFDocumentProxy, RefProxy } from 'pdfjs-dist'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
 import { db } from '@/db/db'
 import type {
@@ -208,6 +208,11 @@ type PdfJsOutlineItem = {
   items?: PdfJsOutlineItem[]
 }
 
+type PdfJsRefProxy = {
+  num: number
+  gen: number
+}
+
 async function extractPdfOutline(pdfDoc: PDFDocumentProxy): Promise<PdfOutlineNode[]> {
   try {
     const outline = await pdfDoc.getOutline()
@@ -265,7 +270,7 @@ async function resolvePageIndex(pdfDoc: PDFDocumentProxy, dest: unknown): Promis
   }
 
   try {
-    const idx = await pdfDoc.getPageIndex(pageRef as RefProxy)
+    const idx = await pdfDoc.getPageIndex(pageRef as PdfJsRefProxy)
     return idx >= 0 ? idx : null
   } catch {
     return null

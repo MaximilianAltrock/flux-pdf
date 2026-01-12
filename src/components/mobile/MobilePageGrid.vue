@@ -8,9 +8,11 @@ import PdfThumbnail from '@/components/PdfThumbnail.vue'
 import PageDivider from '@/components/PageDivider.vue'
 import type { PageEntry, PageReference } from '@/types'
 import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 const props = defineProps<{
   selectionMode: boolean
+  state: FacadeState
   actions: AppActions
 }>()
 
@@ -20,8 +22,9 @@ const emit = defineEmits<{
 }>()
 
 const { haptic } = useMobile()
-const { localPages, isDragging, isSelected, contentPages, getContentPageNumber, store } =
-  useGridLogic()
+const { localPages, isDragging, isSelected, contentPages, getContentPageNumber } = useGridLogic(
+  props.state.document,
+)
 
 // Local state for drag tracking
 const dragStartOrder = ref<PageEntry[]>([])
@@ -101,7 +104,7 @@ function handlePageTap(pageRef: PageReference, event: Event) {
     props.actions.togglePageSelection(pageRef.id)
 
     // Exit selection mode if nothing selected
-    if (store.selectedCount === 0) {
+    if (props.state.document.selectedCount === 0) {
       jumpModeActive.value = false
       props.actions.exitMobileSelectionMode()
     }
@@ -114,18 +117,18 @@ function handlePageTap(pageRef: PageReference, event: Event) {
 // === Jump Feature ===
 
 function activateJumpMode() {
-  if (store.selectedCount === 0) return
+  if (props.state.document.selectedCount === 0) return
   jumpModeActive.value = true
   haptic('light')
 }
 
 function handleJumpToPosition(targetIndex: number) {
-  if (!jumpModeActive.value || store.selectedCount === 0) return
+  if (!jumpModeActive.value || props.state.document.selectedCount === 0) return
 
   haptic('medium')
 
   const previousOrder = [...localPages.value]
-  const selectedIds = new Set(store.selection.selectedIds)
+  const selectedIds = new Set(props.state.document.selectedIds)
   const selectedPages = localPages.value.filter((p) => selectedIds.has(p.id))
   const otherPages = localPages.value.filter((p) => !selectedIds.has(p.id))
 
@@ -265,7 +268,9 @@ onUnmounted(() => {
         class="sticky top-0 z-20 bg-primary px-4 py-3 flex items-center justify-between text-white shadow-lg"
       >
         <span class="font-medium">
-          Tap where to move {{ store.selectedCount }} page{{ store.selectedCount > 1 ? 's' : '' }}
+          Tap where to move {{ props.state.document.selectedCount }} page{{
+            props.state.document.selectedCount > 1 ? 's' : ''
+          }}
         </span>
         <button class="text-sm font-medium opacity-80 active:opacity-100" @click="cancelJumpMode">
           Cancel
@@ -361,7 +366,12 @@ onUnmounted(() => {
 
     <Transition name="fade">
       <div
-        v-if="props.selectionMode && store.selectedCount > 0 && !jumpModeActive && !isDragging"
+        v-if="
+          props.selectionMode &&
+          props.state.document.selectedCount > 0 &&
+          !jumpModeActive &&
+          !isDragging
+        "
         class="sticky bottom-4 flex justify-center pointer-events-none"
       >
         <button

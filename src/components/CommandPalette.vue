@@ -138,7 +138,7 @@ const allCommands = computed<CommandItemData[]>(() => [
       props.actions.selectAllPages()
       emit('update:open', false)
     },
-    enabled: () => store.pageCount > 0,
+    enabled: () => props.state.document.pageCount > 0,
     category: 'Selection',
   },
   {
@@ -150,7 +150,7 @@ const allCommands = computed<CommandItemData[]>(() => [
       props.actions.clearSelection()
       emit('update:open', false)
     },
-    enabled: () => store.selectedCount > 0,
+    enabled: () => props.state.document.selectedCount > 0,
     category: 'Selection',
   },
   {

@@ -64,7 +64,7 @@ function loadGhostscript() {
 /**
  * Compress a PDF using Ghostscript
  */
-function compressPdf(pdfData: ArrayBuffer, quality: string): Promise<ArrayBuffer> {
+function compressPdf(pdfData: ArrayBuffer | SharedArrayBuffer, quality: string): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     currentResolve = resolve
     currentReject = reject
@@ -91,7 +91,7 @@ function compressPdf(pdfData: ArrayBuffer, quality: string): Promise<ArrayBuffer
             const arrayBuffer = outputData.buffer.slice(
               outputData.byteOffset,
               outputData.byteOffset + outputData.byteLength,
-            )
+            ) as ArrayBuffer
             if (currentResolve) {
               currentResolve(arrayBuffer)
             }

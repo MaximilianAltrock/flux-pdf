@@ -74,6 +74,7 @@ function onRemoveSource(sourceId: string) {
       <MobilePageGrid
         v-else
         :selection-mode="props.state.mobileSelectionMode.value"
+        :state="props.state"
         :actions="props.actions"
         @preview="onPreview"
       />

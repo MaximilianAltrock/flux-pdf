@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
@@ -25,7 +25,11 @@ export default defineConfig({
     include: ['tests/**/*.spec.ts'],
     exclude: ['tests/e2e/**'],
     deps: {
-      inline: ['pdfjs-dist'],
+      optimizer: {
+        client: {
+          include: ['pdfjs-dist'],
+        },
+      },
     },
   },
   build: {

@@ -197,8 +197,9 @@ watch(customPageRange, (value) => {
 // Methods
 function buildExportOptions(): ExportOptions {
   const title = document.metadata.title?.trim() || document.projectTitle?.trim()
-  const exportMetadata = {
+  const exportMetadata: ExportOptions['metadata'] = {
     ...document.metadata,
+    keywords: [...document.metadata.keywords],
     title: title ?? document.metadata.title,
   }
 

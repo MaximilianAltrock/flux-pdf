@@ -35,7 +35,9 @@ const props = defineProps<{
   actions: AppActions
 }>()
 
-const { localPages, isDragging, isSelected, getContentPageNumber, store } = useGridLogic()
+const { localPages, isDragging, isSelected, getContentPageNumber } = useGridLogic(
+  props.state.document,
+)
 
 // Local state for drag logic
 const isFileDragOver = ref(false)
@@ -119,11 +121,12 @@ function handlePageClick(pageRef: PageReference, event: MouseEvent) {
   contextMenu.value.visible = false
 
   if (props.state.currentTool.value === 'razor') {
-    const index = store.pages.findIndex((p) => p.id === pageRef.id)
-    const prevPage = store.pages[index - 1]
+    const pages = props.state.document.pages
+    const index = pages.findIndex((p) => p.id === pageRef.id)
+    const prevPage = pages[index - 1]
 
     // Prevent invalid splits
-    if (index > 0 && index < store.pages.length - 1 && prevPage && !prevPage.isDivider) {
+    if (index > 0 && index < pages.length - 1 && prevPage && !prevPage.isDivider) {
       props.actions.handleSplitGroup(index)
     }
     return
@@ -132,10 +135,11 @@ function handlePageClick(pageRef: PageReference, event: MouseEvent) {
   // Selection Logic
   if (event.metaKey || event.ctrlKey) {
     props.actions.togglePageSelection(pageRef.id)
-  } else if (event.shiftKey && store.selection.lastSelectedId) {
-    props.actions.selectRange(store.selection.lastSelectedId, pageRef.id)
+  } else if (event.shiftKey && props.state.document.lastSelectedId) {
+    props.actions.selectRange(props.state.document.lastSelectedId, pageRef.id)
   } else {
-    const isOnlySelected = store.selection.selectedIds.has(pageRef.id) && store.selectedCount === 1
+    const isOnlySelected =
+      props.state.document.selectedIds.has(pageRef.id) && props.state.document.selectedCount === 1
     if (isOnlySelected) {
       props.actions.clearSelection()
     } else {
@@ -282,8 +286,8 @@ async function handleFileDrop(event: DragEvent) {
               class="text-xs text-text-muted font-medium border-b border-border px-3 py-2"
             >
               {{
-                store.selectedCount > 1
-                  ? `${store.selectedCount} pages selected`
+                props.state.document.selectedCount > 1
+                  ? `${props.state.document.selectedCount} pages selected`
                   : `Page ${getContentPageNumber(pageRef.id) || index + 1}`
               }}
             </ContextMenuLabel>
@@ -315,7 +319,7 @@ async function handleFileDrop(event: DragEvent) {
 
             <ContextMenuSeparator />
 
-            <template v-if="store.selectedCount > 0">
+            <template v-if="props.state.document.selectedCount > 0">
               <ContextMenuItem @select="emit('contextAction', UserAction.SELECT_ALL, pageRef)">
                 <CheckSquare class="w-4 h-4 mr-2 text-text-muted" />
                 <span>Select All</span>

@@ -93,7 +93,13 @@ const metadataSubject = computed({
   set: (value) => props.actions.setMetadata({ subject: value }),
 })
 
-function hasMeaningfulMetadata(metadata?: DocumentMetadata): metadata is DocumentMetadata {
+type ReadonlyMetadata = Omit<Readonly<DocumentMetadata>, 'keywords'> & {
+  keywords: ReadonlyArray<string>
+}
+
+function hasMeaningfulMetadata(
+  metadata?: ReadonlyMetadata,
+): metadata is ReadonlyMetadata {
   if (!metadata) return false
   return Boolean(
     metadata.title.trim() ||
@@ -102,6 +108,8 @@ function hasMeaningfulMetadata(metadata?: DocumentMetadata): metadata is Documen
       metadata.keywords.length > 0,
   )
 }
+
+const bookmarksTree = computed(() => props.state.document.bookmarksTree as BookmarkNode[])
 
 const metadataSources = computed(() =>
   props.state.document.sourceFileList.filter((source) => hasMeaningfulMetadata(source.metadata)),
@@ -233,7 +241,7 @@ const allowModifying = computed({
 
                     <div class="flex-1 min-h-0 py-2">
                       <Tree
-                        :items="props.state.document.bookmarksTree"
+                        :items="bookmarksTree"
                         :get-key="(item) => item.id"
                         @update:items="
                           (val) => props.actions.setBookmarksTree(val as BookmarkNode[], true)
