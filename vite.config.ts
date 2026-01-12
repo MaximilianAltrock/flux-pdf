@@ -8,12 +8,12 @@ import path from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueDevTools(), tailwindcss(),Components({
-    }),],
+  plugins: [vue(), vueDevTools(), tailwindcss(), Components({})],
+  base: '/flux-pdf/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-    }
+    },
   },
   optimizeDeps: {
     include: ['pdfjs-dist'],

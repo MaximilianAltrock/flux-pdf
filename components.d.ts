@@ -147,6 +147,7 @@ declare module 'vue' {
     MobilePageGrid: typeof import('./src/components/mobile/MobilePageGrid.vue')['default']
     MobileTitleSheet: typeof import('./src/components/mobile/MobileTitleSheet.vue')['default']
     MobileTopBar: typeof import('./src/components/mobile/MobileTopBar.vue')['default']
+    PageDivider: typeof import('./src/components/PageDivider.vue')['default']
     PageGrid: typeof import('./src/components/PageGrid.vue')['default']
     PagePreviewModal: typeof import('./src/components/PagePreviewModal.vue')['default']
     PdfThumbnail: typeof import('./src/components/PdfThumbnail.vue')['default']
