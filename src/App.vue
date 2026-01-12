@@ -16,7 +16,6 @@
 import { onMounted } from 'vue'
 
 // Composables
-import { useDocumentService } from '@/composables/useDocumentService'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useDocumentFacade } from '@/composables/useDocumentFacade'
 

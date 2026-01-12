@@ -2,7 +2,7 @@
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
-import { RotateCw, Trash2, Eye, Scissors } from 'lucide-vue-next'
+import { RotateCw, Trash2, Scissors } from 'lucide-vue-next'
 import type { PageReference } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'

@@ -1,6 +1,8 @@
 import type { ResultError } from '@/types/result'
 import type { DocumentErrorCode, ExportErrorCode, ImportErrorCode } from '@/types/errors'
 
+export type { DocumentErrorCode, ExportErrorCode, ImportErrorCode } from '@/types/errors'
+
 export interface DocumentError extends ResultError {
   code: DocumentErrorCode
 }

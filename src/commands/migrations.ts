@@ -1,4 +1,4 @@
-import { COMMAND_SCHEMA_VERSION, type SerializedCommand } from './types'
+import type { SerializedCommand } from './types'
 
 export type SerializedCommandRecord = Omit<SerializedCommand, 'version'> & { version?: number }
 

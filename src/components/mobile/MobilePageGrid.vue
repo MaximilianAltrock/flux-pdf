@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
-import { Scissors, ArrowDown } from 'lucide-vue-next'
+import { ArrowDown } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
+import PageDivider from '@/components/PageDivider.vue'
 import type { PageEntry, PageReference } from '@/types'
 import type { AppActions } from '@/composables/useAppActions'
 
@@ -19,7 +20,8 @@ const emit = defineEmits<{
 }>()
 
 const { haptic } = useMobile()
-const { localPages, isDragging, isSelected, store } = useGridLogic()
+const { localPages, isDragging, isSelected, contentPages, getContentPageNumber, store } =
+  useGridLogic()
 
 // Local state for drag tracking
 const dragStartOrder = ref<PageEntry[]>([])
@@ -55,9 +57,6 @@ watch(
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
 }))
-
-// Visible pages (non-divider) for page numbering
-const visiblePagesList = computed(() => localPages.value.filter((p) => !p.isDivider))
 
 // === Touch Handlers ===
 
@@ -218,16 +217,6 @@ function handlePinchEnd() {
 
 // === Helpers ===
 
-function getVisiblePageNumber(pageRef: PageReference): number {
-  let count = 0
-  for (const p of localPages.value) {
-    if (p.isDivider) continue
-    count++
-    if (p.id === pageRef.id) return count
-  }
-  return count
-}
-
 function shouldShowJumpTarget(index: number): boolean {
   if (!jumpModeActive.value) return false
 
@@ -310,24 +299,7 @@ onUnmounted(() => {
         </button>
 
         <!-- High-Fidelity Section Divider (Mobile) -->
-        <div
-          v-if="pageRef.isDivider"
-          class="col-span-full py-5 flex items-center justify-center relative select-none"
-        >
-          <div
-            class="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent"
-          ></div>
-          <div
-            class="relative glass-surface bg-background/90 px-4 py-1.5 rounded-full border-border/80 shadow-md flex items-center gap-2.5"
-          >
-            <Scissors class="w-3 h-3 text-primary animate-pulse" />
-            <span
-              class="text-[0.65rem] font-mono font-bold text-muted-foreground uppercase tracking-[0.15em]"
-            >
-              New Document
-            </span>
-          </div>
-        </div>
+        <PageDivider v-if="pageRef.isDivider" variant="mobile" />
 
         <div
           v-else
@@ -364,7 +336,7 @@ onUnmounted(() => {
 
           <PdfThumbnail
             :page-ref="pageRef"
-            :page-number="getVisiblePageNumber(pageRef)"
+            :page-number="getContentPageNumber(pageRef.id)"
             :selected="props.selectionMode && isSelected(pageRef.id)"
             :fixed-size="false"
             :width="300"
@@ -402,7 +374,7 @@ onUnmounted(() => {
     </Transition>
 
     <p
-      v-if="visiblePagesList.length > 0 && !jumpModeActive"
+      v-if="contentPages.length > 0 && !jumpModeActive"
       class="text-center text-xs text-text-muted py-4 px-6"
     >
       {{
@@ -413,7 +385,7 @@ onUnmounted(() => {
     </p>
 
     <div
-      v-if="visiblePagesList.length === 0"
+      v-if="contentPages.length === 0"
       class="absolute inset-0 flex items-center justify-center p-8"
     >
       <div class="text-center text-text-muted">

@@ -5,7 +5,13 @@ import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { AddPagesCommand, BatchCommand } from '@/commands'
 import type { Command } from '@/commands/types'
-import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
+import type {
+  BookmarkNode,
+  DocumentMetadata,
+  FileUploadResult,
+  PageEntry,
+  PageReference,
+} from '@/types'
 import type { Result } from '@/types/result'
 import { useDebounceFn } from '@vueuse/core'
 import {
@@ -520,7 +526,10 @@ export function useDocumentService(
         }
 
         if (store.bookmarksDirty) {
-          store.setBookmarksTree((session.bookmarksTree as any[]) ?? [], false)
+          const restoredTree = Array.isArray(session.bookmarksTree)
+            ? (session.bookmarksTree as BookmarkNode[])
+            : []
+          store.setBookmarksTree(restoredTree, false)
         }
       }
 
@@ -555,11 +564,6 @@ export function useDocumentService(
     }
   }
 
-  async function removeSource(sourceId: string): Promise<Result<null>> {
-    store.removeSourceFile(sourceId)
-    return { ok: true, value: null }
-  }
-
   return {
     importJob,
     exportJob,
@@ -574,7 +578,6 @@ export function useDocumentService(
     validatePageRange,
     restoreSession,
     clearWorkspace,
-    removeSource,
     getPdfDocument: adapters.import.getPdfDocument,
     getPdfBlob: adapters.import.getPdfBlob,
   }

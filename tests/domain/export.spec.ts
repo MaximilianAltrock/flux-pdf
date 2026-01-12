@@ -116,7 +116,8 @@ describe('addBookmarks', () => {
 
     await addBookmarks(pdfDoc, [{ title: 'Chapter', pageIndex: 0 }])
 
-    const catalog = (pdfDoc as any).catalog
+    const catalog = (pdfDoc as unknown as { catalog: { get: (name: PDFName) => unknown } })
+      .catalog
     const outlines = catalog.get(PDFName.of('Outlines'))
     const pageMode = catalog.get(PDFName.of('PageMode'))
 

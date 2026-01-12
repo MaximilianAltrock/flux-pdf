@@ -1,4 +1,4 @@
-import type { Command, SerializedCommand, CommandConstructor } from './types'
+import type { Command, CommandConstructor } from './types'
 import { migrateSerializedCommand, type SerializedCommandRecord } from './migrations'
 
 /**

@@ -1,4 +1,5 @@
 import { PDFDocument, PDFName, PDFNumber, PDFArray, PDFString, PDFRef, PDFDict, degrees } from 'pdf-lib'
+import type { PDFPage } from 'pdf-lib'
 import type { BookmarkNode, PageEntry, PageReference, DocumentMetadata } from '@/types'
 
 /**
@@ -191,7 +192,7 @@ export async function generateRawPdf(
     pagesBySource.get(page.sourceFileId)!.push({ pageRef: page, finalIndex: index })
   })
 
-  const importedPages: any[] = Array.from({ length: pages.length })
+  const importedPages: Array<PDFPage | undefined> = Array.from({ length: pages.length })
 
   let processedPages = 0
   const totalPages = pages.length

@@ -1,6 +1,7 @@
 import { ref, watch, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
-import type { PageEntry } from '@/types'
+import type { PageEntry, PageReference } from '@/types'
+import { isPageEntry } from '@/types'
 
 export function useGridLogic() {
   const store = useDocumentStore()
@@ -27,13 +28,26 @@ export function useGridLogic() {
 
   // In the new Hard Delete architecture, all pages in store are visible
   // But we still filter out Dividers for page counting contexts usually
-  const visiblePages = computed(() => localPages.value)
+  const contentPages = computed(() =>
+    localPages.value.filter((page): page is PageReference => isPageEntry(page)),
+  )
+  const contentPageNumberMap = computed(() => {
+    const map = new Map<string, number>()
+    contentPages.value.forEach((page, index) => {
+      map.set(page.id, index + 1)
+    })
+    return map
+  })
+
+  const getContentPageNumber = (pageId: string): number =>
+    contentPageNumberMap.value.get(pageId) ?? 0
 
   return {
     localPages,
     isDragging,
     isSelected,
-    visiblePages,
+    contentPages,
+    getContentPageNumber,
     store,
   }
 }

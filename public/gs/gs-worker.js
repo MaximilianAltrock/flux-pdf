@@ -1,3 +1,4 @@
+/* eslint-disable */
 // include: shell.js
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
@@ -1126,7 +1127,7 @@ function dbg(...args) {
   var PATH = {
   isAbs:(path) => path.charAt(0) === '/',
   splitPath:(filename) => {
-        var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
+        var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^/]+?|)(\.[^./]*|))(?:[/]*)$/;
         return splitPathRe.exec(filename).slice(1);
       },
   normalizeArray:(parts, allowAboveRoot) => {
@@ -5439,4 +5440,3 @@ var workerResponded = false, workerCallbackId = -1;
 })();
 
 // end include: postamble.js
-

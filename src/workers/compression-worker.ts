@@ -37,6 +37,15 @@ type _GsModule = {
   noExitRuntime: number
 }
 
+type GsModuleConfig = Pick<
+  _GsModule,
+  'preRun' | 'postRun' | 'arguments' | 'print' | 'printErr' | 'totalDependencies' | 'noExitRuntime'
+>
+
+type GsModuleLike = _GsModule | GsModuleConfig
+
+const moduleContext = self as unknown as { Module?: GsModuleLike }
+
 // Track if WASM is loaded
 let wasmLoaded = false
 let currentResolve: ((data: ArrayBuffer) => void) | null = null
@@ -63,18 +72,20 @@ function compressPdf(pdfData: ArrayBuffer, quality: string): Promise<ArrayBuffer
     const qualitySetting = QUALITY_PRESETS[quality] || QUALITY_PRESETS.ebook
 
     // Set up Emscripten Module configuration
-    const moduleConfig = {
+    const moduleConfig: GsModuleConfig = {
       preRun: [
         function () {
           // Write input PDF to virtual filesystem
-          ;(self as any).Module.FS.writeFile('input.pdf', new Uint8Array(pdfData))
+          const module = moduleContext.Module as _GsModule
+          module.FS.writeFile('input.pdf', new Uint8Array(pdfData))
         },
       ],
       postRun: [
         function () {
           try {
             // Read compressed output from virtual filesystem
-            const outputData = (self as any).Module.FS.readFile('output.pdf', {
+            const module = moduleContext.Module as _GsModule
+            const outputData = module.FS.readFile('output.pdf', {
               encoding: 'binary',
             })
             const arrayBuffer = outputData.buffer.slice(
@@ -84,7 +95,7 @@ function compressPdf(pdfData: ArrayBuffer, quality: string): Promise<ArrayBuffer
             if (currentResolve) {
               currentResolve(arrayBuffer)
             }
-          } catch (_err) {
+          } catch {
             if (currentReject) {
               currentReject(new Error('Failed to read compressed PDF output'))
             }
@@ -114,16 +125,17 @@ function compressPdf(pdfData: ArrayBuffer, quality: string): Promise<ArrayBuffer
     }
 
     // Check if Module already exists (subsequent runs)
-    if (!(self as any).Module) {
-      ;(self as any).Module = moduleConfig
+    if (!moduleContext.Module) {
+      moduleContext.Module = moduleConfig
       loadGhostscript()
     } else {
+      const module = moduleContext.Module as _GsModule
       // Reset for subsequent compressions
-      ;(self as any).Module.calledRun = false
-      ;(self as any).Module.postRun = moduleConfig.postRun
-      ;(self as any).Module.preRun = moduleConfig.preRun
-      ;(self as any).Module.arguments = moduleConfig.arguments
-      ;(self as any).Module.callMain()
+      module.calledRun = false
+      module.postRun = moduleConfig.postRun
+      module.preRun = moduleConfig.preRun
+      module.arguments = moduleConfig.arguments
+      module.callMain()
     }
   })
 }

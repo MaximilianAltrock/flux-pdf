@@ -1,6 +1,6 @@
 import * as pdfjs from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import type { PDFDocumentProxy, RefProxy } from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
 import { db } from '@/db/db'
 import type {
@@ -260,9 +260,12 @@ async function resolvePageIndex(pdfDoc: PDFDocumentProxy, dest: unknown): Promis
   if (typeof pageRef === 'number') {
     return pageRef >= 0 ? pageRef : null
   }
+  if (typeof pageRef !== 'object' || pageRef === null) {
+    return null
+  }
 
   try {
-    const idx = await pdfDoc.getPageIndex(pageRef as any)
+    const idx = await pdfDoc.getPageIndex(pageRef as RefProxy)
     return idx >= 0 ? idx : null
   } catch {
     return null

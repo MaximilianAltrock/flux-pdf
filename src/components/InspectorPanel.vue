@@ -43,7 +43,7 @@ const props = defineProps<{
 }>()
 const { historyList, jumpTo } = props.actions
 
-const historyScrollArea = ref<any>(null)
+const historyScrollArea = ref<InstanceType<typeof ScrollArea> | null>(null)
 
 watch(
   () => historyList.value.length,

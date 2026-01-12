@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Scissors } from 'lucide-vue-next'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { useGridLogic } from '@/composables/useGridLogic'
 import PdfThumbnail from './PdfThumbnail.vue'
 import SortableGridItem from './SortableGridItem.vue'
+import PageDivider from './PageDivider.vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -35,7 +35,7 @@ const props = defineProps<{
   actions: AppActions
 }>()
 
-const { localPages, isDragging, isSelected, store } = useGridLogic()
+const { localPages, isDragging, isSelected, getContentPageNumber, store } = useGridLogic()
 
 // Local state for drag logic
 const isFileDragOver = ref(false)
@@ -66,7 +66,7 @@ let cleanup: (() => void) | null = null
 
 onMounted(() => {
   cleanup = monitorForElements({
-    onDragStart: ({ source }) => {
+    onDragStart: () => {
       isDragging.value = true
       contextMenu.value.visible = false
     },
@@ -249,39 +249,19 @@ async function handleFileDrop(event: DragEvent) {
         :class="{ 'col-span-full': pageRef.isDivider }"
       >
         <!-- High-Fidelity Section Divider -->
-        <div
-          v-if="pageRef.isDivider"
-          class="h-full py-10 flex items-center justify-center relative select-none group/divider transition-all duration-300"
-        >
-          <!-- Background logic for the divider line (Always slightly visible laser) -->
-          <div
-            class="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent group-hover/divider:via-primary transition-all duration-500"
-          ></div>
-          <div
-            class="absolute inset-x-1/4 h-[2px] bg-primary/5 blur-sm group-hover/divider:bg-primary/20 group-hover/divider:inset-x-0 group-hover/divider:blur-md transition-all duration-700"
-          ></div>
-
-          <!-- Pill Label -->
-          <div
-            class="relative glass-surface bg-background/90 backdrop-blur-md px-5 py-2 rounded-full border-border/80 shadow-md flex items-center gap-3 transition-all duration-300 group-hover/divider:border-primary/50 group-hover/divider:shadow-lg group-hover/divider:scale-[1.02] -translate-y-0.5"
-          >
-            <div class="p-1.5 bg-primary/10 rounded-full">
-              <Scissors class="w-3.5 h-3.5 text-primary animate-pulse" />
-            </div>
-            <span
-              class="text-xxs font-mono font-bold text-muted-foreground uppercase tracking-[0.25em] group-hover/divider:text-foreground transition-colors"
+            <div
+              v-if="pageRef.isDivider"
+              class="h-full"
             >
-              New Document Section
-            </span>
-          </div>
-        </div>
+              <PageDivider />
+            </div>
 
         <!-- PDF Thumbnail with Context Menu -->
         <ContextMenu v-else>
           <ContextMenuTrigger>
             <PdfThumbnail
               :page-ref="pageRef"
-              :page-number="index + 1"
+              :page-number="getContentPageNumber(pageRef.id) || index + 1"
               :selected="isSelected(pageRef.id)"
               :fixed-size="true"
               :width="props.state.zoom.value"
@@ -304,7 +284,7 @@ async function handleFileDrop(event: DragEvent) {
               {{
                 store.selectedCount > 1
                   ? `${store.selectedCount} pages selected`
-                  : `Page ${index + 1}`
+                  : `Page ${getContentPageNumber(pageRef.id) || index + 1}`
               }}
             </ContextMenuLabel>
 
