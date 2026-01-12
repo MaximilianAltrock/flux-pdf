@@ -1,11 +1,9 @@
 import { useDocumentStore } from '@/stores/document'
-import { usePdfManager } from '@/composables/usePdfManager'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useMobile } from '@/composables/useMobile'
-import { useFileHandler } from '@/composables/useFileHandler'
-import { usePdfExport } from '@/composables/usePdfExport'
+import { useDocumentService } from '@/composables/useDocumentService'
 import {
   RotatePagesCommand,
   DuplicatePagesCommand,
@@ -24,14 +22,12 @@ import { useThumbnailRenderer } from './useThumbnailRenderer'
  */
 export function useAppActions(state: AppState) {
   const store = useDocumentStore()
-  const { clearAll } = usePdfManager()
   const { execute, clearHistory, undo } = useCommandManager()
   const { clearCache } = useThumbnailRenderer()
   const toast = useToast()
   const { confirmDelete, confirmClearWorkspace } = useConfirm()
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
-  const { handleFiles } = useFileHandler()
-  const { generateRawPdf } = usePdfExport()
+  const { importFiles, clearWorkspace, generateRawPdf } = useDocumentService()
 
   // ============================================
   // File Handling
@@ -43,7 +39,7 @@ export function useAppActions(state: AppState) {
   function handleFileInputChange(event: Event) {
     const input = event.target as HTMLInputElement
     if (input.files && input.files.length > 0) {
-      handleFiles(input.files)
+      handleImport(input.files)
       state.clearFileInput()
     }
   }
@@ -52,7 +48,36 @@ export function useAppActions(state: AppState) {
    * Handle files dropped or selected
    */
   async function handleFilesSelected(files: FileList) {
-    await handleFiles(files)
+    await handleImport(files)
+  }
+
+  async function handleImport(files: FileList | File[]) {
+    const result = await importFiles(files)
+    if (!result.ok) {
+      toast.error('Failed to load files', result.error.message)
+      return
+    }
+
+    const { successes, errors, totalPages } = result.value
+
+    if (successes.length > 0) {
+      toast.success(
+        `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
+        `${totalPages} page${totalPages > 1 ? 's' : ''} added`,
+      )
+    }
+
+    if (errors.length > 0) {
+      const detail = errors
+        .map((e) => e.error)
+        .filter((e): e is string => typeof e === 'string' && e.length > 0)
+        .join(', ')
+
+      toast.error(
+        `Failed to load ${errors.length} file${errors.length > 1 ? 's' : ''}`,
+        detail || 'Unknown error',
+      )
+    }
   }
 
   /**
@@ -106,7 +131,11 @@ export function useAppActions(state: AppState) {
       }
 
       const filename = store.projectTitle || 'document'
-      const pdfBytes = await generateRawPdf(pagesToExport, { compress: true })
+      const pdfResult = await generateRawPdf(pagesToExport, { compress: true })
+      if (!pdfResult.ok) {
+        throw new Error(pdfResult.error.message)
+      }
+      const pdfBytes = pdfResult.value
       const file = new File([pdfBytes as BlobPart], `${filename}.pdf`, {
         type: 'application/pdf',
       })
@@ -269,7 +298,11 @@ export function useAppActions(state: AppState) {
     const confirmed = await confirmClearWorkspace()
     if (!confirmed) return
     // A. Wipe the Database and Store
-    await clearAll()
+    const result = await clearWorkspace()
+    if (!result.ok) {
+      toast.error('Failed to clear workspace', result.error.message)
+      return
+    }
     // B. Wipe the Undo Stack
     clearHistory()
     // C. Wipe the Visual Cache
@@ -387,7 +420,7 @@ export function useAppActions(state: AppState) {
     input.capture = 'environment'
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files
-      if (files) handleFiles(files)
+      if (files) handleImport(files)
     }
     input.click()
   }

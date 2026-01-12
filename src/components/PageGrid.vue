@@ -18,7 +18,7 @@ import {
   ContextMenuLabel,
 } from '@/components/ui/context-menu'
 import { RotateCw, RotateCcw, Trash2, Copy, Eye, CheckSquare, Download } from 'lucide-vue-next'
-import type { PageReference } from '@/types'
+import type { PageEntry, PageReference } from '@/types'
 import { UserAction } from '@/types/actions'
 
 // FIX: defineEmits cannot use computed keys ([UserAction.PREVIEW])
@@ -48,6 +48,14 @@ const contextMenu = ref({
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${store.zoom + 20}px, 1fr))`,
 }))
+
+function isStartOfFile(page: PageEntry, index: number): boolean {
+  if (page.isDivider) return false
+  if (index === 0) return true
+  const prev = localPages.value[index - 1]
+  if (!prev || prev.isDivider) return false
+  return page.groupId !== prev.groupId
+}
 
 // === Pdnd Logic ===
 let cleanup: (() => void) | null = null
@@ -273,11 +281,7 @@ async function handleFileDrop(event: DragEvent) {
               :selected="isSelected(pageRef.id)"
               :fixed-size="true"
               :width="store.zoom"
-              :is-start-of-file="
-                index === 0 ||
-                (!localPages[index - 1]?.isDivider &&
-                  pageRef.groupId !== localPages[index - 1]?.groupId)
-              "
+              :is-start-of-file="isStartOfFile(pageRef, index)"
               :is-razor-active="store.currentTool === 'razor'"
               :can-split="index > 0 && !localPages[index - 1]?.isDivider"
               @click="handlePageClick(pageRef, $event)"

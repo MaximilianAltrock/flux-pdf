@@ -16,8 +16,7 @@
 import { onMounted } from 'vue'
 
 // Composables
-import { usePdfManager } from '@/composables/usePdfManager'
-import { useCommandManager } from '@/composables/useCommandManager'
+import { useDocumentService } from '@/composables/useDocumentService'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useAppState } from '@/composables/useAppState'
 import { useAppActions } from '@/composables/useAppActions'
@@ -41,8 +40,7 @@ import 'vue-sonner/style.css'
 // Initialization
 // ============================================
 
-const { initSession } = usePdfManager()
-const { restoreHistory } = useCommandManager()
+const { restoreSession } = useDocumentService()
 
 // Initialize app state and actions
 const state = useAppState()
@@ -66,8 +64,7 @@ useKeyboardShortcuts(
 // ============================================
 
 onMounted(async () => {
-  await initSession()
-  await restoreHistory()
+  await restoreSession()
 })
 </script>
 <template>

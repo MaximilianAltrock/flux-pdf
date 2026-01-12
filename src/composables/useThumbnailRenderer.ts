@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { usePdfManager } from './usePdfManager'
+import { useDocumentService } from './useDocumentService'
 import type { PageReference } from '@/types'
 
 /**
@@ -78,7 +78,7 @@ const thumbnailCache = new ThumbnailCache(100)
  * Composable for rendering PDF page thumbnails
  */
 export function useThumbnailRenderer() {
-  const pdfManager = usePdfManager()
+  const { getPdfDocument } = useDocumentService()
   const renderQueue = ref<Map<string, AbortController>>(new Map())
   const renderTasks = new Map<string, { cancel: () => void }>()
 
@@ -106,7 +106,7 @@ export function useThumbnailRenderer() {
 
     try {
       // Get the PDF document
-      const pdfDoc = await pdfManager.getPdfDocument(pageRef.sourceFileId)
+      const pdfDoc = await getPdfDocument(pageRef.sourceFileId)
 
       // Check if aborted
       if (abortController.signal.aborted) {

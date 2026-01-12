@@ -1,7 +1,6 @@
 // Core PDF functionality
-export { usePdfManager } from './usePdfManager'
+export { useDocumentService } from './useDocumentService'
 export { useThumbnailRenderer } from './useThumbnailRenderer'
-export { usePdfExport } from './usePdfExport'
 
 // Command system
 export { useCommandManager } from './useCommandManager'
@@ -12,7 +11,6 @@ export { useConfirm } from './useConfirm'
 
 // Input handling
 export { useKeyboardShortcuts } from './useKeyboardShortcuts'
-export { useFileHandler } from './useFileHandler'
 
 // Device & platform
 export { useMobile } from './useMobile'

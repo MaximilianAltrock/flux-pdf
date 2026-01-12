@@ -94,3 +94,37 @@
 
 - The plan avoids UI changes but may require small component import updates when utilities are unified.
 - If you want, I can turn any of the above into a concrete refactor checklist with tasks per file.
+
+## Architecture Concept (fixed, facade + internal modules)
+
+- Single source of truth: `useDocumentStore` owns all document state (sources, pages, metadata, bookmarks, selection, zoom).
+- Single public API: `useDocumentService` is the only composable UI calls for import/export/restore/clear/remove.
+- Internal domain modules (not public): move import/export/session/history logic into `src/domain/document/` (for example `import.ts`, `export.ts`, `session.ts`, `history.ts`).
+- `useDocumentService` orchestrates domain modules, command manager, and store, and owns job state (import/export/restore progress + errors).
+- Legacy composables are removed; `src/composables/index.ts` re-exports only the service for domain workflows.
+
+## Tracked Refactor Checklist (fixed milestones, test each)
+
+- [x] Milestone 1: Define result + new domain structure
+  - Add `src/types/result.ts` with `Result<T>` and `ResultError`.
+  - Add `src/domain/document/index.ts` plus empty module files (`import.ts`, `export.ts`, `session.ts`, `history.ts`).
+  - Add `src/composables/useDocumentService.ts` with job state refs and method stubs.
+  - Test: `npm run type-check`
+- [x] Milestone 2: Migrate import pipeline into domain module
+  - Implement `src/domain/document/import.ts` and move PDF/image import logic there.
+  - Remove `src/services/pdf-import.ts`, `src/composables/usePdfManager.ts`, and `src/composables/useFileHandler.ts`.
+  - Update all imports/usages to call `useDocumentService.importFiles`.
+  - Test: `npm run type-check`
+- [x] Milestone 3: Migrate export pipeline into domain module
+  - Implement `src/domain/document/export.ts` (raw PDF generation, segmentation, metadata).
+  - Remove `src/services/pdf-export.ts` and `src/composables/usePdfExport.ts`.
+  - Update all imports/usages to call `useDocumentService.exportDocument`.
+  - Test: `npm run type-check`
+- [x] Milestone 4: Centralize session persistence in domain
+  - Implement `src/domain/document/session.ts` for DB persistence and restore.
+  - `useCommandManager` exposes `serializeHistory()`/`rehydrateHistory()` only.
+  - Test: `npm run type-check`
+- [x] Milestone 5: Clean up domain helpers + finalize
+  - Move import/export helpers under `src/domain/document/` (no new public utils).
+  - Update `src/composables/index.ts` exports accordingly.
+  - Test: `npm run type-check` and `npm run build-only`

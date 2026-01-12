@@ -9,7 +9,10 @@ const props = withDefaults(defineProps<DrawerRootProps>(), {
 
 const emits = defineEmits<DrawerRootEmits>()
 
-const forwarded = useForwardPropsEmits(props, emits)
+const forwarded = useForwardPropsEmits(
+  props as Record<string, unknown>,
+  emits as unknown as (name: string, ...args: unknown[]) => void,
+)
 </script>
 
 <template>

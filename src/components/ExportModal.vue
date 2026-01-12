@@ -11,7 +11,7 @@ import {
 } from 'lucide-vue-next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { usePdfExport, type ExportOptions } from '@/composables/usePdfExport'
+import { useDocumentService, type ExportOptions } from '@/composables/useDocumentService'
 import type { PageReference } from '@/types'
 import type { CompressionQuality } from '@/composables/usePdfCompression'
 import { useDocumentStore } from '@/stores/document'
@@ -34,7 +34,6 @@ import {
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { parsePageRange, validatePageRange } from '@/utils/page-range'
 import { formatBytes } from '@/utils/format-size'
 const props = defineProps<{
   open: boolean
@@ -48,13 +47,18 @@ const emit = defineEmits<{
 
 const store = useDocumentStore()
 const {
-  isExporting,
-  exportProgress,
-  exportError,
-  exportWithOptions,
+  exportJob,
+  exportDocument,
   getSuggestedFilename,
   getEstimatedSize,
-} = usePdfExport()
+  clearExportError,
+  parsePageRange,
+  validatePageRange,
+} = useDocumentService()
+
+const isExporting = computed(() => exportJob.value.status === 'running')
+const exportProgress = computed(() => exportJob.value.progress)
+const exportError = computed(() => exportJob.value.error)
 
 const { isMobile, onBackButton } = useMobile()
 
@@ -96,6 +100,7 @@ watch(
       activeTab.value = 'basic'
       showAdvanced.value = false
       exportStats.value = null
+      clearExportError()
 
       // Set page range mode based on prop
       if (props.exportSelected && store.selectedCount > 0) {
@@ -220,17 +225,20 @@ async function handleExport() {
   try {
     const options = buildExportOptions()
     // ...
-    const result = await exportWithOptions(options)
+    const result = await exportDocument(options)
+    if (!result.ok) return
 
     const endTime = performance.now()
     const durationMs = Math.round(endTime - startTime)
 
     exportStats.value = {
-      filename: result.filename,
-      sizeKB: Math.round(result.size / 1024),
+      filename: result.value.filename,
+      sizeKB: Math.round(result.value.size / 1024),
       durationMs,
-      originalSizeKB: result.originalSize ? Math.round(result.originalSize / 1024) : undefined,
-      compressionRatio: result.compressionRatio,
+      originalSizeKB: result.value.originalSize
+        ? Math.round(result.value.originalSize / 1024)
+        : undefined,
+      compressionRatio: result.value.compressionRatio,
     }
     // ...
 
@@ -259,7 +267,7 @@ function onOpenChange(val: boolean) {
 }
 
 function resetError() {
-  exportError.value = null
+  clearExportError()
 }
 
 if (isMobile.value) {

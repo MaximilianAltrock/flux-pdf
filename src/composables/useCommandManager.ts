@@ -1,7 +1,5 @@
-import { ref, computed, watch } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
+import { ref, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
-import { db, type SessionState } from '@/db/db'
 import { commandRegistry } from '@/commands'
 import type { Command, HistoryEntry, HistoryDisplayEntry, SerializedCommand } from '@/commands'
 
@@ -28,122 +26,54 @@ export function useCommandManager() {
   const store = useDocumentStore()
 
   // ============================================
-  // Persistence Logic (IndexedDB)
+  // Serialization Helpers
   // ============================================
 
-  /**
-   * Persist the current session state to IndexedDB.
-   */
-  async function persistSession(): Promise<void> {
-    // Ensure we only persist plain JSON-friendly data (no Proxies)
+  function serializeHistory(): SerializedCommand[] {
     const toPlain = <T>(value: T): T => JSON.parse(JSON.stringify(value))
-
-    // Serialize history using the new command.serialize() method
-    const serializedHistory: SerializedCommand[] = history.value.map((entry) =>
-      toPlain(entry.command.serialize()),
-    )
-
-    // Construct session object
-    const bookmarksDirty = Boolean(store.bookmarksDirty)
-    const sessionData: SessionState = {
-      id: 'current-session',
-      projectTitle: String(store.projectTitle ?? ''),
-      activeSourceIds: Array.from(store.sources.keys()),
-      pageMap: toPlain(store.pages),
-      history: serializedHistory,
-      historyPointer: historyPointer.value,
-      zoom: Number(store.zoom),
-      updatedAt: Date.now(),
-      bookmarksTree: bookmarksDirty ? toPlain(store.bookmarksTree) : [],
-      bookmarksDirty,
-      metadata: toPlain(store.metadata),
-      security: toPlain(store.security),
-      metadataDirty: Boolean(store.metadataDirty),
-    }
-
-    // Write to DB
-    try {
-      await db.session.put(sessionData)
-    } catch (e) {
-      console.error('Failed to save session to IndexedDB:', e)
-    }
+    return history.value.map((entry) => toPlain(entry.command.serialize()))
   }
 
-  /**
-   * Save the current session state to IndexedDB.
-   * Debounced by 1s via VueUse to prevent database thrashing.
-   */
-  const saveSession = useDebounceFn(persistSession, 1000)
+  function getHistoryPointer(): number {
+    return historyPointer.value
+  }
 
-  /**
-   * Watch for state changes to trigger auto-save
-   */
-  watch(
-    [
-      historyPointer,
-      () => store.pages,
-      () => store.projectTitle,
-      () => store.zoom,
-      () => store.bookmarksTree,
-      () => store.bookmarksDirty,
-      () => store.metadata,
-      () => store.security,
-      () => store.metadataDirty,
-    ],
-    () => {
-      saveSession()
-    },
-    { deep: true },
-  )
+  function rehydrateHistory(
+    serializedHistory: SerializedCommand[] = [],
+    pointer = -1,
+    updatedAt?: number,
+  ): void {
+    sessionStartTime.value = updatedAt || Date.now()
 
-  /**
-   * Restore the history stack from IndexedDB on app launch
-   */
-  async function restoreHistory(): Promise<void> {
-    try {
-      const session = await db.session.get('current-session')
-      if (!session || !session.history) return
+    const rehydratedEntries: HistoryEntry[] = []
 
-      sessionStartTime.value = session.updatedAt || Date.now()
+    for (const serialized of serializedHistory) {
+      const command = commandRegistry.deserialize(serialized as SerializedCommand)
 
-      const rehydratedEntries: HistoryEntry[] = []
+      if (command) {
+        rehydratedEntries.push({
+          command,
+          timestamp: command.createdAt,
+        })
+      } else {
+        console.warn(`Skipping unknown command type during restore: ${serialized.type}`)
+      }
+    }
 
-      for (const serialized of session.history) {
-        // Use the new registry-based deserialization
-        const command = commandRegistry.deserialize(serialized as SerializedCommand)
+    history.value = rehydratedEntries
 
-        if (command) {
-          rehydratedEntries.push({
-            command,
-            timestamp: command.createdAt,
-          })
-        } else {
-          console.warn(`Skipping unknown command type during restore: ${serialized.type}`)
+    const clampedPointer = Math.max(-1, Math.min(pointer ?? -1, rehydratedEntries.length - 1))
+    historyPointer.value = clampedPointer
+
+    if (store.pages.length === 0 && clampedPointer >= 0) {
+      for (let i = 0; i <= clampedPointer; i++) {
+        try {
+          rehydratedEntries[i]?.command.execute()
+        } catch (error) {
+          console.error('Failed to replay command during restore:', error)
+          break
         }
       }
-
-      history.value = rehydratedEntries
-
-      // Clamp pointer to available history in case some commands were skipped
-      const clampedPointer = Math.max(
-        -1,
-        Math.min(session.historyPointer ?? -1, rehydratedEntries.length - 1),
-      )
-      historyPointer.value = clampedPointer
-
-      // If the page map wasn't restored (e.g., failed persistence), rebuild state by replaying history
-      if (store.pages.length === 0 && clampedPointer >= 0) {
-        for (let i = 0; i <= clampedPointer; i++) {
-          try {
-            rehydratedEntries[i]?.command.execute()
-          } catch (error) {
-            console.error('Failed to replay command during restore:', error)
-            break
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Failed to restore history:', e)
     }
   }
 
@@ -264,7 +194,6 @@ export function useCommandManager() {
   function clearHistory(): void {
     history.value = []
     historyPointer.value = -1
-    void persistSession() // Clear persisted history immediately
   }
 
   /**
@@ -297,6 +226,8 @@ export function useCommandManager() {
     redo,
     clearHistory,
     jumpTo,
-    restoreHistory,
+    serializeHistory,
+    rehydrateHistory,
+    getHistoryPointer,
   }
 }

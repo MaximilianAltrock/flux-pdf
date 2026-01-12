@@ -1,3 +1,5 @@
+import type { ComputedRef, InjectionKey } from 'vue'
+
 export type TimelineSize = 'sm' | 'md' | 'lg'
 export type TimelineVariant = 'default' | 'history'
 
@@ -6,4 +8,5 @@ export interface TimelineContext {
   variant: TimelineVariant
 }
 
-export const timelineContextKey = Symbol('timelineContext')
+export const timelineContextKey: InjectionKey<ComputedRef<TimelineContext>> =
+  Symbol('timelineContext')

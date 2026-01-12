@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
-import { usePdfManager } from '@/composables/usePdfManager'
+import { useDocumentService } from '@/composables/useDocumentService'
 import { ChevronLeft, ChevronRight, GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -34,7 +34,7 @@ function handleRemove(fileId: string, event: Event) {
   emit('removeSource', fileId)
 }
 
-const { loadPdfFiles } = usePdfManager()
+const { importFiles } = useDocumentService()
 const isDragOver = ref(false)
 let dragCounter = 0
 
@@ -70,14 +70,7 @@ async function handleDrop(e: DragEvent) {
 
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
-    store.setLoading(true, 'Importing files...')
-    const results = await loadPdfFiles(droppedFiles)
-    for (const result of results) {
-      if (result.success && result.sourceFile) {
-        store.addSourceFile(result.sourceFile)
-      }
-    }
-    store.setLoading(false)
+    await importFiles(droppedFiles)
   }
 }
 </script>
