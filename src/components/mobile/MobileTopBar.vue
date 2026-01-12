@@ -1,32 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Menu, X, Undo2, Redo2 } from 'lucide-vue-next'
-import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { useMobile } from '@/composables/useMobile'
 import { Button } from '@/components/ui/button'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 const props = defineProps<{
   selectionMode: boolean
   selectedCount: number
+  state: FacadeState
+  actions: AppActions
 }>()
 
 const emit = defineEmits<{
   menu: []
-  exitSelection: []
   editTitle: []
 }>()
 
-const store = useDocumentStore()
-const { undo, redo, canUndo, canRedo } = useCommandManager()
 const { haptic } = useMobile()
 
-const displayTitle = computed(() => store.projectTitle || 'Untitled')
+const displayTitle = computed(() => props.state.document.projectTitle || 'Untitled')
 
 function handleExitSelection() {
   haptic('light')
-  store.clearSelection()
-  emit('exitSelection')
+  props.actions.exitMobileSelectionMode()
 }
 
 function handleTitleTap() {
@@ -36,15 +34,15 @@ function handleTitleTap() {
 }
 
 function handleUndo() {
-  if (!canUndo.value) return
+  if (!props.actions.canUndo.value) return
   haptic('light')
-  undo()
+  props.actions.undo()
 }
 
 function handleRedo() {
-  if (!canRedo.value) return
+  if (!props.actions.canRedo.value) return
   haptic('light')
-  redo()
+  props.actions.redo()
 }
 </script>
 
@@ -94,9 +92,9 @@ function handleRedo() {
         class="w-10 h-10 flex items-center justify-center transition-all active:scale-90"
         :class="[
           selectionMode ? 'text-primary-foreground/80' : 'text-muted-foreground',
-          canUndo ? '' : 'opacity-40',
+          props.actions.canUndo.value ? '' : 'opacity-40',
         ]"
-        :disabled="!canUndo"
+        :disabled="!props.actions.canUndo.value"
         @click="handleUndo"
       >
         <Undo2 class="w-5 h-5" />
@@ -107,9 +105,9 @@ function handleRedo() {
         class="w-10 h-10 -mr-2 flex items-center justify-center transition-all active:scale-90"
         :class="[
           selectionMode ? 'text-primary-foreground/80' : 'text-muted-foreground',
-          canRedo ? '' : 'opacity-40',
+          props.actions.canRedo.value ? '' : 'opacity-40',
         ]"
-        :disabled="!canRedo"
+        :disabled="!props.actions.canRedo.value"
         @click="handleRedo"
       >
         <Redo2 class="w-5 h-5" />

@@ -2,7 +2,6 @@
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
-import { useDocumentStore } from '@/stores/document'
 import { RotateCw, Trash2, Eye, Scissors } from 'lucide-vue-next'
 import type { PageReference } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,6 +17,7 @@ const props = defineProps<{
   isStartOfFile?: boolean
   isRazorActive?: boolean
   canSplit?: boolean
+  sourceColor?: string
 }>()
 
 const emit = defineEmits<{
@@ -38,11 +38,7 @@ const hasError = ref(false)
 const isVisible = ref(false)
 const hasBeenVisible = ref(false)
 
-const store = useDocumentStore()
-const sourceColor = computed(() => {
-  const source = store.sources.get(props.pageRef.sourceFileId)
-  return source?.color || 'gray'
-})
+const sourceColor = computed(() => props.sourceColor || 'gray')
 
 const cssWidth = computed(() => (props.fixedSize ? `${props.width ?? 220}px` : '100%'))
 const renderTargetWidth = computed(() => props.width ?? 300)

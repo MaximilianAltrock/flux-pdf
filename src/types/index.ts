@@ -1,3 +1,5 @@
+import type { ImportErrorCode } from './errors'
+
 /**
  *
  * The Virtual Map architecture - we don't modify PDF binary data during editing.
@@ -152,4 +154,5 @@ export interface FileUploadResult {
   sourceFile?: SourceFile
   pageRefs?: PageReference[]
   error?: string
+  errorCode?: ImportErrorCode
 }

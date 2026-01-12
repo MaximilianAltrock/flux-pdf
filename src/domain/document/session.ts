@@ -1,6 +1,7 @@
 import { db, type SessionState } from '@/db/db'
 import type { PageEntry, DocumentMetadata, SecurityMetadata } from '@/types'
 import type { SerializedCommand } from '@/commands'
+import { migrateSerializedCommands, type SerializedCommandRecord } from '@/commands/migrations'
 
 export interface SessionSnapshot {
   projectTitle: string
@@ -16,6 +17,13 @@ export interface SessionSnapshot {
   metadataDirty?: boolean
 }
 
+export const SESSION_SCHEMA_VERSION = 1
+
+export type SessionStateRecord = Omit<SessionState, 'schemaVersion' | 'history'> & {
+  schemaVersion?: number
+  history: SerializedCommandRecord[]
+}
+
 function toPlain<T>(value: T): T {
   return JSON.parse(JSON.stringify(value))
 }
@@ -23,6 +31,7 @@ function toPlain<T>(value: T): T {
 export function buildSessionState(snapshot: SessionSnapshot): SessionState {
   return {
     id: 'current-session',
+    schemaVersion: SESSION_SCHEMA_VERSION,
     projectTitle: String(snapshot.projectTitle ?? ''),
     activeSourceIds: snapshot.activeSourceIds,
     pageMap: toPlain(snapshot.pageMap),
@@ -38,11 +47,44 @@ export function buildSessionState(snapshot: SessionSnapshot): SessionState {
   }
 }
 
+export function migrateSessionState(record: SessionStateRecord): SessionState {
+  const schemaVersion =
+    typeof record.schemaVersion === 'number' ? record.schemaVersion : SESSION_SCHEMA_VERSION
+
+  const history = migrateSerializedCommands(record.history ?? [])
+
+  switch (schemaVersion) {
+    case 1:
+      return {
+        ...record,
+        schemaVersion,
+        history,
+        bookmarksDirty: Boolean(record.bookmarksDirty),
+        metadataDirty: Boolean(record.metadataDirty),
+      }
+    default:
+      return {
+        ...record,
+        schemaVersion,
+        history,
+        bookmarksDirty: Boolean(record.bookmarksDirty),
+        metadataDirty: Boolean(record.metadataDirty),
+      }
+  }
+}
+
 export async function persistSession(snapshot: SessionSnapshot): Promise<void> {
   const sessionData = buildSessionState(snapshot)
   await db.session.put(sessionData)
 }
 
 export async function loadSession(): Promise<SessionState | undefined> {
-  return db.session.get('current-session')
+  const record = (await db.session.get('current-session')) as SessionStateRecord | undefined
+  if (!record) return undefined
+
+  const migrated = migrateSessionState(record)
+  if (record.schemaVersion !== migrated.schemaVersion) {
+    await db.session.put(migrated)
+  }
+  return migrated
 }

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Camera, FolderOpen } from 'lucide-vue-next'
-import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables/useMobile'
 import {
   Drawer,
@@ -13,8 +12,11 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 
-defineProps<{
+import type { FacadeState } from '@/composables/useDocumentFacade'
+
+const props = defineProps<{
   open: boolean
+  state: FacadeState
 }>()
 
 const emit = defineEmits<{
@@ -23,11 +25,10 @@ const emit = defineEmits<{
   takePhoto: []
 }>()
 
-const store = useDocumentStore()
 const { haptic } = useMobile()
 
 const insertAtEnd = ref('true')
-const hasExistingPages = computed(() => store.pageCount > 0)
+const hasExistingPages = computed(() => props.state.document.pageCount > 0)
 
 function handleSelectFiles() {
   haptic('light')

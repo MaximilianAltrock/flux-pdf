@@ -10,6 +10,9 @@ export interface SessionState {
   /** Singleton ID - always 'current-session' */
   id: 'current-session'
 
+  /** Schema version for session migrations */
+  schemaVersion: number
+
   /** User's project title */
   projectTitle: string
 

@@ -1,7 +1,14 @@
 import { ref, computed } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { commandRegistry } from '@/commands'
-import type { Command, HistoryEntry, HistoryDisplayEntry, SerializedCommand } from '@/commands'
+import {
+  COMMAND_SCHEMA_VERSION,
+  type Command,
+  type HistoryEntry,
+  type HistoryDisplayEntry,
+  type SerializedCommand,
+} from '@/commands'
+import type { SerializedCommandRecord } from '@/commands/migrations'
 
 /**
  * Maximum number of commands to keep in history
@@ -39,7 +46,7 @@ export function useCommandManager() {
   }
 
   function rehydrateHistory(
-    serializedHistory: SerializedCommand[] = [],
+    serializedHistory: SerializedCommandRecord[] = [],
     pointer = -1,
     updatedAt?: number,
   ): void {
@@ -48,7 +55,7 @@ export function useCommandManager() {
     const rehydratedEntries: HistoryEntry[] = []
 
     for (const serialized of serializedHistory) {
-      const command = commandRegistry.deserialize(serialized as SerializedCommand)
+      const command = commandRegistry.deserialize(serialized)
 
       if (command) {
         rehydratedEntries.push({
@@ -104,7 +111,12 @@ export function useCommandManager() {
       execute() {},
       undo() {},
       serialize() {
-        return { type: 'Root', payload: { id: 'root' }, timestamp: sessionStartTime.value }
+        return {
+          version: COMMAND_SCHEMA_VERSION,
+          type: 'Root',
+          payload: { id: 'root' },
+          timestamp: sessionStartTime.value,
+        }
       },
     }
 

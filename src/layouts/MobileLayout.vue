@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useDocumentStore } from '@/stores/document'
 
 // Mobile Components
 import MobileTopBar from '@/components/mobile/MobileTopBar.vue'
@@ -14,22 +13,20 @@ import MobileActionSheet from '@/components/mobile/MobileActionSheet.vue'
 import { Spinner } from '@/components/ui/spinner'
 
 import type { PageReference } from '@/types'
-import type { AppState } from '@/composables/useAppState'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 import type { AppActions } from '@/composables/useAppActions'
 
 // Props - receive state and actions from parent
 const props = defineProps<{
-  state: AppState
+  state: FacadeState
   actions: AppActions
 }>()
 
-const store = useDocumentStore()
-
 // Local computed for template readability
-const hasPages = computed(() => store.pageCount > 0)
-const selectedCount = computed(() => store.selectedCount)
-const isLoading = computed(() => store.isLoading)
-const loadingMessage = computed(() => store.loadingMessage)
+const hasPages = computed(() => props.state.document.pageCount > 0)
+const selectedCount = computed(() => props.state.document.selectedCount)
+const isLoading = computed(() => props.state.isLoading.value)
+const loadingMessage = computed(() => props.state.loadingMessage.value)
 
 // Event handlers
 function onPreview(pageRef: PageReference) {
@@ -48,8 +45,9 @@ function onRemoveSource(sourceId: string) {
       <MobileTopBar
         :selection-mode="props.state.mobileSelectionMode.value"
         :selected-count="selectedCount"
+        :state="props.state"
+        :actions="props.actions"
         @menu="props.state.openMenuDrawer"
-        @exit-selection="props.state.exitMobileSelectionMode"
         @edit-title="props.state.openTitleSheet"
       />
     </div>
@@ -76,8 +74,7 @@ function onRemoveSource(sourceId: string) {
       <MobilePageGrid
         v-else
         :selection-mode="props.state.mobileSelectionMode.value"
-        @enter-selection="props.state.enterMobileSelectionMode"
-        @exit-selection="props.state.exitMobileSelectionMode"
+        :actions="props.actions"
         @preview="onPreview"
       />
 
@@ -118,6 +115,8 @@ function onRemoveSource(sourceId: string) {
     <!-- Mobile Sheets & Drawers -->
     <MobileMenuDrawer
       :open="props.state.showMenuDrawer.value"
+      :state="props.state"
+      :actions="props.actions"
       @update:open="(val) => !val && props.state.closeMenuDrawer()"
       @removeSource="onRemoveSource"
       @new-project="props.actions.handleNewProject"
@@ -125,11 +124,14 @@ function onRemoveSource(sourceId: string) {
 
     <MobileTitleSheet
       :open="props.state.showTitleSheet.value"
+      :state="props.state"
+      :actions="props.actions"
       @update:open="(val) => !val && props.state.closeTitleSheet()"
     />
 
     <MobileAddSheet
       :open="props.state.showAddSheet.value"
+      :state="props.state"
       @update:open="(val) => !val && props.state.closeAddSheet()"
       @select-files="props.actions.handleMobileAddFiles"
       @take-photo="props.actions.handleMobileTakePhoto"

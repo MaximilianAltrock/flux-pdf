@@ -1,4 +1,5 @@
 import type { Command, SerializedCommand, CommandConstructor } from './types'
+import { migrateSerializedCommand, type SerializedCommandRecord } from './migrations'
 
 /**
  * Command type constants
@@ -58,20 +59,21 @@ class CommandRegistry {
    * @param data - Serialized command data
    * @returns Reconstructed command instance, or null if type unknown
    */
-  deserialize(data: SerializedCommand): Command | null {
-    const Constructor = this.commands.get(data.type)
+  deserialize(data: SerializedCommandRecord): Command | null {
+    const migrated = migrateSerializedCommand(data)
+    const Constructor = this.commands.get(migrated.type)
 
     if (!Constructor) {
       console.warn(
-        `Unknown command type: "${data.type}". Registered types: ${this.getRegisteredTypes().join(', ')}`,
+        `Unknown command type: "${migrated.type}". Registered types: ${this.getRegisteredTypes().join(', ')}`,
       )
       return null
     }
 
     try {
-      return Constructor.deserialize(data)
+      return Constructor.deserialize(migrated)
     } catch (error) {
-      console.error(`Failed to deserialize command "${data.type}":`, error)
+      console.error(`Failed to deserialize command "${migrated.type}":`, error)
       return null
     }
   }

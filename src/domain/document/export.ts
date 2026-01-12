@@ -11,6 +11,8 @@ export type ExportMetadata = DocumentMetadata & {
 
 export interface ExportResult {
   filename: string
+  mimeType: string
+  bytes: Uint8Array
   size: number
   originalSize?: number
   compressionRatio?: number

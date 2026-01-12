@@ -18,8 +18,7 @@ import { onMounted } from 'vue'
 // Composables
 import { useDocumentService } from '@/composables/useDocumentService'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
-import { useAppState } from '@/composables/useAppState'
-import { useAppActions } from '@/composables/useAppActions'
+import { useDocumentFacade } from '@/composables/useDocumentFacade'
 
 // Layouts
 import DesktopLayout from '@/layouts/DesktopLayout.vue'
@@ -32,7 +31,6 @@ import PagePreviewModal from '@/components/PagePreviewModal.vue'
 import Toaster from '@/components/ui/sonner/Sonner.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { UserAction } from '@/types/actions'
 
 import 'vue-sonner/style.css'
 
@@ -40,31 +38,18 @@ import 'vue-sonner/style.css'
 // Initialization
 // ============================================
 
-const { restoreSession } = useDocumentService()
-
 // Initialize app state and actions
-const state = useAppState()
-const actions = useAppActions(state)
+const { state, actions } = useDocumentFacade()
 
 // Initialize keyboard shortcuts (desktop only)
-useKeyboardShortcuts(
-  (action: UserAction) => {
-    if (action === UserAction.OPEN_COMMAND_PALETTE) {
-      state.openCommandPalette()
-    } else {
-      // Delegate all other actions (diff, duplicate, etc.) to the central Action handler
-      actions.handleCommandAction(action)
-    }
-  },
-  { isModalOpen: state.hasOpenModal },
-)
+useKeyboardShortcuts(actions, state, { isModalOpen: state.hasOpenModal })
 
 // ============================================
 // Lifecycle
 // ============================================
 
 onMounted(async () => {
-  await restoreSession()
+  await actions.handleRestoreSession()
 })
 </script>
 <template>
@@ -96,6 +81,8 @@ onMounted(async () => {
       <ExportModal
         :open="state.showExportModal.value"
         :export-selected="state.exportSelectedOnly.value"
+        :state="state"
+        :actions="actions"
         @close="state.closeExportModal"
         @success="actions.handleExportSuccess"
       />
@@ -103,8 +90,9 @@ onMounted(async () => {
       <!-- Page Preview Modal -->
       <PagePreviewModal
         :open="state.showPreviewModal.value"
-        @update:open="(val: boolean) => !val && state.closePreviewModal()"
+        @update:open="(val: boolean) => !val && actions.handleClosePreview()"
         :page-ref="state.previewPageRef.value"
+        :state="state"
         @navigate="state.navigatePreview"
       />
 

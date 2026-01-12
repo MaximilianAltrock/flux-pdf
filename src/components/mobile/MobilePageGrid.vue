@@ -2,25 +2,22 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { Scissors, ArrowDown } from 'lucide-vue-next'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
-import { ReorderPagesCommand } from '@/commands'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
 import type { PageEntry, PageReference } from '@/types'
+import type { AppActions } from '@/composables/useAppActions'
 
 const props = defineProps<{
   selectionMode: boolean
+  actions: AppActions
 }>()
 
 // FIX: defineEmits cannot use computed keys. Use string literal.
 const emit = defineEmits<{
-  enterSelection: []
-  exitSelection: []
   preview: [pageRef: PageReference]
 }>()
 
-const { execute } = useCommandManager()
 const { haptic } = useMobile()
 const { localPages, isDragging, isSelected, store } = useGridLogic()
 
@@ -72,8 +69,8 @@ function handleTouchStart(pageRef: PageReference) {
     longPressPageId.value = pageRef.id
     longPressTimer.value = setTimeout(() => {
       haptic('medium')
-      emit('enterSelection')
-      store.selectPage(pageRef.id, false)
+      props.actions.enterMobileSelectionMode()
+      props.actions.selectPage(pageRef.id, false)
       longPressPageId.value = null
     }, LONG_PRESS_MS)
   }
@@ -102,12 +99,12 @@ function handlePageTap(pageRef: PageReference, event: Event) {
   if (props.selectionMode) {
     // Toggle selection
     haptic('light')
-    store.togglePageSelection(pageRef.id)
+    props.actions.togglePageSelection(pageRef.id)
 
     // Exit selection mode if nothing selected
     if (store.selectedCount === 0) {
       jumpModeActive.value = false
-      emit('exitSelection')
+      props.actions.exitMobileSelectionMode()
     }
   } else {
     // Open preview (Focus View)
@@ -128,6 +125,7 @@ function handleJumpToPosition(targetIndex: number) {
 
   haptic('medium')
 
+  const previousOrder = [...localPages.value]
   const selectedIds = new Set(store.selection.selectedIds)
   const selectedPages = localPages.value.filter((p) => selectedIds.has(p.id))
   const otherPages = localPages.value.filter((p) => !selectedIds.has(p.id))
@@ -148,7 +146,7 @@ function handleJumpToPosition(targetIndex: number) {
     ...otherPages.slice(adjustedIndex),
   ]
 
-  execute(new ReorderPagesCommand([...localPages.value], newOrder))
+  props.actions.handleReorderPages(previousOrder, newOrder)
   jumpModeActive.value = false
 }
 
@@ -172,7 +170,7 @@ function handleDragEnd() {
   )
 
   if (orderChanged) {
-    execute(new ReorderPagesCommand(dragStartOrder.value, [...localPages.value]))
+    props.actions.handleReorderPages(dragStartOrder.value, [...localPages.value])
     haptic('light')
   }
 
@@ -370,6 +368,7 @@ onUnmounted(() => {
             :selected="props.selectionMode && isSelected(pageRef.id)"
             :fixed-size="false"
             :width="300"
+            :source-color="props.state.document.getSourceColor(pageRef.sourceFileId)"
             :is-start-of-file="false"
             :is-razor-active="false"
             :can-split="false"

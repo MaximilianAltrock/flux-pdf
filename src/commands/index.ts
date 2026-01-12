@@ -35,6 +35,7 @@ export type {
   HistoryEntry,
   HistoryDisplayEntry,
 } from './types'
+export { COMMAND_SCHEMA_VERSION } from './types'
 
 // Base class
 export { BaseCommand } from './BaseCommand'

@@ -15,7 +15,12 @@
     "lint:oxlint": "oxlint . --fix -D correctness --ignore-path .gitignore",
     "lint:eslint": "eslint . --fix --cache",
     "lint": "run-s lint:*",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "test": "npm run test:unit:run",
+    "test:unit": "vitest",
+    "test:unit:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.7",
@@ -38,6 +43,7 @@
     "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@prettier/plugin-oxc": "^0.0.5",
     "@tsconfig/node24": "^24.0.3",
     "@types/node": "^24.10.4",
@@ -48,6 +54,8 @@
     "eslint": "^9.39.1",
     "eslint-plugin-oxlint": "~1.29.0",
     "eslint-plugin-vue": "~10.5.1",
+    "fake-indexeddb": "^6.2.1",
+    "happy-dom": "^20.1.0",
     "jiti": "^2.6.1",
     "npm-run-all2": "^8.0.4",
     "oxlint": "~1.29.0",
@@ -58,6 +66,7 @@
     "unplugin-vue-components": "^30.0.0",
     "vite": "^7.2.4",
     "vite-plugin-vue-devtools": "^8.0.5",
+    "vitest": "^4.0.16",
     "vue-tsc": "^3.1.5"
   }
 }

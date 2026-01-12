@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useDocumentStore } from '@/stores/document'
 
 // Components
 import MicroHeader from '@/components/MicroHeader.vue'
@@ -18,21 +17,19 @@ import {
 
 import type { PageReference } from '@/types'
 import type { UserAction } from '@/types/actions'
-import type { AppState } from '@/composables/useAppState'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 import type { AppActions } from '@/composables/useAppActions'
 
 // Props - receive state and actions from parent
 const props = defineProps<{
-  state: AppState
+  state: FacadeState
   actions: AppActions
 }>()
 
-const store = useDocumentStore()
-
 // Local computed for template readability
-const hasPages = computed(() => store.pageCount > 0)
-const isLoading = computed(() => store.isLoading)
-const loadingMessage = computed(() => store.loadingMessage)
+const hasPages = computed(() => props.state.document.pageCount > 0)
+const isLoading = computed(() => props.state.isLoading.value)
+const loadingMessage = computed(() => props.state.loadingMessage.value)
 
 // Event handlers that delegate to actions
 function onFilesDropped(files: FileList) {
@@ -64,8 +61,8 @@ function onCommandAction(action: UserAction) {
   <div class="flex flex-col h-full">
     <!-- Header -->
     <MicroHeader
-      :title="props.state.documentTitle.value"
-      @update:title="props.state.updateDocumentTitle"
+      :state="props.state"
+      :actions="props.actions"
       @command="props.state.openCommandPalette"
       @export="props.actions.handleExport"
       @zoom-in="props.actions.zoomIn"
@@ -75,7 +72,7 @@ function onCommandAction(action: UserAction) {
     <!-- Main Content Area -->
     <ResizablePanelGroup direction="horizontal" class="flex-1 min-h-0">
       <!-- Source Rail (Left Sidebar) -->
-      <SourceRail @remove-source="onRemoveSource" />
+      <SourceRail :state="props.state" :actions="props.actions" @remove-source="onRemoveSource" />
       <ResizableHandle withHandle />
       <!-- Main Grid Area -->
       <ResizablePanel as-child :min-size="40">
@@ -96,6 +93,8 @@ function onCommandAction(action: UserAction) {
         <!-- Page Grid -->
         <PageGrid
           v-else
+          :state="props.state"
+          :actions="props.actions"
           @files-dropped="onFilesDropped"
           @source-dropped="onSourceDropped"
           @preview="onPreview"
@@ -118,12 +117,14 @@ function onCommandAction(action: UserAction) {
       </ResizablePanel>
       <ResizableHandle withHandle />
       <!-- Inspector Panel (Right Sidebar) -->
-      <InspectorPanel />
+      <InspectorPanel :state="props.state" :actions="props.actions" />
     </ResizablePanelGroup>
 
     <!-- Command Palette -->
     <CommandPalette
       :open="props.state.showCommandPalette.value"
+      :state="props.state"
+      :actions="props.actions"
       @update:open="(val) => !val && props.state.closeCommandPalette()"
       @action="onCommandAction"
     />

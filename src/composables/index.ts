@@ -21,3 +21,5 @@ export { useGridLogic } from './useGridLogic'
 // App-level state & actions
 export { useAppState, type AppState } from './useAppState'
 export { useAppActions, type AppActions } from './useAppActions'
+export { useDocumentFacade, type DocumentFacade, type FacadeState } from './useDocumentFacade'
+export { useDocumentView, type DocumentView } from './useDocumentView'

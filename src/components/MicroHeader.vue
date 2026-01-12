@@ -10,7 +10,6 @@ import {
   FilePlus,
   HelpCircle,
 } from 'lucide-vue-next'
-import { useDocumentStore } from '@/stores/document'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import {
   DropdownMenu,
@@ -26,17 +25,29 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Kbd } from '@/components/ui/kbd'
 import { Spinner } from '@/components/ui/spinner'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
-const store = useDocumentStore()
+const props = defineProps<{
+  state: FacadeState
+  actions: AppActions
+}>()
 
 const isEditingTitle = ref(false)
 const titleInput = ref<InstanceType<typeof Input> | null>(null)
 
 // Computed for Title to handle store sync and validation
 const displayTitle = computed({
-  get: () => store.projectTitle,
+  get: () => props.state.document.projectTitle,
   set: (val) => {
-    store.projectTitle = val
+    props.actions.setProjectTitleDraft(val)
+  },
+})
+
+const currentTool = computed({
+  get: () => props.state.currentTool.value,
+  set: (val) => {
+    props.actions.setCurrentTool(val as 'select' | 'razor')
   },
 })
 
@@ -52,18 +63,11 @@ function startEditing() {
 
 function finishEditing() {
   isEditingTitle.value = false
-  // Trim and validation rule
-  let val = store.projectTitle.trim()
-  if (!val) {
-    val = 'Untitled Project' // Revert to default if empty
-  }
-  // Strip illegal chars
-  val = val.replace(/[/\\:]/g, '-')
-  store.projectTitle = val
+  props.actions.commitProjectTitle()
 }
 
 // Export logic
-const canExport = computed(() => store.pageCount > 0)
+const canExport = computed(() => props.state.document.pageCount > 0)
 
 const emit = defineEmits<{
   (e: 'command'): void
@@ -119,8 +123,10 @@ const emit = defineEmits<{
           v-else
           @click="startEditing"
           class="text-sm font-medium text-primary px-2 py-1 rounded cursor-text truncate transition-all border border-transparent hover:bg-muted/50"
-          :class="{ 'opacity-50 pointer-events-none': store.isTitleLocked }"
-          :title="store.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
+          :class="{ 'opacity-50 pointer-events-none': props.state.document.isTitleLocked }"
+          :title="
+            props.state.document.isTitleLocked ? 'Title locked by import' : 'Click to rename'
+          "
         >
           {{ displayTitle }}
         </div>
@@ -131,17 +137,23 @@ const emit = defineEmits<{
     <div class="flex-1 flex justify-center">
       <div class="relative w-[400px]">
         <!-- Progress Bar (Background) -->
-        <div v-if="store.isLoading" class="absolute inset-0 bg-primary/5 rounded overflow-hidden">
+        <div
+          v-if="props.state.isLoading.value"
+          class="absolute inset-0 bg-primary/5 rounded overflow-hidden"
+        >
           <div class="h-full bg-primary/10 w-full animate-pulse origin-left"></div>
         </div>
 
         <button
           @click="$emit('command')"
-          :disabled="store.isLoading"
+          :disabled="props.state.isLoading.value"
           class="w-full h-[32px] bg-muted border border-border hover:border-primary/50 rounded-md flex items-center px-3 gap-2 transition-all group cursor-text disabled:cursor-wait disabled:opacity-80"
-          :class="{ 'border-primary/30': store.isLoading }"
+          :class="{ 'border-primary/30': props.state.isLoading.value }"
         >
-          <Spinner v-if="store.isLoading" class="w-3.5 h-3.5 text-primary shrink-0" />
+          <Spinner
+            v-if="props.state.isLoading.value"
+            class="w-3.5 h-3.5 text-primary shrink-0"
+          />
           <Search
             v-else
             class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
@@ -150,15 +162,22 @@ const emit = defineEmits<{
           <span
             class="text-xs truncate min-w-0 flex-1 text-left"
             :class="
-              store.isLoading
+              props.state.isLoading.value
                 ? 'text-primary font-medium'
                 : 'text-muted-foreground group-hover:text-foreground'
             "
           >
-            {{ store.isLoading ? store.loadingMessage || 'Processing...' : 'Search commands...' }}
+            {{
+              props.state.isLoading.value
+                ? props.state.loadingMessage.value || 'Processing...'
+                : 'Search commands...'
+            }}
           </span>
 
-          <div v-if="!store.isLoading" class="ml-auto shrink-0 flex items-center gap-1.5">
+          <div
+            v-if="!props.state.isLoading.value"
+            class="ml-auto shrink-0 flex items-center gap-1.5"
+          >
             <Kbd
               class="hidden sm:inline-flex rounded bg-background border border-border font-mono text-[9px] text-muted-foreground whitespace-nowrap"
             >
@@ -172,7 +191,7 @@ const emit = defineEmits<{
     <!-- Right: Action Zone -->
     <div class="flex items-center justify-end gap-3 w-[280px]">
       <!-- Tool Switcher -->
-      <ToggleGroup type="single" v-model="store.currentTool" variant="outline" class="h-8">
+      <ToggleGroup type="single" v-model="currentTool" variant="outline" class="h-8">
         <ToggleGroupItem value="select" aria-label="Select tool" class="px-2 h-7">
           <Tooltip>
             <TooltipTrigger as-child>
@@ -225,7 +244,7 @@ const emit = defineEmits<{
         </Tooltip>
 
         <span class="text-[11px] font-mono w-10 text-center text-muted-foreground select-none">
-          {{ Math.round(store.zoomPercentage) }}%
+          {{ Math.round(props.state.zoomPercentage.value) }}%
         </span>
 
         <Tooltip>

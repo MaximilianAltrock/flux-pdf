@@ -3,9 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Scissors } from 'lucide-vue-next'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { useGridLogic } from '@/composables/useGridLogic'
-import { ReorderPagesCommand, SplitGroupCommand } from '@/commands'
 import PdfThumbnail from './PdfThumbnail.vue'
 import SortableGridItem from './SortableGridItem.vue'
 import {
@@ -20,6 +18,8 @@ import {
 import { RotateCw, RotateCcw, Trash2, Copy, Eye, CheckSquare, Download } from 'lucide-vue-next'
 import type { PageEntry, PageReference } from '@/types'
 import { UserAction } from '@/types/actions'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 // FIX: defineEmits cannot use computed keys ([UserAction.PREVIEW])
 // We must use the string literal 'preview' here.
@@ -30,7 +30,11 @@ const emit = defineEmits<{
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
 
-const { execute } = useCommandManager()
+const props = defineProps<{
+  state: FacadeState
+  actions: AppActions
+}>()
+
 const { localPages, isDragging, isSelected, store } = useGridLogic()
 
 // Local state for drag logic
@@ -46,7 +50,7 @@ const contextMenu = ref({
 })
 
 const gridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(auto-fill, minmax(${store.zoom + 20}px, 1fr))`,
+  gridTemplateColumns: `repeat(auto-fill, minmax(${props.state.zoom.value + 20}px, 1fr))`,
 }))
 
 function isStartOfFile(page: PageEntry, index: number): boolean {
@@ -100,7 +104,7 @@ onMounted(() => {
 
       ordered.splice(destinationIndex, 0, item)
 
-      execute(new ReorderPagesCommand([...localPages.value], ordered))
+      props.actions.handleReorderPages([...localPages.value], ordered)
     },
   })
 })
@@ -114,28 +118,28 @@ onUnmounted(() => {
 function handlePageClick(pageRef: PageReference, event: MouseEvent) {
   contextMenu.value.visible = false
 
-  if (store.currentTool === 'razor') {
+  if (props.state.currentTool.value === 'razor') {
     const index = store.pages.findIndex((p) => p.id === pageRef.id)
     const prevPage = store.pages[index - 1]
 
     // Prevent invalid splits
     if (index > 0 && index < store.pages.length - 1 && prevPage && !prevPage.isDivider) {
-      execute(new SplitGroupCommand(index))
+      props.actions.handleSplitGroup(index)
     }
     return
   }
 
   // Selection Logic
   if (event.metaKey || event.ctrlKey) {
-    store.togglePageSelection(pageRef.id)
+    props.actions.togglePageSelection(pageRef.id)
   } else if (event.shiftKey && store.selection.lastSelectedId) {
-    store.selectRange(store.selection.lastSelectedId, pageRef.id)
+    props.actions.selectRange(store.selection.lastSelectedId, pageRef.id)
   } else {
     const isOnlySelected = store.selection.selectedIds.has(pageRef.id) && store.selectedCount === 1
     if (isOnlySelected) {
-      store.clearSelection()
+      props.actions.clearSelection()
     } else {
-      store.selectPage(pageRef.id, false)
+      props.actions.selectPage(pageRef.id, false)
     }
   }
 }
@@ -233,7 +237,7 @@ async function handleFileDrop(event: DragEvent) {
     <div
       class="grid gap-4 min-h-[50vh] pb-20"
       :class="{
-        'razor-mode': store.currentTool === 'razor',
+        'razor-mode': props.state.currentTool.value === 'razor',
       }"
       :style="gridStyle"
     >
@@ -280,9 +284,10 @@ async function handleFileDrop(event: DragEvent) {
               :page-number="index + 1"
               :selected="isSelected(pageRef.id)"
               :fixed-size="true"
-              :width="store.zoom"
+              :width="props.state.zoom.value"
+              :source-color="props.state.document.getSourceColor(pageRef.sourceFileId)"
               :is-start-of-file="isStartOfFile(pageRef, index)"
-              :is-razor-active="store.currentTool === 'razor'"
+              :is-razor-active="props.state.currentTool.value === 'razor'"
               :can-split="index > 0 && !localPages[index - 1]?.isDivider"
               @click="handlePageClick(pageRef, $event)"
               @preview="handlePreview(pageRef)"

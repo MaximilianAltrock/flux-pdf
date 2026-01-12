@@ -1,5 +1,4 @@
 import { ref, computed } from 'vue'
-import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables/useMobile'
 import type { PageReference } from '@/types'
 
@@ -8,8 +7,22 @@ import type { PageReference } from '@/types'
  * Handles all modal/sheet visibility, selection modes, and UI state
  */
 export function useAppState() {
-  const store = useDocumentStore()
   const { isMobile } = useMobile()
+
+  // ============================================
+  // UI-only Document State
+  // ============================================
+  const isLoading = ref(false)
+  const loadingMessage = ref('')
+
+  const zoom = ref(220)
+  const MIN_ZOOM = 120
+  const MAX_ZOOM = 320
+  const ZOOM_STEP = 20
+
+  const zoomPercentage = computed(() => Math.round((zoom.value / 200) * 100))
+
+  const currentTool = ref<'select' | 'razor'>('select')
 
   // ============================================
   // File Input Reference
@@ -20,7 +33,6 @@ export function useAppState() {
   // Desktop State
   // ============================================
   const showCommandPalette = ref(false)
-  const documentTitle = ref('flux-pdf-export')
 
   // ============================================
   // Mobile State
@@ -41,14 +53,6 @@ export function useAppState() {
   const showDiffModal = ref(false)
   const diffPages = ref<[PageReference, PageReference] | null>(null)
 
-  // ============================================
-  // Computed Properties
-  // ============================================
-  const hasPages = computed(() => store.pageCount > 0)
-  const selectedCount = computed(() => store.selectedCount)
-  const isLoading = computed(() => store.isLoading)
-  const loadingMessage = computed(() => store.loadingMessage)
-
   // Track if any modal is open (for blocking global shortcuts)
   const hasOpenModal = computed(() =>
     showExportModal.value ||
@@ -60,6 +64,26 @@ export function useAppState() {
   // ============================================
   // State Setters (for cleaner event handling)
   // ============================================
+  function setLoading(loading: boolean, message = '') {
+    isLoading.value = loading
+    loadingMessage.value = message
+  }
+
+  function setZoom(level: number) {
+    zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
+  }
+
+  function zoomIn() {
+    setZoom(zoom.value + ZOOM_STEP)
+  }
+
+  function zoomOut() {
+    setZoom(zoom.value - ZOOM_STEP)
+  }
+
+  function setCurrentTool(tool: 'select' | 'razor') {
+    currentTool.value = tool
+  }
   function openCommandPalette() {
     if (!isMobile.value) {
       showCommandPalette.value = true
@@ -86,17 +110,11 @@ export function useAppState() {
   }
 
   function openPreviewModal(pageRef: PageReference) {
-    // Ensure the page is selected so navigation continues from here
-    store.selectPage(pageRef.id, false)
     previewPageRef.value = pageRef
     showPreviewModal.value = true
   }
 
   function closePreviewModal() {
-    // Restore selection to the last viewed page for keyboard navigation continuity
-    if (previewPageRef.value) {
-      store.selectPage(previewPageRef.value.id, false)
-    }
     showPreviewModal.value = false
     previewPageRef.value = null
   }
@@ -124,7 +142,6 @@ export function useAppState() {
 
   function exitMobileSelectionMode() {
     mobileSelectionMode.value = false
-    store.clearSelection()
   }
 
   function openMenuDrawer() {
@@ -160,13 +177,6 @@ export function useAppState() {
   }
 
   // ============================================
-  // Document Title Management
-  // ============================================
-  function updateDocumentTitle(title: string) {
-    documentTitle.value = title
-  }
-
-  // ============================================
   // File Input Management
   // ============================================
   function openFileDialog() {
@@ -180,12 +190,18 @@ export function useAppState() {
   }
 
   return {
+    // UI Document State
+    isLoading,
+    loadingMessage,
+    zoom,
+    zoomPercentage,
+    currentTool,
+
     // Refs
     fileInputRef,
 
     // Desktop State
     showCommandPalette,
-    documentTitle,
 
     // Mobile State
     mobileSelectionMode,
@@ -201,10 +217,6 @@ export function useAppState() {
     previewPageRef,
 
     // Computed
-    hasPages,
-    selectedCount,
-    isLoading,
-    loadingMessage,
     hasOpenModal,
     isMobile,
 
@@ -212,6 +224,13 @@ export function useAppState() {
     openCommandPalette,
     closeCommandPalette,
     toggleCommandPalette,
+
+    // UI Document Actions
+    setLoading,
+    setZoom,
+    zoomIn,
+    zoomOut,
+    setCurrentTool,
 
     // Export Modal Actions
     openExportModal,
@@ -237,9 +256,6 @@ export function useAppState() {
     // File Input Actions
     openFileDialog,
     clearFileInput,
-
-    // Document Title
-    updateDocumentTitle,
 
     showDiffModal,
     diffPages,

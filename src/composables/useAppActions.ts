@@ -3,16 +3,25 @@ import { useCommandManager } from '@/composables/useCommandManager'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useMobile } from '@/composables/useMobile'
-import { useDocumentService } from '@/composables/useDocumentService'
+import { useDocumentService, type ExportOptions } from '@/composables/useDocumentService'
+import { getImportErrorMessage } from '@/domain/document/errors'
 import {
   RotatePagesCommand,
   DuplicatePagesCommand,
   DeletePagesCommand,
   AddPagesCommand,
   RemoveSourceCommand,
+  ReorderPagesCommand,
+  SplitGroupCommand,
 } from '@/commands'
 import { UserAction } from '@/types/actions'
-import type { PageReference } from '@/types'
+import type {
+  BookmarkNode,
+  DocumentMetadata,
+  PageEntry,
+  PageReference,
+  SecurityMetadata,
+} from '@/types'
 import type { AppState } from './useAppState'
 import { useThumbnailRenderer } from './useThumbnailRenderer'
 
@@ -22,12 +31,45 @@ import { useThumbnailRenderer } from './useThumbnailRenderer'
  */
 export function useAppActions(state: AppState) {
   const store = useDocumentStore()
-  const { execute, clearHistory, undo } = useCommandManager()
+  const {
+    execute,
+    clearHistory,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    undoName,
+    redoName,
+    historyList,
+    jumpTo,
+  } = useCommandManager()
   const { clearCache } = useThumbnailRenderer()
   const toast = useToast()
   const { confirmDelete, confirmClearWorkspace } = useConfirm()
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
-  const { importFiles, clearWorkspace, generateRawPdf } = useDocumentService()
+  const {
+    importFiles,
+    clearWorkspace,
+    generateRawPdf,
+    exportDocument: exportDocumentService,
+    exportJob,
+    getSuggestedFilename,
+    getEstimatedSize,
+    clearExportError,
+    parsePageRange,
+    validatePageRange,
+    restoreSession,
+  } = useDocumentService(undefined, {
+    zoom: state.zoom,
+    setZoom: state.setZoom,
+    setLoading: state.setLoading,
+  })
+
+  function normalizeProjectTitle(value: string) {
+    let next = value.trim()
+    if (!next) next = 'Untitled Project'
+    return next.replace(/[/\\:]/g, '-')
+  }
 
   // ============================================
   // File Handling
@@ -69,7 +111,12 @@ export function useAppActions(state: AppState) {
 
     if (errors.length > 0) {
       const detail = errors
-        .map((e) => e.error)
+        .map((e) => {
+          if (e.errorCode) {
+            return getImportErrorMessage(e.errorCode, e.error)
+          }
+          return e.error
+        })
         .filter((e): e is string => typeof e === 'string' && e.length > 0)
         .join(', ')
 
@@ -103,6 +150,47 @@ export function useAppActions(state: AppState) {
     execute(new AddPagesCommand(sourceFile, newPages, false))
   }
 
+  function downloadFile(data: Uint8Array, filename: string, mimeType: string): void {
+    const arrayBuffer =
+      data.buffer instanceof ArrayBuffer
+        ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+        : data.slice().buffer
+
+    const blob = new Blob([arrayBuffer], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  async function exportDocument(options: ExportOptions) {
+    const result = await exportDocumentService(options)
+    if (!result.ok) return result
+
+    downloadFile(result.value.bytes, result.value.filename, result.value.mimeType)
+    return result
+  }
+
+  /**
+   * Handle reorder after drag-drop (undoable).
+   */
+  function handleReorderPages(previousOrder: PageEntry[], nextOrder: PageEntry[]) {
+    execute(new ReorderPagesCommand(previousOrder, nextOrder))
+  }
+
+  /**
+   * Handle section split (undoable).
+   */
+  function handleSplitGroup(index: number) {
+    execute(new SplitGroupCommand(index))
+  }
+
   // ============================================
   // Export Handling
   // ============================================
@@ -123,7 +211,7 @@ export function useAppActions(state: AppState) {
    */
   async function handleMobileExport() {
     try {
-      store.setLoading(true, 'Generating PDF...')
+      state.setLoading(true, 'Generating PDF...')
 
       const pagesToExport = store.contentPages
       if (pagesToExport.length === 0) {
@@ -140,7 +228,7 @@ export function useAppActions(state: AppState) {
         type: 'application/pdf',
       })
 
-      store.setLoading(false)
+      state.setLoading(false)
 
       const result = await shareFile(file, filename)
       if (result.shared) {
@@ -149,7 +237,7 @@ export function useAppActions(state: AppState) {
         toast.success('PDF downloaded')
       }
     } catch (error) {
-      store.setLoading(false)
+      state.setLoading(false)
       toast.error('Export failed', error instanceof Error ? error.message : 'Export failed')
     }
   }
@@ -176,7 +264,16 @@ export function useAppActions(state: AppState) {
    * Handle page preview action
    */
   function handlePagePreview(pageRef: PageReference) {
+    store.selectPage(pageRef.id, false)
     state.openPreviewModal(pageRef)
+  }
+
+  function handleClosePreview() {
+    const pageRef = state.previewPageRef.value
+    if (pageRef) {
+      store.selectPage(pageRef.id, false)
+    }
+    state.closePreviewModal()
   }
 
   /**
@@ -394,6 +491,9 @@ export function useAppActions(state: AppState) {
           if (page) handlePagePreview(page)
         }
         break
+      case UserAction.SELECT_ALL:
+        store.selectAll()
+        break
       default:
         break
     }
@@ -430,11 +530,96 @@ export function useAppActions(state: AppState) {
   // ============================================
 
   function zoomIn() {
-    store.zoomIn()
+    state.zoomIn()
   }
 
   function zoomOut() {
-    store.zoomOut()
+    state.zoomOut()
+  }
+
+  // ============================================
+  // Selection + UI State
+  // ============================================
+
+  function selectPage(pageId: string, addToSelection = false) {
+    store.selectPage(pageId, addToSelection)
+  }
+
+  function togglePageSelection(pageId: string) {
+    store.togglePageSelection(pageId)
+  }
+
+  function selectRange(fromId: string, toId: string) {
+    store.selectRange(fromId, toId)
+  }
+
+  function selectAllPages() {
+    store.selectAll()
+  }
+
+  function clearSelection() {
+    store.clearSelection()
+  }
+
+  function enterMobileSelectionMode() {
+    state.enterMobileSelectionMode()
+  }
+
+  function exitMobileSelectionMode() {
+    state.exitMobileSelectionMode()
+    store.clearSelection()
+  }
+
+  // ============================================
+  // Project / Metadata / Security
+  // ============================================
+
+  function setProjectTitleDraft(value: string) {
+    if (store.isTitleLocked) return
+    store.projectTitle = value
+  }
+
+  function commitProjectTitle(value?: string) {
+    if (store.isTitleLocked) return
+    store.projectTitle = normalizeProjectTitle(value ?? store.projectTitle)
+  }
+
+  function setCurrentTool(tool: 'select' | 'razor') {
+    state.setCurrentTool(tool)
+  }
+
+  async function handleRestoreSession() {
+    return restoreSession()
+  }
+
+  function setMetadata(next: Partial<DocumentMetadata>) {
+    store.setMetadata(next)
+  }
+
+  function applyMetadataFromSource(sourceId: string) {
+    const source = store.sources.get(sourceId)
+    if (!source?.metadata) return
+    store.setMetadata(source.metadata)
+  }
+
+  function addKeyword(keyword: string) {
+    store.addKeyword(keyword)
+  }
+
+  function removeKeyword(keyword: string) {
+    store.removeKeyword(keyword)
+  }
+
+  function setSecurity(next: Partial<SecurityMetadata>) {
+    store.setSecurity(next)
+  }
+
+  function setBookmarksTree(tree: BookmarkNode[], markDirty = true) {
+    store.setBookmarksTree(tree, markDirty)
+  }
+
+  function addBookmarkForPage(pageId: string, title?: string) {
+    store.addBookmarkForPage(pageId, title)
   }
 
   return {
@@ -447,9 +632,17 @@ export function useAppActions(state: AppState) {
     handleExport,
     handleExportSelected,
     handleExportSuccess,
+    exportDocument,
+    exportJob,
+    getSuggestedFilename,
+    getEstimatedSize,
+    clearExportError,
+    parsePageRange,
+    validatePageRange,
 
     // Page Actions
     handlePagePreview,
+    handleClosePreview,
     handleDeleteSelected,
     handleDuplicateSelected,
     handleRotateSelected,
@@ -472,6 +665,42 @@ export function useAppActions(state: AppState) {
     // Zoom
     zoomIn,
     zoomOut,
+
+    // History (Command Manager)
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    undoName,
+    redoName,
+    historyList,
+    jumpTo,
+
+    // Undoable structure changes
+    handleReorderPages,
+    handleSplitGroup,
+
+    // Selection + UI State
+    selectPage,
+    togglePageSelection,
+    selectRange,
+    selectAllPages,
+    clearSelection,
+    enterMobileSelectionMode,
+    exitMobileSelectionMode,
+
+    // Project / Metadata / Security
+    setProjectTitleDraft,
+    commitProjectTitle,
+    setCurrentTool,
+    handleRestoreSession,
+    setMetadata,
+    applyMetadataFromSource,
+    addKeyword,
+    removeKeyword,
+    setSecurity,
+    setBookmarksTree,
+    addBookmarkForPage,
   }
 }
 

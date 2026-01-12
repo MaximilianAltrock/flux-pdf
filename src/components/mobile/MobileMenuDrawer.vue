@@ -2,8 +2,6 @@
 import { computed } from 'vue'
 import { FileText, Clock, Sun, Moon, Trash2, ChevronRight, Info, FilePlus } from 'lucide-vue-next'
 import { useColorMode } from '@vueuse/core'
-import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { useMobile } from '@/composables/useMobile'
 import { formatFileSize, formatTime } from '@/utils/format'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -21,9 +19,13 @@ import {
 } from '@/components/ui/item'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
+  state: FacadeState
+  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -32,8 +34,7 @@ const emit = defineEmits<{
   newProject: []
 }>()
 
-const store = useDocumentStore()
-const { historyList, jumpTo } = useCommandManager()
+const { historyList, jumpTo } = props.actions
 const { haptic } = useMobile()
 const mode = useColorMode()
 
@@ -56,11 +57,11 @@ const toggleTheme = (event: MouseEvent) => {
   })
 }
 
-const sources = computed(() => store.sourceFileList)
+const sources = computed(() => props.state.document.sourceFileList)
 
 const totalSize = computed(() => {
   let size = 0
-  for (const source of store.sources.values()) {
+  for (const source of props.state.document.sources.values()) {
     size += source.fileSize
   }
   return size
@@ -113,7 +114,9 @@ function handleNewProject() {
             <div class="grid grid-cols-2 gap-3">
               <Card class="bg-background/50 border-border rounded-lg shadow-none">
                 <CardContent class="p-3">
-                  <div class="text-2xl font-bold text-foreground">{{ store.pageCount }}</div>
+                  <div class="text-2xl font-bold text-foreground">
+                    {{ props.state.document.pageCount }}
+                  </div>
                   <div class="text-xxs text-muted-foreground uppercase font-medium">Pages</div>
                 </CardContent>
               </Card>

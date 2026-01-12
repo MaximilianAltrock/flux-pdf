@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useDocumentStore } from '@/stores/document'
-import { useDocumentService } from '@/composables/useDocumentService'
 import { ChevronLeft, ChevronRight, GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -9,11 +7,15 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { ResizablePanel } from '@/components/ui/resizable'
-import { formatBytes } from '@/utils/format-size'
+import { formatBytes } from '@/utils/format'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
+const props = defineProps<{
+  state: FacadeState
+  actions: AppActions
+}>()
 
-const store = useDocumentStore()
-
-const files = computed(() => store.sourceFileList)
+const files = computed(() => props.state.document.sourceFileList)
 
 function handleDragStart(event: DragEvent, sourceId: string) {
   if (event.dataTransfer) {
@@ -34,7 +36,6 @@ function handleRemove(fileId: string, event: Event) {
   emit('removeSource', fileId)
 }
 
-const { importFiles } = useDocumentService()
 const isDragOver = ref(false)
 let dragCounter = 0
 
@@ -70,7 +71,7 @@ async function handleDrop(e: DragEvent) {
 
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
-    await importFiles(droppedFiles)
+    await props.actions.handleFilesSelected(droppedFiles)
   }
 }
 </script>
@@ -116,7 +117,10 @@ async function handleDrop(e: DragEvent) {
           >
             <div class="flex items-stretch min-h-[56px]">
               <!-- Color Pill -->
-              <div class="w-1.5 shrink-0" :style="{ backgroundColor: file.color }"></div>
+              <div
+                class="w-1.5 shrink-0"
+                :style="{ backgroundColor: props.state.document.getSourceColor(file.id) }"
+              ></div>
 
               <div class="flex-1 flex flex-col min-w-0 p-2 justify-center">
                 <div v-if="isCollapsed" class="w-full flex justify-center">

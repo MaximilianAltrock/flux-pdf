@@ -18,6 +18,16 @@ export default defineConfig({
   optimizeDeps: {
     include: ['pdfjs-dist'],
   },
+  test: {
+    environment: 'happy-dom',
+    setupFiles: ['tests/setup.ts'],
+    globals: true,
+    include: ['tests/**/*.spec.ts'],
+    exclude: ['tests/e2e/**'],
+    deps: {
+      inline: ['pdfjs-dist'],
+    },
+  },
   build: {
     rollupOptions: {
       output: {

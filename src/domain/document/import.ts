@@ -10,6 +10,7 @@ import type {
   PdfOutlineNode,
   SourceFile,
 } from '@/types'
+import type { ImportErrorCode } from '@/types/errors'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
@@ -142,7 +143,11 @@ export async function loadPdfFile(
     return { success: true, sourceFile, pageRefs }
   } catch (error) {
     console.error('Failed to load PDF file:', error)
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      errorCode: 'IMPORT_PDF_LOAD_FAILED',
+    }
   }
 }
 
@@ -162,6 +167,12 @@ export async function loadPdfFiles(
       if (conversion.success && conversion.file) {
         results.push(await loadPdfFile(conversion.file, { colorIndex }))
         colorIndex++
+      } else {
+        results.push({
+          success: false,
+          error: conversion.error ?? 'Image conversion failed',
+          errorCode: conversion.errorCode ?? 'IMPORT_IMAGE_CONVERSION_FAILED',
+        })
       }
     }
   }
@@ -258,7 +269,12 @@ async function resolvePageIndex(pdfDoc: PDFDocumentProxy, dest: unknown): Promis
   }
 }
 
-async function convertImageToPdf(file: File): Promise<{ success: boolean; file?: File }> {
+async function convertImageToPdf(file: File): Promise<{
+  success: boolean
+  file?: File
+  error?: string
+  errorCode?: ImportErrorCode
+}> {
   try {
     const pdfDoc = await PDFDocument.create()
     const arrayBuffer = await file.arrayBuffer()
@@ -292,6 +308,8 @@ async function convertImageToPdf(file: File): Promise<{ success: boolean; file?:
     console.error('Image conversion error:', error)
     return {
       success: false,
+      error: error instanceof Error ? error.message : 'Image conversion failed',
+      errorCode: 'IMPORT_IMAGE_CONVERSION_FAILED',
     }
   }
 }

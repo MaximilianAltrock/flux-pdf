@@ -17,10 +17,10 @@ import {
   FolderPlus,
   Layers,
 } from 'lucide-vue-next'
-import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { UserAction } from '@/types/actions'
 import { useColorMode } from '@vueuse/core'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 import {
   CommandDialog,
@@ -33,8 +33,10 @@ import {
 } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
+  state: FacadeState
+  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -42,8 +44,6 @@ const emit = defineEmits<{
   action: [action: UserAction]
 }>()
 
-const store = useDocumentStore()
-const { undo, redo, canUndo, canRedo } = useCommandManager()
 const mode = useColorMode()
 
 const isDark = computed(() => mode.value === 'dark')
@@ -89,7 +89,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '',
     icon: Download,
     action: () => emit('action', UserAction.EXPORT),
-    enabled: () => store.pageCount > 0,
+    enabled: () => props.state.document.pageCount > 0,
     category: 'File',
   },
   {
@@ -98,7 +98,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '',
     icon: Download,
     action: () => emit('action', UserAction.EXPORT_SELECTED),
-    enabled: () => store.selectedCount > 0,
+    enabled: () => props.state.document.selectedCount > 0,
     category: 'File',
   },
 
@@ -109,10 +109,10 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '⌘Z',
     icon: Undo2,
     action: () => {
-      undo()
+      props.actions.undo()
       emit('update:open', false)
     },
-    enabled: () => canUndo.value,
+    enabled: () => props.actions.canUndo.value,
     category: 'Edit',
   },
   {
@@ -121,10 +121,10 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '⇧⌘Z',
     icon: Redo2,
     action: () => {
-      redo()
+      props.actions.redo()
       emit('update:open', false)
     },
-    enabled: () => canRedo.value,
+    enabled: () => props.actions.canRedo.value,
     category: 'Edit',
   },
 
@@ -135,7 +135,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '⌘A',
     icon: CheckSquare,
     action: () => {
-      store.selectAll()
+      props.actions.selectAllPages()
       emit('update:open', false)
     },
     enabled: () => store.pageCount > 0,
@@ -147,7 +147,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'Esc',
     icon: XSquare,
     action: () => {
-      store.clearSelection()
+      props.actions.clearSelection()
       emit('update:open', false)
     },
     enabled: () => store.selectedCount > 0,
@@ -159,7 +159,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'D',
     icon: Layers,
     action: () => emit('action', UserAction.DIFF),
-    enabled: () => store.selectedCount === 2,
+    enabled: () => props.state.document.selectedCount === 2,
     category: 'Selection',
   },
 
@@ -170,7 +170,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'R',
     icon: RotateCw,
     action: () => emit('action', UserAction.ROTATE_RIGHT),
-    enabled: () => store.selectedCount > 0,
+    enabled: () => props.state.document.selectedCount > 0,
     category: 'Page',
   },
   {
@@ -179,7 +179,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '⇧R',
     icon: RotateCcw,
     action: () => emit('action', UserAction.ROTATE_LEFT),
-    enabled: () => store.selectedCount > 0,
+    enabled: () => props.state.document.selectedCount > 0,
     category: 'Page',
   },
   {
@@ -188,7 +188,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'Del',
     icon: Trash2,
     action: () => emit('action', UserAction.DELETE),
-    enabled: () => store.selectedCount > 0,
+    enabled: () => props.state.document.selectedCount > 0,
     category: 'Page',
   },
   {
@@ -197,7 +197,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '⌘D',
     icon: Copy,
     action: () => emit('action', UserAction.DUPLICATE),
-    enabled: () => store.selectedCount > 0,
+    enabled: () => props.state.document.selectedCount > 0,
     category: 'Page',
   },
   {
@@ -206,7 +206,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'Space',
     icon: Eye,
     action: () => emit('action', UserAction.PREVIEW),
-    enabled: () => store.selectedCount === 1,
+    enabled: () => props.state.document.selectedCount === 1,
     category: 'Page',
   },
 

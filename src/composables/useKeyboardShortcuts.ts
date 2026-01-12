@@ -2,6 +2,8 @@ import { onMounted, onUnmounted, type Ref } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { UserAction } from '@/types/actions'
+import type { AppActions } from '@/composables/useAppActions'
+import type { AppState } from '@/composables/useAppState'
 
 type KeyboardShortcutOptions = {
   /** When true, all shortcuts are blocked (e.g., when a modal is open) */
@@ -9,8 +11,9 @@ type KeyboardShortcutOptions = {
 }
 
 export function useKeyboardShortcuts(
-  handleAction: (action: UserAction) => void,
-  options?: KeyboardShortcutOptions
+  actions: AppActions,
+  state: AppState,
+  options?: KeyboardShortcutOptions,
 ) {
   const store = useDocumentStore()
   const { undo, redo } = useCommandManager()
@@ -35,15 +38,15 @@ export function useKeyboardShortcuts(
     // Command Palette: Cmd+K or /
     if ((isCmd && e.key === 'k') || e.key === '/') {
       e.preventDefault()
-      handleAction(UserAction.OPEN_COMMAND_PALETTE)
+      state.openCommandPalette()
       return
     }
 
     // Tools
     if (e.key === 'v') {
-      store.currentTool = 'select'
+      actions.setCurrentTool('select')
     } else if (e.key === 'c') {
-      store.currentTool = 'razor'
+      actions.setCurrentTool('razor')
     }
 
     // Undo/Redo
@@ -60,13 +63,13 @@ export function useKeyboardShortcuts(
     // Select All
     if (isCmd && e.key === 'a') {
       e.preventDefault()
-      store.selectAll()
+      actions.selectAllPages()
       return
     }
 
     // Deselect (Escape)
     if (e.key === 'Escape') {
-      store.clearSelection()
+      actions.clearSelection()
       return
     }
 
@@ -77,7 +80,7 @@ export function useKeyboardShortcuts(
       // Using standard convention avoids confusion.
       if (isCmd && e.key.toLowerCase() === 'd') {
         e.preventDefault()
-        handleAction(UserAction.DUPLICATE)
+        actions.handleCommandAction(UserAction.DUPLICATE)
         return
       }
 
@@ -86,7 +89,7 @@ export function useKeyboardShortcuts(
       // ----------------------------------------------------
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault()
-        handleAction(UserAction.DELETE) // Delegate to handler
+        actions.handleCommandAction(UserAction.DELETE) // Delegate to handler
         return
       }
 
@@ -100,7 +103,7 @@ export function useKeyboardShortcuts(
         // We trigger the action regardless of count.
         // The Action Handler (useAppActions) is responsible for
         // checking the count and showing a Toast error if != 2.
-        handleAction(UserAction.DIFF)
+        actions.handleCommandAction(UserAction.DIFF)
         return
       }
       // ----------------------------------------------------
@@ -110,9 +113,9 @@ export function useKeyboardShortcuts(
         e.preventDefault()
         // Delegate to the Action Handler
         if (e.shiftKey) {
-          handleAction(UserAction.ROTATE_LEFT)
+          actions.handleCommandAction(UserAction.ROTATE_LEFT)
         } else {
-          handleAction(UserAction.ROTATE_RIGHT)
+          actions.handleCommandAction(UserAction.ROTATE_RIGHT)
         }
         return
       }
@@ -123,7 +126,7 @@ export function useKeyboardShortcuts(
       // Open preview modal for the selected page (requires exactly 1 page)
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
-        handleAction(UserAction.PREVIEW)
+        actions.handleCommandAction(UserAction.PREVIEW)
         return
       }
     }
@@ -138,7 +141,7 @@ export function useKeyboardShortcuts(
 
       const targetPage = e.key === 'Home' ? contentPages[0] : contentPages[contentPages.length - 1]
       if (targetPage) {
-        store.selectPage(targetPage.id, false)
+        actions.selectPage(targetPage.id, false)
         requestAnimationFrame(() => {
           const thumbnail = document.querySelector(`[data-page-id="${targetPage.id}"]`)
           thumbnail?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -165,7 +168,7 @@ export function useKeyboardShortcuts(
 
       // If nothing is selected, start from the first page
       if (currentIndex === -1) {
-        store.selectPage(contentPages[0]!.id, false)
+        actions.selectPage(contentPages[0]!.id, false)
         return
       }
 
@@ -174,7 +177,7 @@ export function useKeyboardShortcuts(
       let columns = 4 // Default fallback
       if (gridContainer) {
         const containerWidth = gridContainer.clientWidth - 48 // Account for padding
-        const thumbnailWidth = store.zoom + 20 + 16 // zoom + minmax offset + gap
+        const thumbnailWidth = state.zoom.value + 20 + 16 // zoom + minmax offset + gap
         columns = Math.max(1, Math.floor(containerWidth / thumbnailWidth))
       }
 
@@ -209,9 +212,9 @@ export function useKeyboardShortcuts(
       const newPage = contentPages[newIndex]
       if (newPage && newIndex !== currentIndex) {
         if (isShift) {
-          store.selectRange(currentId!, newPage.id)
+          actions.selectRange(currentId!, newPage.id)
         } else {
-          store.selectPage(newPage.id, false)
+          actions.selectPage(newPage.id, false)
         }
 
         // Scroll the selected page into view

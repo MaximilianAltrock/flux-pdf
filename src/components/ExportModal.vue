@@ -11,10 +11,9 @@ import {
 } from 'lucide-vue-next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { useDocumentService, type ExportOptions } from '@/composables/useDocumentService'
+import type { ExportOptions } from '@/composables/useDocumentService'
 import type { PageReference } from '@/types'
 import type { CompressionQuality } from '@/composables/usePdfCompression'
-import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,27 +33,31 @@ import {
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { formatBytes } from '@/utils/format-size'
+import { formatBytes } from '@/utils/format'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 const props = defineProps<{
   open: boolean
   exportSelected?: boolean
+  state: FacadeState
+  actions: AppActions
 }>()
+
+const document = props.state.document
 
 const emit = defineEmits<{
   close: []
   success: [filename: string, sizeKB: number, durationMs: number]
 }>()
 
-const store = useDocumentStore()
+const exportJob = props.actions.exportJob
 const {
-  exportJob,
-  exportDocument,
   getSuggestedFilename,
   getEstimatedSize,
   clearExportError,
   parsePageRange,
   validatePageRange,
-} = useDocumentService()
+} = props.actions
 
 const isExporting = computed(() => exportJob.value.status === 'running')
 const exportProgress = computed(() => exportJob.value.progress)
@@ -103,7 +106,7 @@ watch(
       clearExportError()
 
       // Set page range mode based on prop
-      if (props.exportSelected && store.selectedCount > 0) {
+      if (props.exportSelected && document.selectedCount > 0) {
         pageRangeMode.value = 'selected'
       } else {
         pageRangeMode.value = 'all'
@@ -123,29 +126,29 @@ watch(
 // Computed
 const pageCount = computed(() => {
   if (pageRangeMode.value === 'selected') {
-    return store.selectedCount
+    return document.selectedCount
   }
   if (pageRangeMode.value === 'custom' && customPageRange.value) {
-    const validation = validatePageRange(customPageRange.value, store.contentPageCount)
+    const validation = validatePageRange(customPageRange.value, document.contentPageCount)
     if (validation.valid) {
-      return parsePageRange(customPageRange.value, store.contentPageCount).length
+      return parsePageRange(customPageRange.value, document.contentPageCount).length
     }
   }
-  return store.contentPageCount
+  return document.contentPageCount
 })
 
 const pagesToExport = computed(() => {
   if (pageRangeMode.value === 'all') {
-    return store.contentPages
+    return document.contentPages
   }
   if (pageRangeMode.value === 'selected') {
-    return store.selectedPages
+    return document.selectedPages
   }
   if (pageRangeMode.value === 'custom' && customPageRange.value) {
-    const validation = validatePageRange(customPageRange.value, store.contentPageCount)
+    const validation = validatePageRange(customPageRange.value, document.contentPageCount)
     if (validation.valid) {
-      const indices = parsePageRange(customPageRange.value, store.contentPageCount)
-      return indices.map((i) => store.contentPages[i]).filter((p): p is PageReference => !!p)
+      const indices = parsePageRange(customPageRange.value, document.contentPageCount)
+      return indices.map((i) => document.contentPages[i]).filter((p): p is PageReference => !!p)
     }
   }
   return []
@@ -156,11 +159,11 @@ const canExport = computed(() => {
   if (isExporting.value || exportComplete.value) return false
 
   if (pageRangeMode.value === 'custom') {
-    const validation = validatePageRange(customPageRange.value, store.contentPageCount)
+    const validation = validatePageRange(customPageRange.value, document.contentPageCount)
     if (!validation.valid) return false
   }
 
-  if (pageRangeMode.value === 'selected' && store.selectedCount === 0) {
+  if (pageRangeMode.value === 'selected' && document.selectedCount === 0) {
     return false
   }
 
@@ -170,21 +173,21 @@ const canExport = computed(() => {
 const pageRangeDescription = computed(() => {
   switch (pageRangeMode.value) {
     case 'all':
-      return `All ${store.contentPageCount} pages`
+      return `All ${document.contentPageCount} pages`
     case 'selected':
-      return `${store.selectedCount} selected page${store.selectedCount === 1 ? '' : 's'}`
+      return `${document.selectedCount} selected page${document.selectedCount === 1 ? '' : 's'}`
     case 'custom':
       if (pageRangeError.value) return pageRangeError.value
       return `${pageCount.value} page${pageCount.value === 1 ? '' : 's'} from custom range`
     default:
-      return `${store.contentPageCount} pages`
+      return `${document.contentPageCount} pages`
   }
 })
 
 // Watch custom page range for validation
 watch(customPageRange, (value) => {
   if (pageRangeMode.value === 'custom' && value) {
-    const validation = validatePageRange(value, store.contentPageCount)
+    const validation = validatePageRange(value, document.contentPageCount)
     pageRangeError.value = validation.valid ? null : (validation.error ?? 'Invalid range')
   } else {
     pageRangeError.value = null
@@ -193,10 +196,10 @@ watch(customPageRange, (value) => {
 
 // Methods
 function buildExportOptions(): ExportOptions {
-  const title = store.metadata.title?.trim() || store.projectTitle?.trim()
+  const title = document.metadata.title?.trim() || document.projectTitle?.trim()
   const exportMetadata = {
-    ...store.metadata,
-    title: title ?? store.metadata.title,
+    ...document.metadata,
+    title: title ?? document.metadata.title,
   }
 
   const options: ExportOptions = {
@@ -208,8 +211,8 @@ function buildExportOptions(): ExportOptions {
 
   // Page range
   if (pageRangeMode.value === 'selected') {
-    const selectedIndices = store.contentPages
-      .map((p, i) => (store.selection.selectedIds.has(p.id) ? i + 1 : null))
+    const selectedIndices = document.contentPages
+      .map((p, i) => (document.selectedIds.has(p.id) ? i + 1 : null))
       .filter((i): i is number => i !== null)
     options.pageRange = selectedIndices.join(', ')
   } else if (pageRangeMode.value === 'custom') {
@@ -225,7 +228,7 @@ async function handleExport() {
   try {
     const options = buildExportOptions()
     // ...
-    const result = await exportDocument(options)
+    const result = await props.actions.exportDocument(options)
     if (!result.ok) return
 
     const endTime = performance.now()
@@ -493,7 +496,7 @@ if (isMobile.value) {
                   >
                     <span class="text-sm font-medium">Whole Document</span>
                     <span class="text-[9px] font-mono text-muted-foreground"
-                      >{{ store.pageCount }} pages</span
+                      >{{ document.pageCount }} pages</span
                     >
                   </Label>
                 </div>
@@ -502,21 +505,21 @@ if (isMobile.value) {
                   <RadioGroupItem
                     id="range-selected"
                     value="selected"
-                    :disabled="store.selectedCount === 0"
+                    :disabled="document.selectedCount === 0"
                     class="peer sr-only"
                   />
                   <Label
                     for="range-selected"
                     class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
                     :class="
-                      store.selectedCount > 0
+                      document.selectedCount > 0
                         ? 'cursor-pointer hover:bg-muted/40'
                         : 'opacity-50 cursor-not-allowed grayscale bg-muted/20'
                     "
                   >
                     <span class="text-sm font-medium">Selected Frames</span>
                     <span class="text-[9px] font-mono text-muted-foreground"
-                      >{{ store.selectedCount }} items</span
+                      >{{ document.selectedCount }} items</span
                     >
                   </Label>
                 </div>

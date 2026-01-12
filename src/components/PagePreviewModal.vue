@@ -3,9 +3,9 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-vue-next'
 import { useSwipe } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
-import { useDocumentStore } from '@/stores/document'
 import type { PageReference } from '@/types'
 import { useMobile } from '@/composables/useMobile'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 const props = defineProps<{
   open: boolean
   pageRef: PageReference | null
+  state: FacadeState
 }>()
 
 const emit = defineEmits<{
@@ -26,7 +27,6 @@ const emit = defineEmits<{
   navigate: [pageRef: PageReference]
 }>()
 
-const store = useDocumentStore()
 const { renderThumbnail } = useThumbnailRenderer()
 const { isMobile, onBackButton } = useMobile()
 
@@ -38,7 +38,7 @@ const containerRef = ref<HTMLElement | null>(null)
 const imageRef = ref<HTMLElement | null>(null)
 
 // --- Computed Helpers ---
-const contentPages = computed(() => store.contentPages)
+const contentPages = computed(() => props.state.document.contentPages)
 const currentIndex = computed(() => {
   if (!props.pageRef) return -1
   return contentPages.value.findIndex((p) => p.id === props.pageRef!.id)

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
-import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { Tree, TreeItem } from '@/components/ui/tree'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -34,9 +32,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { formatTime } from '@/utils/format'
+import { scrollToPageId } from '@/utils/scroll-to-page'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
-const store = useDocumentStore()
-const { historyList, jumpTo } = useCommandManager()
+const props = defineProps<{
+  state: FacadeState
+  actions: AppActions
+}>()
+const { historyList, jumpTo } = props.actions
 
 const historyScrollArea = ref<any>(null)
 
@@ -61,32 +66,31 @@ watch(
 )
 
 function addCustomBookmark() {
-  const pageId = store.selection.lastSelectedId
+  const pageId = props.state.document.lastSelectedId
   if (!pageId) return
-  store.addBookmarkForPage(pageId)
+  props.actions.addBookmarkForPage(pageId)
 }
 
 function scrollGridToPage(pageId: string) {
-  const el = document.querySelector(`[data-page-id="${pageId}"]`)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    store.selectPage(pageId, false)
+  const didScroll = scrollToPageId(pageId, { behavior: 'smooth', block: 'center' })
+  if (didScroll) {
+    props.actions.selectPage(pageId, false)
   }
 }
 
 // === METADATA TAB LOGIC ===
 const keywordInput = ref('')
 const metadataTitle = computed({
-  get: () => store.metadata.title,
-  set: (value) => store.setMetadata({ title: value }),
+  get: () => props.state.document.metadata.title,
+  set: (value) => props.actions.setMetadata({ title: value }),
 })
 const metadataAuthor = computed({
-  get: () => store.metadata.author,
-  set: (value) => store.setMetadata({ author: value }),
+  get: () => props.state.document.metadata.author,
+  set: (value) => props.actions.setMetadata({ author: value }),
 })
 const metadataSubject = computed({
-  get: () => store.metadata.subject,
-  set: (value) => store.setMetadata({ subject: value }),
+  get: () => props.state.document.metadata.subject,
+  set: (value) => props.actions.setMetadata({ subject: value }),
 })
 
 function hasMeaningfulMetadata(metadata?: DocumentMetadata): metadata is DocumentMetadata {
@@ -100,36 +104,56 @@ function hasMeaningfulMetadata(metadata?: DocumentMetadata): metadata is Documen
 }
 
 const metadataSources = computed(() =>
-  store.sourceFileList.filter((source) => hasMeaningfulMetadata(source.metadata)),
+  props.state.document.sourceFileList.filter((source) => hasMeaningfulMetadata(source.metadata)),
 )
 
 function applyMetadataFromSource(sourceId: string) {
-  const source = store.sources.get(sourceId)
-  if (!source?.metadata) return
-  store.setMetadata(source.metadata)
+  props.actions.applyMetadataFromSource(sourceId)
 }
 
 function addKeyword() {
   const val = keywordInput.value.trim()
-  if (val) store.addKeyword(val)
+  if (val) props.actions.addKeyword(val)
   keywordInput.value = ''
 }
 function removeKeyword(k: string) {
-  store.removeKeyword(k)
+  props.actions.removeKeyword(k)
 }
 
 // === SECURITY TAB LOGIC ===
 const showUserPassword = ref(false)
 const showOwnerPassword = ref(false)
 
-// Format timestamp
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
+const securityEncrypted = computed({
+  get: () => props.state.document.security.isEncrypted,
+  set: (value) => props.actions.setSecurity({ isEncrypted: value }),
+})
+
+const securityUserPassword = computed({
+  get: () => props.state.document.security.userPassword ?? '',
+  set: (value) => props.actions.setSecurity({ userPassword: value }),
+})
+
+const securityOwnerPassword = computed({
+  get: () => props.state.document.security.ownerPassword ?? '',
+  set: (value) => props.actions.setSecurity({ ownerPassword: value }),
+})
+
+const allowPrinting = computed({
+  get: () => props.state.document.security.allowPrinting,
+  set: (value) => props.actions.setSecurity({ allowPrinting: value }),
+})
+
+const allowCopying = computed({
+  get: () => props.state.document.security.allowCopying,
+  set: (value) => props.actions.setSecurity({ allowCopying: value }),
+})
+
+const allowModifying = computed({
+  get: () => props.state.document.security.allowModifying,
+  set: (value) => props.actions.setSecurity({ allowModifying: value }),
+})
+
 </script>
 
 <template>
@@ -178,7 +202,7 @@ function formatTime(ts: number) {
               <ScrollArea class="flex-1 min-h-0">
                 <!-- A. STRUCTURE TAB (Auto-Generated TOC) -->
                 <TabsContent value="structure" class="m-0 focus-visible:outline-none">
-                  <div v-if="store.pageCount === 0" class="p-12 text-center">
+                  <div v-if="props.state.document.pageCount === 0" class="p-12 text-center">
                     <div
                       class="bg-muted/30 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 border border-border/40"
                     >
@@ -209,10 +233,10 @@ function formatTime(ts: number) {
 
                     <div class="flex-1 min-h-0 py-2">
                       <Tree
-                        :items="store.bookmarksTree"
+                        :items="props.state.document.bookmarksTree"
                         :get-key="(item) => item.id"
                         @update:items="
-                          (val) => store.setBookmarksTree(val as BookmarkNode[], true)
+                          (val) => props.actions.setBookmarksTree(val as BookmarkNode[], true)
                         "
                         class="w-full px-2"
                         v-slot="{ flattenItems }"
@@ -385,11 +409,11 @@ function formatTime(ts: number) {
                         >
                         <FieldContent class="space-y-2.5">
                           <div
-                            v-if="store.metadata.keywords.length > 0"
+                            v-if="props.state.document.metadata.keywords.length > 0"
                             class="flex flex-wrap gap-1.5 items-center"
                           >
                             <Badge
-                              v-for="k in store.metadata.keywords"
+                              v-for="k in props.state.document.metadata.keywords"
                               :key="k"
                               variant="secondary"
                               class="pl-2 pr-0.5 h-6 gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors"
@@ -435,7 +459,7 @@ function formatTime(ts: number) {
                     <div
                       class="bg-muted/30 border border-border/50 rounded-lg p-4 transition-all"
                       :class="
-                        store.security.isEncrypted
+                        props.state.document.security.isEncrypted
                           ? 'border-primary/20 ring-1 ring-primary/5 bg-primary/[0.02]'
                           : ''
                       "
@@ -445,7 +469,7 @@ function formatTime(ts: number) {
                           <FieldLabel
                             for="security-encrypted"
                             class="text-xs font-bold text-foreground transition-colors"
-                            :class="store.security.isEncrypted ? 'text-primary' : ''"
+                            :class="props.state.document.security.isEncrypted ? 'text-primary' : ''"
                           >
                             Document Encryption
                           </FieldLabel>
@@ -455,8 +479,8 @@ function formatTime(ts: number) {
                         </div>
                         <Switch
                           id="security-encrypted"
-                          :checked="store.security.isEncrypted"
-                          @update:checked="(v: boolean) => (store.security.isEncrypted = v)"
+                          :checked="securityEncrypted"
+                          @update:checked="(v: boolean) => (securityEncrypted = v)"
                           class="data-[state=checked]:bg-primary"
                         />
                       </Field>
@@ -466,7 +490,7 @@ function formatTime(ts: number) {
                     <div
                       class="space-y-6 overflow-hidden transition-all duration-500 ease-out"
                       :class="
-                        store.security.isEncrypted
+                        props.state.document.security.isEncrypted
                           ? 'opacity-100 max-h-[800px] blur-0'
                           : 'opacity-0 max-h-0 blur-sm pointer-events-none'
                       "
@@ -493,7 +517,7 @@ function formatTime(ts: number) {
                           <FieldContent>
                             <Input
                               id="security-user-pass"
-                              v-model="store.security.userPassword"
+                              v-model="securityUserPassword"
                               :type="showUserPassword ? 'text' : 'password'"
                               class="h-8 text-xs bg-background/50 border-border/60"
                               placeholder="Required to open document"
@@ -522,7 +546,7 @@ function formatTime(ts: number) {
                           <FieldContent>
                             <Input
                               id="security-owner-pass"
-                              v-model="store.security.ownerPassword"
+                              v-model="securityOwnerPassword"
                               :type="showOwnerPassword ? 'text' : 'password'"
                               class="h-8 text-xs bg-background/50 border-border/60"
                               placeholder="Required to change settings"
@@ -540,8 +564,8 @@ function formatTime(ts: number) {
                           <Field orientation="horizontal" class="items-center gap-3">
                             <Checkbox
                               id="perm-print"
-                              :checked="store.security.allowPrinting"
-                              @update:checked="(v: boolean) => (store.security.allowPrinting = v)"
+                              :checked="allowPrinting"
+                              @update:checked="(v: boolean) => (allowPrinting = v)"
                               class="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                             <div class="space-y-0.5">
@@ -560,8 +584,8 @@ function formatTime(ts: number) {
                           <Field orientation="horizontal" class="items-center gap-3">
                             <Checkbox
                               id="perm-copy"
-                              :checked="store.security.allowCopying"
-                              @update:checked="(v: boolean) => (store.security.allowCopying = v)"
+                              :checked="allowCopying"
+                              @update:checked="(v: boolean) => (allowCopying = v)"
                               class="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                             <div class="space-y-0.5">
@@ -580,8 +604,8 @@ function formatTime(ts: number) {
                           <Field orientation="horizontal" class="items-center gap-3">
                             <Checkbox
                               id="perm-mod"
-                              :checked="store.security.allowModifying"
-                              @update:checked="(v: boolean) => (store.security.allowModifying = v)"
+                              :checked="allowModifying"
+                              @update:checked="(v: boolean) => (allowModifying = v)"
                               class="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                             <div class="space-y-0.5">
@@ -660,7 +684,7 @@ function formatTime(ts: number) {
                       <TimelineTime
                         class="mt-1 block text-[10px] text-muted-foreground/40 font-mono tracking-tighter"
                       >
-                        {{ formatTime(entry.timestamp) }}
+                        {{ formatTime(entry.timestamp, true) }}
                       </TimelineTime>
                     </template>
                   </TimelineItem>

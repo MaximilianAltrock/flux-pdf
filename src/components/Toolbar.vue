@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
-import { RotatePagesCommand } from '@/commands'
 import {
   FilePlus,
   Trash2,
@@ -19,8 +16,15 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Kbd } from '@/components/ui/kbd'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 defineOptions({ name: 'AppToolbar' })
+
+const props = defineProps<{
+  state: FacadeState
+  actions: AppActions
+}>()
 
 const emit = defineEmits<{
   addFiles: []
@@ -29,30 +33,25 @@ const emit = defineEmits<{
   deleteSelected: []
 }>()
 
-const store = useDocumentStore()
-const { execute, undo, redo, canUndo, canRedo, undoName, redoName } = useCommandManager()
-
-const hasSelection = computed(() => store.selectedCount > 0)
-const hasPages = computed(() => store.pageCount > 0)
+const hasSelection = computed(() => props.state.document.selectedCount > 0)
+const hasPages = computed(() => props.state.document.pageCount > 0)
 
 function handleDeleteSelected() {
   emit('deleteSelected')
 }
 
 function rotateSelected(direction: 'cw' | 'ccw') {
-  if (store.selectedCount === 0) return
-
-  const selectedIds = Array.from(store.selection.selectedIds)
   const degrees = direction === 'cw' ? 90 : -90
-  execute(new RotatePagesCommand(selectedIds, degrees))
+  if (props.state.document.selectedCount === 0) return
+  props.actions.handleRotateSelected(degrees)
 }
 
 function selectAll() {
-  store.selectAll()
+  props.actions.selectAllPages()
 }
 
 function clearSelection() {
-  store.clearSelection()
+  props.actions.clearSelection()
 }
 </script>
 
@@ -73,12 +72,19 @@ function clearSelection() {
       <ButtonGroup class="gap-1 [&_[data-slot=button]]:rounded-md">
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button variant="ghost" size="icon-sm" :disabled="!canUndo" @click="undo">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!props.actions.canUndo.value"
+              @click="props.actions.undo"
+            >
               <Undo2 class="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent class="flex items-center gap-2">
-            <span v-if="undoName">Undo: {{ undoName }}</span>
+            <span v-if="props.actions.undoName.value"
+              >Undo: {{ props.actions.undoName.value }}</span
+            >
             <span v-else>Nothing to undo</span>
             <Kbd>⌘Z</Kbd>
           </TooltipContent>
@@ -86,12 +92,19 @@ function clearSelection() {
 
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button variant="ghost" size="icon-sm" :disabled="!canRedo" @click="redo">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              :disabled="!props.actions.canRedo.value"
+              @click="props.actions.redo"
+            >
               <Redo2 class="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent class="flex items-center gap-2">
-            <span v-if="redoName">Redo: {{ redoName }}</span>
+            <span v-if="props.actions.redoName.value"
+              >Redo: {{ props.actions.redoName.value }}</span
+            >
             <span v-else>Nothing to redo</span>
             <Kbd>⇧⌘Z</Kbd>
           </TooltipContent>
@@ -190,9 +203,13 @@ function clearSelection() {
       <!-- Selection info -->
       <div v-if="hasPages" class="text-xs text-muted-foreground mr-4 hidden md:block">
         <span v-if="hasSelection">
-          {{ store.selectedCount }} of {{ store.pageCount }} selected
+          {{ props.state.document.selectedCount }} of {{ props.state.document.pageCount }} selected
         </span>
-        <span v-else> {{ store.pageCount }} page{{ store.pageCount === 1 ? '' : 's' }} </span>
+        <span v-else>
+          {{ props.state.document.pageCount }} page{{
+            props.state.document.pageCount === 1 ? '' : 's'
+          }}
+        </span>
       </div>
 
       <!-- Export buttons -->

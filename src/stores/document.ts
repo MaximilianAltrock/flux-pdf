@@ -46,16 +46,6 @@ export const useDocumentStore = defineStore('document', () => {
     lastSelectedId: null,
   })
 
-  const isLoading = ref(false)
-  const loadingMessage = ref('')
-
-  // View state
-  const zoom = ref(220)
-  const MIN_ZOOM = 120
-  const MAX_ZOOM = 320
-  const ZOOM_STEP = 20
-
-  const currentTool = ref<'select' | 'razor'>('select')
 
   // ============================================
   // Getters
@@ -67,7 +57,6 @@ export const useDocumentStore = defineStore('document', () => {
   const pageCount = computed(() => contentPageCount.value)
   const hasPages = computed(() => contentPageCount.value > 0)
 
-  const zoomPercentage = computed(() => Math.round((zoom.value / 200) * 100))
   const sourceFileList = computed(() => Array.from(sources.value.values()))
   const selectedCount = computed(() => selection.value.selectedIds.size)
   const selectedPages = computed(() =>
@@ -172,11 +161,7 @@ export const useDocumentStore = defineStore('document', () => {
     selection.value.lastSelectedId = null
   }
 
-  // === TOOLS & META ===
-  function setLoading(loading: boolean, message = '') {
-    isLoading.value = loading
-    loadingMessage.value = message
-  }
+  // === META ===
 
   function setMetadata(next: Partial<DocumentMetadata>, markDirty = true) {
     metadata.value = { ...metadata.value, ...next }
@@ -249,8 +234,6 @@ export const useDocumentStore = defineStore('document', () => {
     sources.value.clear()
     pages.value = []
     clearSelection()
-    isLoading.value = false
-    loadingMessage.value = ''
     projectTitle.value = 'Untitled Project'
     isTitleLocked.value = false
     resetMetadata()
@@ -261,15 +244,6 @@ export const useDocumentStore = defineStore('document', () => {
   const projectTitle = ref('Untitled Project')
   const isTitleLocked = ref(false)
 
-  function setZoom(level: number) {
-    zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
-  }
-  function zoomIn() {
-    setZoom(zoom.value + ZOOM_STEP)
-  }
-  function zoomOut() {
-    setZoom(zoom.value - ZOOM_STEP)
-  }
 
   watch(
     [pages, sources, bookmarksDirty],
@@ -284,14 +258,9 @@ export const useDocumentStore = defineStore('document', () => {
     sources,
     pages,
     selection,
-    isLoading,
-    loadingMessage,
-    zoom,
-    currentTool,
     pageCount,
     contentPages,
     contentPageCount,
-    zoomPercentage,
     hasPages,
     selectedPages,
     selectedCount,
@@ -310,12 +279,8 @@ export const useDocumentStore = defineStore('document', () => {
     selectRange,
     selectAll,
     clearSelection,
-    setLoading,
     reset,
     setPages,
-    setZoom,
-    zoomIn,
-    zoomOut,
     projectTitle,
     isTitleLocked,
     bookmarksTree,

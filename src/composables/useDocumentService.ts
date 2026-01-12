@@ -1,6 +1,5 @@
-import { ref, watch } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 import JSZip from 'jszip'
-import { db } from '@/db/db'
 import type { StoredFile } from '@/db/db'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
@@ -8,14 +7,7 @@ import { AddPagesCommand, BatchCommand } from '@/commands'
 import type { Command } from '@/commands/types'
 import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
 import type { Result } from '@/types/result'
-import { usePdfCompression } from '@/composables/usePdfCompression'
 import { useDebounceFn } from '@vueuse/core'
-import {
-  loadPdfFiles,
-  getPdfDocument,
-  getPdfBlob,
-  clearPdfCache,
-} from '@/domain/document/import'
 import {
   generateRawPdf as generateRawPdfCore,
   parsePageRange,
@@ -26,7 +18,16 @@ import {
   type ExportResult,
   type GeneratorOptions,
 } from '@/domain/document/export'
-import { loadSession, persistSession } from '@/domain/document/session'
+import {
+  getExportErrorMessage,
+  getImportErrorMessage,
+  isDocumentError,
+  makeDocumentError,
+} from '@/domain/document/errors'
+import type { DocumentError, ExportErrorCode } from '@/domain/document/errors'
+import type { DocumentErrorCode } from '@/types/errors'
+import { createDocumentAdapters } from '@/domain/document/adapters'
+import type { DocumentAdaptersOverrides } from '@/domain/document/ports'
 
 type JobStatus = 'idle' | 'running' | 'success' | 'error'
 
@@ -34,6 +35,7 @@ export interface JobState {
   status: JobStatus
   progress: number
   error: string | null
+  errorCode?: DocumentErrorCode | null
 }
 
 function createJobState(): JobState {
@@ -41,7 +43,17 @@ function createJobState(): JobState {
     status: 'idle',
     progress: 0,
     error: null,
+    errorCode: null,
   }
+}
+
+function getExportErrorCode(error: unknown): ExportErrorCode {
+  if (error instanceof Error) {
+    if (error.message.startsWith('Source file not found:')) {
+      return 'EXPORT_SOURCE_MISSING'
+    }
+  }
+  return 'EXPORT_FAILED'
 }
 
 const importJob = ref<JobState>(createJobState())
@@ -49,6 +61,16 @@ const exportJob = ref<JobState>(createJobState())
 const restoreJob = ref<JobState>(createJobState())
 const isInitialized = ref(false)
 let persistenceInitialized = false
+let activeAdapters = createDocumentAdapters()
+const DEFAULT_ZOOM = 220
+
+export type DocumentUiState = {
+  zoom: Ref<number>
+  setZoom: (level: number) => void
+  setLoading: (loading: boolean, message?: string) => void
+}
+
+let boundUiState: DocumentUiState | null = null
 
 export interface ImportSummary {
   results: FileUploadResult[]
@@ -57,7 +79,18 @@ export interface ImportSummary {
   totalPages: number
 }
 
-export function useDocumentService() {
+export function useDocumentService(
+  overrides?: DocumentAdaptersOverrides,
+  uiState?: DocumentUiState,
+) {
+  if (uiState) {
+    boundUiState = uiState
+  }
+
+  const ui = boundUiState
+  const adapters = createDocumentAdapters(overrides)
+  activeAdapters = adapters
+
   const store = useDocumentStore()
   const { execute, serializeHistory, rehydrateHistory, getHistoryPointer, historyList } =
     useCommandManager()
@@ -99,13 +132,13 @@ export function useDocumentService() {
     const saveSession = useDebounceFn(async () => {
       const bookmarksDirty = Boolean(store.bookmarksDirty)
       try {
-        await persistSession({
+        await activeAdapters.session.persistSession({
           projectTitle: String(store.projectTitle ?? ''),
           activeSourceIds: Array.from(store.sources.keys()),
           pageMap: store.pages,
           history: serializeHistory(),
           historyPointer: getHistoryPointer(),
-          zoom: store.zoom,
+          zoom: ui?.zoom.value ?? DEFAULT_ZOOM,
           bookmarksTree: store.bookmarksTree,
           bookmarksDirty,
           metadata: store.metadata,
@@ -122,7 +155,7 @@ export function useDocumentService() {
         historyList,
         () => store.pages,
         () => store.projectTitle,
-        () => store.zoom,
+        () => ui?.zoom.value,
         () => store.bookmarksTree,
         () => store.bookmarksDirty,
         () => store.metadata,
@@ -147,10 +180,12 @@ export function useDocumentService() {
       fileList.length === 1
         ? `Processing ${fileList[0]?.name ?? 'file'}...`
         : `Processing ${fileList.length} files...`
-    store.setLoading(true, loadingLabel)
+    ui?.setLoading(true, loadingLabel)
 
     try {
-      const results = await loadPdfFiles(fileList, { initialColorIndex: store.sources.size })
+      const results = await adapters.import.loadPdfFiles(fileList, {
+        initialColorIndex: store.sources.size,
+      })
       for (const result of results) {
         if (result.success && result.sourceFile?.metadata) {
           maybeApplyMetadataFromSource(result.sourceFile.metadata)
@@ -184,16 +219,25 @@ export function useDocumentService() {
       importJob.value = { status: 'success', progress: 100, error: null }
       return { ok: true, value: { results, successes, errors, totalPages } }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Import failed'
-      importJob.value = { status: 'error', progress: 0, error: message }
-      return { ok: false, error: { message, cause: error } }
+      const message = getImportErrorMessage(
+        'IMPORT_FAILED',
+        error instanceof Error ? error.message : undefined,
+      )
+      const importError = makeDocumentError('IMPORT_FAILED', message, error)
+      importJob.value = {
+        status: 'error',
+        progress: 0,
+        error: importError.message,
+        errorCode: importError.code,
+      }
+      return { ok: false, error: importError }
     } finally {
-      store.setLoading(false)
+      ui?.setLoading(false)
     }
   }
 
   function clearExportError(): void {
-    exportJob.value = { status: 'idle', progress: 0, error: null }
+    exportJob.value = { status: 'idle', progress: 0, error: null, errorCode: null }
   }
 
   async function generateRawPdf(
@@ -203,7 +247,7 @@ export function useDocumentService() {
     try {
       const pdfBytes = await generateRawPdfCore(pages, {
         ...options,
-        getPdfBlob,
+        getPdfBlob: adapters.import.getPdfBlob,
         bookmarks: store.bookmarksTree,
       })
       return { ok: true, value: pdfBytes }
@@ -226,9 +270,14 @@ export function useDocumentService() {
     const segments = splitPagesIntoSegments(pagesToExport)
 
     if (segments.length === 0) {
-      const message = 'No pages to export'
-      exportJob.value = { status: 'error', progress: 0, error: message }
-      return { ok: false, error: { message } }
+      const error = makeDocumentError('EXPORT_NO_PAGES')
+      exportJob.value = {
+        status: 'error',
+        progress: 0,
+        error: error.message,
+        errorCode: error.code,
+      }
+      return { ok: false, error }
     }
 
     exportJob.value = { status: 'running', progress: 0, error: null }
@@ -245,7 +294,7 @@ export function useDocumentService() {
             metadata,
             compress,
             onProgress: undefined,
-            getPdfBlob,
+            getPdfBlob: adapters.import.getPdfBlob,
             bookmarks: store.bookmarksTree,
           })
 
@@ -257,12 +306,16 @@ export function useDocumentService() {
         const zipContent = await zip.generateAsync({ type: 'uint8array' })
         exportJob.value.progress = 100
 
-        downloadFile(zipContent, `${filename}.zip`, 'application/zip')
-
+        const zipFilename = `${filename}.zip`
         exportJob.value = { status: 'success', progress: 100, error: null }
         return {
           ok: true,
-          value: { filename: `${filename}.zip`, size: zipContent.byteLength },
+          value: {
+            filename: zipFilename,
+            mimeType: 'application/zip',
+            bytes: zipContent,
+            size: zipContent.byteLength,
+          },
         }
       }
 
@@ -281,7 +334,7 @@ export function useDocumentService() {
               : val
           exportJob.value.progress = scaledProgress
         },
-        getPdfBlob,
+        getPdfBlob: adapters.import.getPdfBlob,
         bookmarks: store.bookmarksTree,
       })
 
@@ -310,8 +363,21 @@ export function useDocumentService() {
 
       if (options.compressionQuality && options.compressionQuality !== 'none') {
         exportJob.value.progress = 75
-        const { compressPdf } = usePdfCompression()
-        const result = await compressPdf(pdfBytes, { quality: options.compressionQuality })
+        let result
+        try {
+          result = await adapters.compression.compressPdf(pdfBytes, {
+            quality: options.compressionQuality,
+          })
+        } catch (error) {
+          throw makeDocumentError(
+            'EXPORT_COMPRESSION_FAILED',
+            getExportErrorMessage(
+              'EXPORT_COMPRESSION_FAILED',
+              error instanceof Error ? error.message : undefined,
+            ),
+            error,
+          )
+        }
         pdfBytes = result.data
 
         if (!isFullSourceExport) {
@@ -325,22 +391,41 @@ export function useDocumentService() {
       }
 
       exportJob.value.progress = 100
-      downloadFile(pdfBytes, `${filename}.pdf`, 'application/pdf')
 
+      const pdfFilename = `${filename}.pdf`
       exportJob.value = { status: 'success', progress: 100, error: null }
       return {
         ok: true,
         value: {
-          filename: `${filename}.pdf`,
+          filename: pdfFilename,
+          mimeType: 'application/pdf',
+          bytes: pdfBytes,
           size: pdfBytes.byteLength,
           originalSize: originalSize !== pdfBytes.byteLength ? originalSize : undefined,
           compressionRatio: compressionRatio > 0 ? compressionRatio : undefined,
         },
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Export failed'
-      exportJob.value = { status: 'error', progress: 0, error: message }
-      return { ok: false, error: { message, cause: error } }
+      let documentError: DocumentError
+
+      if (isDocumentError(error)) {
+        documentError = error
+      } else {
+        const code = getExportErrorCode(error)
+        const message =
+          code === 'EXPORT_SOURCE_MISSING' && error instanceof Error
+            ? error.message
+            : getExportErrorMessage(code, error instanceof Error ? error.message : undefined)
+        documentError = makeDocumentError(code, message, error)
+      }
+
+      exportJob.value = {
+        status: 'error',
+        progress: 0,
+        error: documentError.message,
+        errorCode: documentError.code,
+      }
+      return { ok: false, error: documentError }
     }
   }
 
@@ -386,43 +471,24 @@ export function useDocumentService() {
     return totalEstimatedSize
   }
 
-  function downloadFile(data: Uint8Array, filename: string, mimeType = 'application/pdf'): void {
-    const arrayBuffer =
-      data.buffer instanceof ArrayBuffer
-        ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
-        : data.slice().buffer
-
-    const blob = new Blob([arrayBuffer], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
-
   async function restoreSession(): Promise<Result<null>> {
     if (isInitialized.value) return { ok: true, value: null }
 
     restoreJob.value = { status: 'running', progress: 0, error: null }
-    store.setLoading(true, 'Restoring session...')
+    ui?.setLoading(true, 'Restoring session...')
 
     try {
-      const session = await loadSession()
+      const session = await adapters.session.loadSession()
       const activeIds = session?.activeSourceIds
 
       let filesToLoad: StoredFile[] = []
 
       if (activeIds) {
-        filesToLoad = await db.files.where('id').anyOf(activeIds).toArray()
+        filesToLoad = await adapters.storage.loadStoredFilesByIds(activeIds)
       } else if (!session) {
         filesToLoad = []
       } else {
-        filesToLoad = await db.files.toArray()
+        filesToLoad = await adapters.storage.loadAllStoredFiles()
       }
 
       filesToLoad.forEach((f) => {
@@ -440,7 +506,7 @@ export function useDocumentService() {
 
       if (session) {
         store.projectTitle = session.projectTitle
-        store.setZoom(session.zoom)
+        ui?.setZoom(session.zoom)
         store.bookmarksDirty = session.bookmarksDirty ?? false
         store.setPages(session.pageMap)
         if (session.metadata) {
@@ -472,15 +538,15 @@ export function useDocumentService() {
       restoreJob.value = { status: 'error', progress: 0, error: message }
       return { ok: false, error: { message, cause: error } }
     } finally {
-      store.setLoading(false)
+      ui?.setLoading(false)
     }
   }
 
   async function clearWorkspace(): Promise<Result<null>> {
     try {
-      await db.files.clear()
-      await db.session.clear()
-      clearPdfCache()
+      await adapters.storage.clearFiles()
+      await adapters.storage.clearSession()
+      adapters.import.clearPdfCache()
       store.reset()
       return { ok: true, value: null }
     } catch (error) {
@@ -509,8 +575,8 @@ export function useDocumentService() {
     restoreSession,
     clearWorkspace,
     removeSource,
-    getPdfDocument,
-    getPdfBlob,
+    getPdfDocument: adapters.import.getPdfDocument,
+    getPdfBlob: adapters.import.getPdfBlob,
   }
 }
 

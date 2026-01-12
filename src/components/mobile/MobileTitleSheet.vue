@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import { useDocumentStore } from '@/stores/document'
 import { useMobile } from '@/composables/useMobile'
 import {
   Drawer,
@@ -11,16 +10,19 @@ import {
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 const props = defineProps<{
   open: boolean
+  state: FacadeState
+  actions: AppActions
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const store = useDocumentStore()
 const { haptic } = useMobile()
 
 const inputRef = ref<InstanceType<typeof Input> | null>(null)
@@ -30,7 +32,7 @@ watch(
   () => props.open,
   async (isOpen) => {
     if (isOpen) {
-      editedTitle.value = store.projectTitle
+      editedTitle.value = props.state.document.projectTitle
       await nextTick()
       // Small delay to let the drawer animate in
       setTimeout(() => {
@@ -46,11 +48,8 @@ watch(
 )
 
 function handleSave() {
-  const trimmed = editedTitle.value.trim().replace(/[/\\:]/g, '-')
-  if (trimmed) {
-    store.projectTitle = trimmed
-    haptic('light')
-  }
+  props.actions.commitProjectTitle(editedTitle.value)
+  haptic('light')
   emit('update:open', false)
 }
 
