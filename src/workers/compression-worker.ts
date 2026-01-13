@@ -54,17 +54,32 @@ let currentReject: ((error: Error) => void) | null = null
 /**
  * Load the Ghostscript WASM module
  */
-function loadGhostscript() {
+function loadGhostscript(baseUrl: string) {
   if (!wasmLoaded) {
-    importScripts('/gs/gs-worker.js')
-    wasmLoaded = true
+    // Ensure baseUrl ends with / if it doesn't (though Vite usually provides it with trailing slash)
+    const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    const workerUrl = `${safeBaseUrl}gs/gs-worker.js`
+
+    console.log(`[Compression Worker] Loading Ghostscript from: ${workerUrl}`)
+
+    try {
+      importScripts(workerUrl)
+      wasmLoaded = true
+    } catch (e) {
+      console.error('[Compression Worker] Failed to load Ghostscript:', e)
+      throw new Error(`Failed to load Ghostscript from ${workerUrl}`)
+    }
   }
 }
 
 /**
  * Compress a PDF using Ghostscript
  */
-function compressPdf(pdfData: ArrayBuffer | SharedArrayBuffer, quality: string): Promise<ArrayBuffer> {
+function compressPdf(
+  pdfData: ArrayBuffer | SharedArrayBuffer,
+  quality: string,
+  baseUrl: string,
+): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     currentResolve = resolve
     currentReject = reject
@@ -127,7 +142,12 @@ function compressPdf(pdfData: ArrayBuffer | SharedArrayBuffer, quality: string):
     // Check if Module already exists (subsequent runs)
     if (!moduleContext.Module) {
       moduleContext.Module = moduleConfig
-      loadGhostscript()
+      try {
+        loadGhostscript(baseUrl)
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error(String(e)))
+        return
+      }
     } else {
       const module = moduleContext.Module as _GsModule
       // Reset for subsequent compressions
@@ -154,7 +174,7 @@ self.addEventListener('message', async (event: MessageEvent) => {
     // Notify start
     self.postMessage({ type: 'progress', progress: 10 })
 
-    const compressedData = await compressPdf(data, quality || 'ebook')
+    const compressedData = await compressPdf(data, quality || 'ebook', event.data.baseUrl)
 
     // Send result back to main thread
     self.postMessage({ type: 'result', data: compressedData }, { transfer: [compressedData] })

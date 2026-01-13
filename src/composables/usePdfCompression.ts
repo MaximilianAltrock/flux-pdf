@@ -153,7 +153,15 @@ export function usePdfCompression() {
       )
 
       // Send compression request with transferable buffer
-      worker.postMessage({ type: 'compress', data: buffer, quality }, { transfer: [buffer] })
+      worker.postMessage(
+        {
+          type: 'compress',
+          data: buffer,
+          quality,
+          baseUrl: import.meta.env.BASE_URL,
+        },
+        { transfer: [buffer] },
+      )
     })
   }
 
