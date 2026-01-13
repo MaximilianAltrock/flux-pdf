@@ -66,8 +66,10 @@ function onRemoveSource(sourceId: string) {
             />
           </svg>
         </div>
-        <h2 class="text-xl font-semibold text-foreground mb-2">No PDFs yet</h2>
-        <p class="text-muted-foreground text-center mb-6">Tap the + button to add your first PDF</p>
+        <h2 class="text-lg font-semibold text-foreground mb-2">No PDFs yet</h2>
+        <p class="text-sm text-muted-foreground text-center mb-6">
+          Tap the + button to add your first PDF
+        </p>
       </div>
 
       <!-- Page Grid -->

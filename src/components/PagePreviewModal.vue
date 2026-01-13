@@ -184,7 +184,7 @@ onBackButton(
         <div class="flex items-center gap-6 min-w-[200px]">
           <div class="flex flex-col">
             <span
-              class="text-xs font-semibold tracking-wider uppercase text-muted-foreground/80 mb-0.5"
+              class="text-xxs font-bold tracking-[0.2em] uppercase text-muted-foreground/60 leading-none mb-1"
             >
               Document Preview
             </span>

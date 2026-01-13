@@ -9,11 +9,7 @@ import PageGrid from '@/components/PageGrid.vue'
 import FileDropzone from '@/components/FileDropzone.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 
 import type { PageReference } from '@/types'
 import type { UserAction } from '@/types/actions'
@@ -77,42 +73,48 @@ function onCommandAction(action: UserAction) {
       <!-- Main Grid Area -->
       <ResizablePanel as-child :min-size="40">
         <main class="overflow-hidden relative flex flex-col bg-background min-w-0">
-        <!-- Empty State -->
-        <div v-if="!hasPages" class="h-full flex items-center justify-center p-8">
-          <div class="max-w-lg w-full">
-            <FileDropzone @files-selected="onFilesDropped" @source-dropped="onSourceDropped" />
-            <div class="mt-8 text-center text-muted-foreground">
-              <p class="mb-4">Or drag files from your desktop or sources panel</p>
-              <div class="flex flex-wrap justify-center gap-2 text-xs opacity-70">
-                <span class="px-2 py-1 bg-card rounded">CMD+K for commands</span>
+          <!-- Empty State -->
+          <div v-if="!hasPages" class="h-full flex items-center justify-center p-8">
+            <div class="max-w-lg w-full">
+              <FileDropzone @files-selected="onFilesDropped" @source-dropped="onSourceDropped" />
+              <div class="mt-8 text-center text-muted-foreground">
+                <p class="mb-4 text-sm font-medium">
+                  Or drag files from your desktop or sources panel
+                </p>
+                <div
+                  class="flex flex-wrap justify-center gap-2 text-xxs uppercase tracking-wider opacity-70"
+                >
+                  <span class="px-2 py-1 bg-muted rounded border border-border"
+                    >CMD+K for commands</span
+                  >
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Page Grid -->
-        <PageGrid
-          v-else
-          :state="props.state"
-          :actions="props.actions"
-          @files-dropped="onFilesDropped"
-          @source-dropped="onSourceDropped"
-          @preview="onPreview"
-          @context-action="onContextAction"
-        />
+          <!-- Page Grid -->
+          <PageGrid
+            v-else
+            :state="props.state"
+            :actions="props.actions"
+            @files-dropped="onFilesDropped"
+            @source-dropped="onSourceDropped"
+            @preview="onPreview"
+            @context-action="onContextAction"
+          />
 
-        <!-- Loading Overlay -->
-        <Transition name="fade">
-          <div
-            v-if="isLoading"
-            class="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm"
-          >
-            <div class="flex flex-col items-center gap-3">
-              <Spinner class="w-10 h-10 text-primary" />
-              <span class="text-muted-foreground font-medium">{{ loadingMessage }}</span>
+          <!-- Loading Overlay -->
+          <Transition name="fade">
+            <div
+              v-if="isLoading"
+              class="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm"
+            >
+              <div class="flex flex-col items-center gap-3">
+                <Spinner class="w-10 h-10 text-primary" />
+                <span class="text-muted-foreground font-medium">{{ loadingMessage }}</span>
+              </div>
             </div>
-          </div>
-        </Transition>
+          </Transition>
         </main>
       </ResizablePanel>
       <ResizableHandle withHandle />
@@ -141,4 +143,3 @@ function onCommandAction(action: UserAction) {
   opacity: 0;
 }
 </style>
-

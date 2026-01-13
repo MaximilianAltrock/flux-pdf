@@ -185,7 +185,7 @@ async function handleDrop(e: DragEvent) {
                   class="w-5 h-5 text-muted-foreground/50 group-hover/empty:text-primary/50"
                 />
               </EmptyMedia>
-              <EmptyTitle class="text-[11px] font-medium text-muted-foreground"
+              <EmptyTitle class="text-xs font-medium text-muted-foreground"
                 >No files imported</EmptyTitle
               >
               <EmptyDescription class="text-xxs text-muted-foreground opacity-50"
