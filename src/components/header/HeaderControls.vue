@@ -31,82 +31,83 @@ const canExport = computed(() => props.state.document.pageCount > 0)
 </script>
 
 <template>
-  <div class="flex items-center justify-end gap-3 w-[280px]">
+  <div class="flex items-center justify-end gap-2 w-[300px]">
     <!-- Tool Switcher -->
-    <ToggleGroup type="single" v-model="currentTool" variant="outline" class="h-8">
-      <ToggleGroupItem value="select" aria-label="Select tool" class="px-2 h-7">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="flex items-center justify-center">
-              <MousePointer2 class="w-3.5 h-3.5" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" :side-offset="8">
-            <p>Select Tool <span class="text-muted-foreground ml-1 text-xxs">(V)</span></p>
-          </TooltipContent>
-        </Tooltip>
-      </ToggleGroupItem>
-      <ToggleGroupItem value="razor" aria-label="Razor tool" class="px-2 h-7">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="flex items-center justify-center">
-              <Scissors class="w-3.5 h-3.5" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" :side-offset="8">
-            <p>Razor Tool <span class="text-muted-foreground ml-1 text-xxs">(R)</span></p>
-          </TooltipContent>
-        </Tooltip>
-      </ToggleGroupItem>
-    </ToggleGroup>
+    <div class="bg-muted/30 p-0.5 rounded-md border border-border/40 flex items-center">
+      <ToggleGroup type="single" v-model="currentTool" class="h-7 gap-0">
+        <ToggleGroupItem
+          value="select"
+          aria-label="Select tool"
+          class="px-2 h-6 w-9 rounded-[3px] data-[state=on]:bg-background data-[state=on]:shadow-xs transition-all"
+        >
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <span class="flex items-center justify-center">
+                <MousePointer2 class="w-3.5 h-3.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" :side-offset="8">
+              <p class="text-xs">
+                Select Tool
+                <span class="text-muted-foreground ml-1 text-xxs font-mono">(V)</span>
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="razor"
+          aria-label="Razor tool"
+          class="px-2 h-6 w-9 rounded-[3px] data-[state=on]:bg-background data-[state=on]:shadow-xs transition-all"
+        >
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <span class="flex items-center justify-center">
+                <Scissors class="w-3.5 h-3.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" :side-offset="8">
+              <p class="text-xs">
+                Razor Tool <span class="text-muted-foreground ml-1 text-[10px] font-mono">(R)</span>
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
 
-    <Separator orientation="vertical" class="!h-4" />
+    <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
 
-    <!-- Theme Toggle -->
-    <ThemeToggle />
+    <!-- Zoom Area -->
+    <div class="flex items-center gap-0.5 bg-muted/20 rounded-md border border-border/30 h-8 px-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-[3px]"
+        @click="$emit('zoom-out')"
+      >
+        <Minus class="w-3 h-3" />
+      </Button>
 
-    <Separator orientation="vertical" class="!h-4" />
-
-    <!-- Zoom -->
-    <div class="flex items-center gap-1">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 text-muted-foreground hover:text-foreground"
-            @click="$emit('zoom-out')"
-          >
-            <Minus class="w-4 h-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" :side-offset="8">
-          <p>Zoom Out <span class="text-muted-foreground ml-1 text-xxs">(⌘-)</span></p>
-        </TooltipContent>
-      </Tooltip>
-
-      <span class="text-xs font-mono w-10 text-center text-muted-foreground select-none">
+      <span class="text-xxs font-bold w-9 text-center text-muted-foreground select-none font-mono">
         {{ Math.round(state.zoomPercentage.value) }}%
       </span>
 
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 text-muted-foreground hover:text-foreground"
-            @click="$emit('zoom-in')"
-          >
-            <Plus class="w-4 h-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" :side-offset="8">
-          <p>Zoom In <span class="text-muted-foreground ml-1 text-xxs">(⌘+)</span></p>
-        </TooltipContent>
-      </Tooltip>
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-[3px]"
+        @click="$emit('zoom-in')"
+      >
+        <Plus class="w-3 h-3" />
+      </Button>
     </div>
 
-    <Separator orientation="vertical" class="!h-4" />
+    <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
+
+    <!-- Theme Toggle -->
+    <ThemeToggle class="h-8 w-8 text-muted-foreground hover:text-foreground" />
+
+    <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
 
     <!-- Export CTA -->
     <Tooltip>
@@ -115,14 +116,14 @@ const canExport = computed(() => props.state.document.pageCount > 0)
           @click="$emit('export')"
           :disabled="!canExport"
           size="sm"
-          class="h-[30px] font-bold px-4 gap-2 shadow-sm"
+          class="h-8 font-bold px-4 gap-2 shadow-sm rounded-md bg-primary hover:scale-[1.02] active:scale-[0.98] transition-transform"
         >
           <Download class="w-3.5 h-3.5" />
-          <span>Export</span>
+          <span class="text-xs">Export</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent v-if="!canExport" side="bottom" :side-offset="8">
-        <p>Import files to export</p>
+        <p class="text-xs">Import files to export</p>
       </TooltipContent>
     </Tooltip>
   </div>

@@ -53,7 +53,7 @@ watch(
       >
     </div>
 
-    <ScrollArea ref="historyScrollArea" class="flex-1 min-h-0">
+    <ScrollArea ref="historyScrollArea" class="flex-1 min-h-0 bg-background/5">
       <div class="py-6 px-4">
         <Timeline v-if="historyList.length > 0" size="sm" variant="history" class="w-full">
           <TimelineItem
@@ -62,18 +62,18 @@ watch(
             :status="entry.isCurrent ? 'in-progress' : entry.isUndone ? 'pending' : 'completed'"
             :show-connector="index !== historyList.length - 1"
             icon-size="lg"
-            class="cursor-pointer group relative"
+            class="cursor-pointer group relative mb-6 last:mb-0"
             @click="jumpTo(entry.pointer)"
           >
             <template #title>
               <TimelineTitle
-                class="text-xs font-semibold truncate transition-colors"
+                class="text-xs font-bold truncate transition-colors leading-tight"
                 :class="[
                   entry.isCurrent
                     ? 'text-primary'
-                    : 'text-foreground/70 group-hover:text-foreground',
+                    : 'text-foreground/60 group-hover:text-foreground',
                   entry.isUndone
-                    ? 'text-muted-foreground/40 italic line-through decoration-muted-foreground/30'
+                    ? 'text-muted-foreground/30 italic line-through decoration-muted-foreground/20 font-medium'
                     : '',
                 ]"
               >
@@ -81,11 +81,13 @@ watch(
               </TimelineTitle>
             </template>
             <template #description>
-              <TimelineTime
-                class="mt-1 block text-xxs text-muted-foreground/40 font-mono tracking-tighter"
-              >
-                {{ formatTime(entry.timestamp, true) }}
-              </TimelineTime>
+              <div class="flex items-center gap-2 mt-0.5">
+                <TimelineTime
+                  class="text-xxs text-muted-foreground/30 font-mono tracking-tighter uppercase"
+                >
+                  {{ formatTime(entry.timestamp, true) }}
+                </TimelineTime>
+              </div>
             </template>
           </TimelineItem>
         </Timeline>

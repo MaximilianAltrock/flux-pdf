@@ -33,29 +33,42 @@ const props = defineProps<{
               class="flex-1 min-h-0 flex flex-col gap-0 overflow-hidden"
             >
               <div
-                class="h-9 px-1 border-b border-border/60 bg-sidebar/50 backdrop-blur-sm flex items-center"
+                class="h-9 px-2 border-b border-border/40 bg-muted/10 backdrop-blur-sm flex items-center"
               >
-                <TabsList class="bg-transparent h-7 p-0 gap-1 w-full justify-start">
+                <TabsList class="bg-transparent h-7 p-0 gap-2 w-full justify-start">
                   <TabsTrigger
                     value="structure"
-                    class="h-7 px-3 text-xxs font-medium uppercase tracking-wider text-muted-foreground/70 data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm transition-all flex items-center gap-1.5"
+                    class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
                   >
-                    <FileText class="w-3 h-3" />
+                    <FileText
+                      class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
+                    />
                     structure
+                    <div
+                      class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
+                    ></div>
                   </TabsTrigger>
                   <TabsTrigger
                     value="metadata"
-                    class="h-7 px-3 text-xxs font-medium uppercase tracking-wider text-muted-foreground/70 data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm transition-all flex items-center gap-1.5"
+                    class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
                   >
-                    <Tag class="w-3 h-3" />
+                    <Tag class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform" />
                     metadata
+                    <div
+                      class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
+                    ></div>
                   </TabsTrigger>
                   <TabsTrigger
                     value="security"
-                    class="h-7 px-3 text-xxs font-medium uppercase tracking-wider text-muted-foreground/70 data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-sm transition-all flex items-center gap-1.5"
+                    class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
                   >
-                    <Lock class="w-3 h-3" />
+                    <Lock
+                      class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
+                    />
                     security
+                    <div
+                      class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
+                    ></div>
                   </TabsTrigger>
                 </TabsList>
               </div>

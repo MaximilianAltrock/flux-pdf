@@ -79,24 +79,17 @@ async function loadThumbnail() {
 }
 
 watch(
-  () => props.pageRef.rotation,
+  [
+    () => props.pageRef.sourceFileId,
+    () => props.pageRef.sourcePageIndex,
+    () => props.pageRef.rotation,
+  ],
   () => {
     if (hasBeenVisible.value) {
       thumbnailUrl.value = null
       loadThumbnail()
     }
   },
-)
-
-watch(
-  [() => props.pageRef.sourceFileId, () => props.pageRef.sourcePageIndex, () => props.pageRef],
-  () => {
-    if (hasBeenVisible.value) {
-      thumbnailUrl.value = null
-      loadThumbnail()
-    }
-  },
-  { deep: true },
 )
 
 onUnmounted(() => {
@@ -126,8 +119,8 @@ function handleRetry() {
     class="flex flex-col items-center gap-2 p-2 cursor-pointer select-none relative group/thumbnail h-fit transition-colors duration-200 rounded-md"
     :class="{
       'w-full': !fixedSize,
-      'bg-accent/40 ring-1 ring-ring/30': selected,
-      'hover:bg-accent/20': !selected,
+      'bg-primary/5 ring-1 ring-primary/20': selected,
+      'hover:bg-muted/30': !selected,
       'opacity-60': isRazorActive && !canSplit,
     }"
     @click="handleClick"
@@ -155,30 +148,30 @@ function handleRetry() {
 
     <!-- Thumbnail paper -->
     <div
-      class="ide-card grid-stack"
+      class="ide-card grid-stack !transition-all !duration-500"
       :class="{
-        'ring-2 ring-ring ring-offset-2 ring-offset-background border-transparent shadow-md':
+        'ring-2 ring-primary ring-offset-2 ring-offset-background border-transparent shadow-lg scale-[1.02]':
           selected,
-        'w-full': !fixedSize,
+        'w-full shadow-sm': !fixedSize,
       }"
       :style="{ width: cssWidth }"
     >
       <!-- Source Strip (Integrated onto the left edge of the paper) -->
       <div
-        class="absolute left-0 top-0 bottom-0 w-1 z-10"
+        class="absolute left-0 top-0 bottom-0 w-1 z-10 opacity-70"
         :style="{ backgroundColor: sourceColor }"
       ></div>
 
       <!-- Placeholder -->
       <div
         v-if="!hasBeenVisible"
-        class="aspect-[8.5/11] bg-muted/20 flex items-center justify-center"
+        class="aspect-[8.5/11] bg-muted/20 flex items-center justify-center animate-pulse"
       ></div>
 
       <!-- Skeleton -->
       <Skeleton
         v-else-if="isLoading && !thumbnailUrl"
-        class="aspect-[8.5/11] w-full rounded-none"
+        class="aspect-[8.5/11] w-full rounded-none opacity-50"
       />
 
       <!-- Error state -->
@@ -203,19 +196,25 @@ function handleRetry() {
         :src="thumbnailUrl"
         draggable="false"
         :alt="`Page ${pageNumber}`"
-        class="w-full h-auto block select-none pl-1"
+        class="w-full h-auto block select-none pl-1 transition-opacity duration-300"
+        :class="{ 'opacity-100': thumbnailUrl, 'opacity-0': !thumbnailUrl }"
         loading="lazy"
       />
 
-      <!-- Action Toolbar -->
+      <!-- Action Toolbar (Simplified for High-Fi) -->
       <div
         v-if="!isLoading && !hasError"
-        class="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover/thumbnail:opacity-100 transition-all duration-200 z-20"
+        class="absolute top-1.5 right-1.5 flex flex-col gap-1.5 opacity-0 group-hover/thumbnail:opacity-100 translate-x-2 group-hover/thumbnail:translate-x-0 transition-all duration-300 z-20"
       >
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button variant="secondary" size="icon-sm" @click.stop="emit('rotate')">
-              <RotateCw />
+            <Button
+              variant="secondary"
+              size="icon"
+              class="h-7 w-7 bg-background shadow-md hover:bg-muted rounded-[4px] border border-border/10"
+              @click.stop="emit('rotate')"
+            >
+              <RotateCw class="w-3.5 h-3.5 text-foreground/70" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left">Rotate 90°</TooltipContent>
@@ -223,15 +222,19 @@ function handleRetry() {
 
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button variant="destructive" size="icon-sm" @click.stop="emit('delete')">
-              <Trash2 />
+            <Button
+              variant="destructive"
+              size="icon"
+              class="h-7 w-7 shadow-md rounded-[4px] border border-destructive/20"
+              @click.stop="emit('delete')"
+            >
+              <Trash2 class="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left">Remove Page</TooltipContent>
         </Tooltip>
       </div>
     </div>
-
     <!-- Page Identifier -->
     <div class="flex items-center gap-1.5 px-1 py-0.5 rounded-sm transition-colors duration-200">
       <span

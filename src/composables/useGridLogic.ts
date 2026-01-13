@@ -1,6 +1,6 @@
 import { ref, watch, computed } from 'vue'
-import type { PageEntry, PageReference } from '@/types'
-import { isPageEntry } from '@/types'
+import type { DividerReference, PageEntry, PageReference } from '@/types'
+import { isDividerEntry, isPageEntry } from '@/types'
 
 type GridDocument = {
   pages: ReadonlyArray<PageEntry>
@@ -44,11 +44,72 @@ export function useGridLogic(document: GridDocument) {
   const getContentPageNumber = (pageId: string): number =>
     contentPageNumberMap.value.get(pageId) ?? 0
 
+  const gridItems = computed<GridItem[]>(() => {
+    const items: GridItem[] = []
+    const pages = localPages.value
+
+    for (let index = 0; index < pages.length; index++) {
+      const entry = pages[index]
+      if (!entry) continue
+
+      if (isDividerEntry(entry)) {
+        items.push({
+          kind: 'divider',
+          id: entry.id,
+          entry,
+          index,
+          dragLabel: 'Section divider',
+        })
+        continue
+      }
+
+      const pageNumber = contentPageNumberMap.value.get(entry.id) ?? 0
+      const prev = pages[index - 1]
+      let isStartOfFile = false
+      if (index === 0) {
+        isStartOfFile = true
+      } else if (prev && !isDividerEntry(prev)) {
+        isStartOfFile = entry.groupId !== (prev as PageReference).groupId
+      }
+
+      items.push({
+        kind: 'page',
+        id: entry.id,
+        entry,
+        index,
+        pageNumber,
+        dragLabel: `Page ${pageNumber}`,
+        isStartOfFile,
+      })
+    }
+
+    return items
+  })
+
   return {
     localPages,
     isDragging,
     isSelected,
     contentPages,
     getContentPageNumber,
+    gridItems,
   }
 }
+
+export type GridItem =
+  | {
+      kind: 'divider'
+      id: string
+      entry: DividerReference
+      index: number
+      dragLabel: string
+    }
+  | {
+      kind: 'page'
+      id: string
+      entry: PageReference
+      index: number
+      pageNumber: number
+      dragLabel: string
+      isStartOfFile: boolean
+    }

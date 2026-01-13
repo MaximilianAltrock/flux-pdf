@@ -8,8 +8,8 @@ const props = defineProps<{
 }>()
 
 const isMobile = computed(() => props.variant === 'mobile')
-const label = computed(() =>
-  props.label ?? (isMobile.value ? 'New Document' : 'New Document Section'),
+const label = computed(
+  () => props.label ?? (isMobile.value ? 'New Document' : 'New Document Section'),
 )
 </script>
 

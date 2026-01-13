@@ -27,7 +27,9 @@ const dateValue = computed(() => {
 const formattedDate = computed(() => {
   if (!dateValue.value) return ''
   try {
-    return new Intl.DateTimeFormat('en-US', { ...defaultFormat, ...props.format }).format(dateValue.value)
+    return new Intl.DateTimeFormat('en-US', { ...defaultFormat, ...props.format }).format(
+      dateValue.value,
+    )
   } catch {
     return ''
   }
@@ -39,7 +41,7 @@ const dateTimeValue = computed(() => (dateValue.value ? dateValue.value.toISOStr
 <template>
   <time
     :dateTime="dateTimeValue"
-    :class="cn('text-sm font-medium tracking-tight text-muted-foreground', props.class)"
+    :class="cn('text-xs font-medium tracking-tight text-muted-foreground', props.class)"
   >
     <slot>{{ formattedDate }}</slot>
   </time>

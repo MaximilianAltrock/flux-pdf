@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import { ChevronLeft, ChevronRight, GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { ResizablePanel } from '@/components/ui/resizable'
@@ -94,75 +93,96 @@ async function handleDrop(e: DragEvent) {
       @drop="handleDrop"
     >
       <!-- Header -->
-      <div class="h-12 flex items-center justify-between px-4 shrink-0">
-        <h2
-          v-if="!isCollapsed"
-          class="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]"
-        >
-          Source Files
-        </h2>
+      <div
+        class="h-12 flex items-center justify-between px-3 shrink-0 border-b border-border/40 bg-muted/10 backdrop-blur-sm"
+      >
+        <div v-if="!isCollapsed" class="flex items-center gap-2">
+          <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+          <h2 class="text-xxs font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">
+            Source Registry
+          </h2>
+        </div>
         <div v-if="isCollapsed" class="w-full flex justify-center">
-          <FileUp class="w-4 h-4 text-muted-foreground" />
+          <div class="p-1.5 rounded-md bg-muted/20 border border-border/10">
+            <FileUp class="w-3.5 h-3.5 text-muted-foreground/60" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Drag Over Overlay hint -->
+      <div
+        v-if="isDragOver"
+        class="absolute inset-x-2 top-14 bottom-2 border-2 border-dashed border-primary/30 bg-primary/5 rounded-lg z-50 flex items-center justify-center backdrop-blur-[2px] transition-all"
+      >
+        <div class="text-center p-4">
+          <FileUp class="w-8 h-8 text-primary mx-auto mb-2 animate-bounce" />
+          <p class="text-xs font-bold text-primary uppercase tracking-widest">Drop PDFs here</p>
         </div>
       </div>
       <!-- Content -->
-      <ScrollArea class="flex-1">
-        <div class="p-3 space-y-3">
+      <ScrollArea class="flex-1 bg-background/5">
+        <div class="p-3 space-y-2">
           <div
             v-for="file in files"
             :key="file.id"
-            class="bg-sidebar-accent border border-border overflow-hidden group hover:border-primary/50 hover:shadow-md transition-all relative select-none cursor-grab active:cursor-grabbing"
+            class="ide-card cursor-grab active:cursor-grabbing select-none"
             draggable="true"
             @dragstart="handleDragStart($event, file.id)"
           >
-            <div class="flex items-stretch min-h-[56px]">
-              <!-- Color Pill -->
+            <div class="flex items-stretch min-h-[52px]">
+              <!-- Color Indicator -->
               <div
-                class="w-1.5 shrink-0"
+                class="w-1 shrink-0"
                 :style="{ backgroundColor: props.state.document.getSourceColor(file.id) }"
               ></div>
 
               <div class="flex-1 flex flex-col min-w-0 p-2 justify-center">
                 <div v-if="isCollapsed" class="w-full flex justify-center">
-                  <Badge variant="outline" class="text-xxs font-mono px-1 h-5">PDF</Badge>
+                  <div
+                    class="w-2 h-2 rounded-full border border-primary/20"
+                    :style="{ backgroundColor: props.state.document.getSourceColor(file.id) }"
+                  ></div>
                 </div>
 
-                <div v-else class="flex flex-col gap-1.5">
-                  <div class="flex items-start justify-between gap-2">
-                    <span
-                      class="text-xs text-foreground font-semibold truncate leading-tight flex-1"
-                    >
+                <div v-else class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs text-foreground font-bold truncate leading-tight flex-1">
                       {{ file.filename }}
                     </span>
 
-                    <div class="flex items-center gap-1 -mt-0.5">
+                    <div
+                      class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       <Tooltip>
                         <TooltipTrigger as-child>
                           <Button
                             variant="ghost"
                             size="icon"
-                            class="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                            class="h-5 w-5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-[2px]"
                             @click="handleRemove(file.id, $event)"
                           >
-                            <X class="w-3.5 h-3.5" />
+                            <X class="w-3" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Remove Source</TooltipContent>
+                        <TooltipContent side="right">Remove Source</TooltipContent>
                       </Tooltip>
-                      <GripVertical
-                        class="w-3.5 h-3.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100"
-                      />
+                      <GripVertical class="w-3 h-3 text-muted-foreground/30" />
                     </div>
                   </div>
 
                   <div class="flex items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      class="text-xxs h-4 px-1.5 font-mono font-medium bg-muted/50"
+                    <div
+                      class="flex items-center gap-1 px-1.5 py-0.5 bg-muted/50 rounded-[2px] border border-border/10"
                     >
-                      {{ file.pageCount }}p
-                    </Badge>
-                    <span class="text-xxs text-muted-foreground font-mono opacity-60">
+                      <span class="text-tiny font-mono font-bold text-muted-foreground uppercase"
+                        >PDF</span
+                      >
+                      <span class="text-tiny text-muted-foreground/50">•</span>
+                      <span class="text-tiny font-mono font-medium text-muted-foreground"
+                        >{{ file.pageCount }}p</span
+                      >
+                    </div>
+                    <span class="text-tiny text-muted-foreground/40 font-mono">
                       {{ formatBytes(file.fileSize) }}
                     </span>
                   </div>

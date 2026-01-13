@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { Tree, TreeItem } from '@/components/ui/tree'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ChevronRight, Crosshair, FileText, Tag } from 'lucide-vue-next'
+import { ChevronRight, Crosshair, FileText, Plus } from 'lucide-vue-next'
 import type { BookmarkNode } from '@/types'
 import { scrollToPageId } from '@/utils/scroll-to-page'
 import type { AppActions } from '@/composables/useAppActions'
@@ -45,15 +45,17 @@ function addCustomBookmark() {
     <div v-else class="flex flex-col min-h-0">
       <div class="px-4 py-3 border-b border-border/30 bg-muted/10">
         <p
-          class="text-xxs font-bold text-muted-foreground/80 uppercase tracking-widest flex items-center gap-2"
+          class="text-xxs font-bold text-muted-foreground/60 uppercase tracking-[0.1em] flex items-center gap-2"
         >
-          Table of Contents
-          <Badge variant="outline" class="text-xxs h-4 px-1 px-1.5 font-mono opacity-60"
-            >AUTO</Badge
+          Document Structure
+          <Badge
+            variant="outline"
+            class="text-tiny h-3.5 px-1.5 font-mono opacity-40 border-muted-foreground/30 shadow-none uppercase"
+            >Auto</Badge
           >
         </p>
-        <p class="text-xxs text-muted-foreground/60 mt-1 leading-relaxed">
-          Drag & drop to reorder; nest by dropping into items.
+        <p class="text-xxs text-muted-foreground/40 mt-1.5 leading-relaxed font-medium">
+          Drag & drop to reorder entries. Nest items to create hierarchies.
         </p>
       </div>
 
@@ -70,19 +72,19 @@ function addCustomBookmark() {
             :key="item._id"
             :item="item"
             v-slot="{ isExpanded }"
-            class="group h-9 px-2 rounded-md outline-none hover:bg-accent/60 cursor-default transition-all focus-visible:ring-1 focus-visible:ring-primary/40 data-[selected]:bg-primary/5 data-[selected]:text-primary overflow-hidden mb-0.5"
+            class="group h-9 px-2 rounded-[4px] outline-none hover:bg-muted/50 cursor-default transition-all focus-visible:ring-1 focus-visible:ring-primary/40 data-[selected]:bg-primary/10 data-[selected]:text-primary overflow-hidden mb-0.5"
             :style="{ marginLeft: `${item.level * 12}px` }"
           >
             <div class="flex items-center w-full h-full gap-0">
               <!-- Expander -->
               <Button
                 variant="ghost"
-                size="icon-sm"
-                class="mr-1 h-6 w-6 shrink-0 flex items-center justify-center text-muted-foreground/50 hover:text-foreground hover:bg-transparent transition-colors p-0"
+                size="icon"
+                class="mr-1 h-5 w-5 shrink-0 flex items-center justify-center text-muted-foreground/30 hover:text-foreground hover:bg-background/50 transition-all p-0 rounded-[3px]"
                 :style="{ visibility: item.hasChildren ? 'visible' : 'hidden' }"
               >
                 <ChevronRight
-                  class="w-3.5 h-3.5 transition-transform duration-200"
+                  class="w-3 h-3 transition-transform duration-200"
                   :class="isExpanded ? 'rotate-90' : ''"
                 />
               </Button>
@@ -90,7 +92,7 @@ function addCustomBookmark() {
               <!-- Title Container -->
               <div class="flex items-center min-w-0 max-w-full">
                 <span
-                  class="text-xs truncate font-medium text-foreground/80 group-hover:text-foreground transition-all leading-none py-1"
+                  class="text-xs truncate font-semibold text-foreground/70 group-hover:text-foreground transition-colors leading-none py-1 pr-2"
                 >
                   {{ (item.value as BookmarkNode).title }}
                 </span>
@@ -98,12 +100,12 @@ function addCustomBookmark() {
                 <!-- Target Action - Attached to Title -->
                 <Button
                   variant="ghost"
-                  size="icon-sm"
-                  class="opacity-0 group-hover:opacity-100 h-6 w-6 shrink-0 p-0 flex items-center justify-center text-muted-foreground hover:text-primary transition-all duration-200 ml-1"
+                  size="icon"
+                  class="opacity-0 group-hover:opacity-100 h-5 w-5 shrink-0 p-0 flex items-center justify-center text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition-all duration-200 ml-auto rounded-[3px]"
                   title="Jump to section"
                   @click.stop="scrollGridToPage((item.value as BookmarkNode).pageId)"
                 >
-                  <Crosshair class="w-3.5 h-3.5" />
+                  <Crosshair class="w-3 h-3" />
                 </Button>
               </div>
             </div>
@@ -111,19 +113,16 @@ function addCustomBookmark() {
         </Tree>
       </div>
 
-      <div class="mx-3 my-4 p-4 rounded-lg bg-muted/20 border border-border/50 text-center">
+      <div class="mx-4 mb-4 mt-2 p-3 rounded-lg bg-muted/10 border border-border/30 text-center">
         <Button
           variant="secondary"
           size="sm"
-          class="w-full text-xs font-semibold h-8 bg-background/50 hover:bg-background border border-border/40 shadow-sm transition-all"
+          class="w-full text-xxs font-bold h-7 bg-background shadow-xs hover:bg-muted border border-border/40 transition-all rounded-[4px] uppercase tracking-wider"
           @click="addCustomBookmark"
         >
-          <Tag class="w-3 h-3 mr-2 text-primary/70" />
-          Add Bookmark
+          <Plus class="w-3 h-3 mr-1.5 text-primary" />
+          New Bookmark
         </Button>
-        <p class="text-xxs text-muted-foreground/50 mt-2 font-medium uppercase tracking-tight">
-          Sets anchor on selected page
-        </p>
       </div>
     </div>
   </div>

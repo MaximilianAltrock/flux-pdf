@@ -65,24 +65,30 @@ const emit = defineEmits<{
     <div class="flex items-center gap-4 w-[280px]">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="icon" class="w-8 h-8 hover:bg-primary/10 transition-colors">
-            <div class="w-4 h-4 bg-primary rounded-[2px]"></div>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="w-8 h-8 hover:bg-primary/10 transition-all rounded-[4px] group"
+          >
+            <div
+              class="w-4 h-4 bg-gradient-to-br from-primary to-primary/60 rounded-[3px] shadow-[0_0_8px_rgba(var(--primary),0.3)] group-hover:scale-110 transition-transform"
+            ></div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" class="w-48">
-          <DropdownMenuItem @select="emit('new-project')">
-            <FilePlus class="w-4 h-4 mr-2" />
-            <span>New Project</span>
+        <DropdownMenuContent align="start" class="w-48 shadow-lg border-border/40 backdrop-blur-xl">
+          <DropdownMenuItem @select="emit('new-project')" class="gap-2">
+            <FilePlus class="w-4 h-4" />
+            <span class="font-medium">New Project</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem @click="emit('show-help')">
-            <HelpCircle class="w-4 h-4 mr-2" />
-            <span>Help / Shortcuts</span>
+          <DropdownMenuItem @click="emit('show-help')" class="gap-2">
+            <HelpCircle class="w-4 h-4" />
+            <span class="font-medium">Help / Shortcuts</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Separator orientation="vertical" class="!h-4" />
+      <Separator orientation="vertical" class="!h-3 opacity-30" />
 
       <div class="flex-1 min-w-0">
         <div v-if="isEditingTitle" class="flex-1">
@@ -91,13 +97,13 @@ const emit = defineEmits<{
             v-model="displayTitle"
             @blur="finishEditing"
             @keyup.enter="finishEditing"
-            class="h-7 text-sm font-medium px-2 focus-visible:ring-1"
+            class="h-7 text-xs font-bold px-2 focus-visible:ring-1 border-primary/20 bg-background/50"
           />
         </div>
         <div
           v-else
           @click="startEditing"
-          class="text-sm font-medium text-primary px-2 py-1 rounded cursor-text truncate transition-all border border-transparent hover:bg-muted/50"
+          class="text-xs font-bold text-foreground/80 px-2 py-1 rounded-[4px] cursor-text truncate transition-all border border-transparent hover:bg-muted/50 hover:text-foreground inline-flex items-center gap-2"
           :class="{ 'opacity-50 pointer-events-none': state.document.isTitleLocked }"
           :title="state.document.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
         >

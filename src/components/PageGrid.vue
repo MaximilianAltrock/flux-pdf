@@ -8,7 +8,7 @@ import PageDivider from './page-grid/PageDivider.vue'
 import PageGridItem from './page-grid/PageGridItem.vue'
 import PageGridOverlay from './page-grid/PageGridOverlay.vue'
 import { UserAction } from '@/types/actions'
-import type { PageEntry, PageReference } from '@/types'
+import type { PageReference } from '@/types'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
 
@@ -24,9 +24,7 @@ const props = defineProps<{
   actions: AppActions
 }>()
 
-const { localPages, isDragging, isSelected, getContentPageNumber } = useGridLogic(
-  props.state.document,
-)
+const { localPages, isDragging, isSelected, gridItems } = useGridLogic(props.state.document)
 
 // === File Drag Logic (with Counter to prevent flickering) ===
 const isFileDragOver = ref(false)
@@ -35,14 +33,6 @@ const dragCounter = ref(0)
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(auto-fill, minmax(${props.state.zoom.value + 20}px, 1fr))`,
 }))
-
-function isStartOfFile(page: PageEntry, index: number): boolean {
-  if (page.isDivider) return false
-  if (index === 0) return true
-  const prev = localPages.value[index - 1]
-  if (!prev || prev.isDivider) return false
-  return page.groupId !== prev.groupId
-}
 
 // === Pdnd Logic (internal reordering) ===
 let cleanup: (() => void) | null = null
@@ -170,21 +160,23 @@ function handleContextAction(action: UserAction, pageRef: PageReference) {
       :style="gridStyle"
     >
       <SortableGridItem
-        v-for="(pageRef, index) in localPages"
-        :key="pageRef.id"
-        :page="pageRef"
-        :index="index"
-        :class="{ 'col-span-full': pageRef.isDivider }"
+        v-for="item in gridItems"
+        :key="item.id"
+        :entry="item.entry"
+        :index="item.index"
+        :drag-label="item.dragLabel"
+        :is-divider="item.kind === 'divider'"
+        :class="{ 'col-span-full': item.kind === 'divider' }"
       >
-        <PageDivider v-if="pageRef.isDivider" />
+        <PageDivider v-if="item.kind === 'divider'" />
 
         <PageGridItem
           v-else
-          :page="pageRef"
-          :index="index"
-          :page-number="getContentPageNumber(pageRef.id) || index + 1"
-          :selected="isSelected(pageRef.id)"
-          :is-start-of-file="isStartOfFile(pageRef, index)"
+          :page="item.entry"
+          :index="item.index"
+          :page-number="item.pageNumber"
+          :selected="isSelected(item.id)"
+          :is-start-of-file="item.isStartOfFile"
           :state="state"
           :actions="actions"
           @preview="handlePreview"
@@ -195,7 +187,7 @@ function handleContextAction(action: UserAction, pageRef: PageReference) {
 
     <p
       v-if="localPages.length > 0"
-      class="text-center text-sm text-text-muted mt-6 font-mono opacity-50 uppercase tracking-widest text-[10px]"
+      class="text-center text-xxs text-text-muted mt-6 font-mono opacity-50 uppercase tracking-widest"
     >
       Drag to reorder • Double-click to preview • Right-click for options
     </p>

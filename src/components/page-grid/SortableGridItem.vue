@@ -11,8 +11,10 @@ import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/el
 import type { PageEntry } from '@/types'
 
 const props = defineProps<{
-  page: PageEntry
+  entry: PageEntry
   index: number
+  dragLabel: string
+  isDivider: boolean
 }>()
 
 const elementRef = ref<HTMLElement | null>(null)
@@ -32,7 +34,8 @@ onMounted(() => {
       getInitialData: () => ({
         type: 'grid-item',
         index: props.index,
-        id: props.page.id,
+        id: props.entry.id,
+        entryType: props.isDivider ? 'divider' : 'page',
       }),
       onDragStart: () => {
         isDragging.value = true
@@ -57,7 +60,7 @@ onMounted(() => {
             container.style.transform = 'rotate(3deg)'
 
             const label = document.createElement('div')
-            label.innerText = `Page ${props.index + 1}`
+            label.innerText = props.dragLabel
             label.style.position = 'absolute'
             label.style.bottom = '8px'
             label.style.width = '100%'
@@ -76,7 +79,7 @@ onMounted(() => {
         return attachClosestEdge(
           {
             index: props.index,
-            id: props.page.id,
+            id: props.entry.id,
           },
           {
             element,
@@ -109,10 +112,9 @@ onUnmounted(() => {
 <template>
   <div
     ref="elementRef"
-    class="relative group h-full transition-all duration-200"
+    class="relative group h-full transition-all duration-200 cursor-grab active:cursor-grabbing"
     :class="{
       'opacity-20 scale-95 grayscale': isDragging,
-      'cursor-grab active:cursor-grabbing': !props.page.isDivider,
       'z-50': isDragging,
     }"
   >
