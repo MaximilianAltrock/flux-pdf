@@ -86,18 +86,15 @@ onMounted(() => {
         )
       },
       onDragEnter: ({ self }) => {
-        console.log('SortableGridItem: onDragEnter', self.data)
         closestEdge.value = extractClosestEdge(self.data)
       },
       onDrag: ({ self }) => {
         closestEdge.value = extractClosestEdge(self.data)
       },
       onDragLeave: () => {
-        console.log('SortableGridItem: onDragLeave')
         closestEdge.value = null
       },
       onDrop: () => {
-        console.log('SortableGridItem: onDrop')
         closestEdge.value = null
       },
     }),
