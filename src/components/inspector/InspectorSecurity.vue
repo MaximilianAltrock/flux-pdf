@@ -75,8 +75,7 @@ const allowModifying = computed({
         </div>
         <Switch
           id="security-encrypted"
-          :checked="securityEncrypted"
-          @update:checked="(v: boolean) => (securityEncrypted = v)"
+          v-model="securityEncrypted"
           class="data-[state=checked]:bg-primary h-5 w-9"
         />
       </Field>
@@ -99,7 +98,6 @@ const allowModifying = computed({
               for="security-user-pass"
               class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold flex items-center gap-2"
             >
-              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
               Open Password
             </FieldLabel>
             <Button
@@ -130,7 +128,6 @@ const allowModifying = computed({
               for="security-owner-pass"
               class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold flex items-center gap-2"
             >
-              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
               Admin Password
             </FieldLabel>
             <Button
@@ -169,8 +166,7 @@ const allowModifying = computed({
             <div class="flex items-center justify-center">
               <Checkbox
                 id="perm-print"
-                :checked="allowPrinting"
-                @update:checked="(v: boolean) => (allowPrinting = v)"
+                v-model="allowPrinting"
                 class="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 rounded-[3px]"
               />
             </div>
@@ -193,8 +189,7 @@ const allowModifying = computed({
             <div class="flex items-center justify-center">
               <Checkbox
                 id="perm-copy"
-                :checked="allowCopying"
-                @update:checked="(v: boolean) => (allowCopying = v)"
+                v-model="allowCopying"
                 class="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 rounded-[3px]"
               />
             </div>
@@ -217,8 +212,7 @@ const allowModifying = computed({
             <div class="flex items-center justify-center">
               <Checkbox
                 id="perm-mod"
-                :checked="allowModifying"
-                @update:checked="(v: boolean) => (allowModifying = v)"
+                v-model="allowModifying"
                 class="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 rounded-[3px]"
               />
             </div>
