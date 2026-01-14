@@ -67,7 +67,7 @@ const canExport = computed(() => props.state.document.pageCount > 0)
             </TooltipTrigger>
             <TooltipContent side="bottom" :side-offset="8">
               <p class="text-xs">
-                Razor Tool <span class="text-muted-foreground ml-1 text-[10px] font-mono">(R)</span>
+                Razor Tool <span class="text-muted-foreground ml-1 text-xxs font-mono">(R)</span>
               </p>
             </TooltipContent>
           </Tooltip>
@@ -110,21 +110,15 @@ const canExport = computed(() => props.state.document.pageCount > 0)
     <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
 
     <!-- Export CTA -->
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          @click="$emit('export')"
-          :disabled="!canExport"
-          size="sm"
-          class="h-8 font-bold px-4 gap-2 shadow-sm rounded-md bg-primary hover:scale-[1.02] active:scale-[0.98] transition-transform"
-        >
-          <Download class="w-3.5 h-3.5" />
-          <span class="text-xs">Export</span>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent v-if="!canExport" side="bottom" :side-offset="8">
-        <p class="text-xs">Import files to export</p>
-      </TooltipContent>
-    </Tooltip>
+
+    <Button
+      @click="$emit('export')"
+      :disabled="!canExport"
+      size="sm"
+      class="h-8 font-bold px-4 gap-2 shadow-sm rounded-md bg-primary hover:scale-[1.02] active:scale-[0.98] transition-transform"
+    >
+      <Download class="w-3.5 h-3.5" />
+      <span class="text-xs">Export</span>
+    </Button>
   </div>
 </template>

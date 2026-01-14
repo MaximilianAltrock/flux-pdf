@@ -36,25 +36,25 @@ function addCustomBookmark() {
       <div
         class="bg-muted/30 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 border border-border/40"
       >
-        <FileText class="w-6 h-6 text-muted-foreground/40" />
+        <FileText class="w-6 h-6 text-muted-foreground" />
       </div>
       <p class="text-xs text-muted-foreground font-medium">No pages imported</p>
-      <p class="text-xxs text-muted-foreground/60 mt-1">Import files to see structure</p>
+      <p class="text-xxs text-muted-foreground mt-1">Import files to see structure</p>
     </div>
 
     <div v-else class="flex flex-col min-h-0">
       <div class="px-4 py-3 border-b border-border/30 bg-muted/10">
         <p
-          class="text-xxs font-bold text-muted-foreground/60 uppercase tracking-[0.1em] flex items-center gap-2"
+          class="text-xxs font-bold text-muted-foreground uppercase tracking-[0.1em] flex items-center gap-2"
         >
           Document Structure
           <Badge
             variant="outline"
-            class="text-tiny h-3.5 px-1.5 font-mono opacity-40 border-muted-foreground/30 shadow-none uppercase"
+            class="text-tiny h-3.5 px-1.5 font-mono border-muted-foreground/30 shadow-none uppercase"
             >Auto</Badge
           >
         </p>
-        <p class="text-xxs text-muted-foreground/40 mt-1.5 leading-relaxed font-medium">
+        <p class="text-xxs text-muted-foreground mt-1.5 leading-relaxed font-medium">
           Drag & drop to reorder entries. Nest items to create hierarchies.
         </p>
       </div>
@@ -92,7 +92,7 @@ function addCustomBookmark() {
               <!-- Title Container -->
               <div class="flex items-center min-w-0 max-w-full">
                 <span
-                  class="text-xs truncate font-semibold text-foreground/70 group-hover:text-foreground transition-colors leading-none py-1 pr-2"
+                  class="text-xs truncate font-semibold text-foreground group-hover:text-foreground transition-colors leading-none py-1 pr-2"
                 >
                   {{ (item.value as BookmarkNode).title }}
                 </span>

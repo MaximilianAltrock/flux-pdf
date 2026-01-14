@@ -41,14 +41,14 @@ watch(
   <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
     <div class="h-9 px-4 border-b border-border/40 flex items-center justify-between bg-sidebar/50">
       <h2
-        class="text-xxs font-bold text-muted-foreground/70 uppercase tracking-widest flex items-center gap-2"
+        class="text-xxs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2"
       >
         Session History
         <span class="w-1 h-1 rounded-full bg-primary/40"></span>
       </h2>
       <Badge
         variant="outline"
-        class="text-xxs h-4 font-mono opacity-50 p-0 px-1.5 border-none shadow-none text-muted-foreground/40"
+        class="text-xxs h-4 font-mono opacity-50 p-0 px-1.5 border-none shadow-none text-muted-foreground"
         >{{ historyList.length }} steps</Badge
       >
     </div>
@@ -71,9 +71,9 @@ watch(
                 :class="[
                   entry.isCurrent
                     ? 'text-primary'
-                    : 'text-foreground/60 group-hover:text-foreground',
+                    : 'text-foreground/80 group-hover:text-foreground',
                   entry.isUndone
-                    ? 'text-muted-foreground/30 italic line-through decoration-muted-foreground/20 font-medium'
+                    ? 'text-muted-foreground/60 italic line-through decoration-muted-foreground/20 font-medium'
                     : '',
                 ]"
               >
@@ -83,7 +83,7 @@ watch(
             <template #description>
               <div class="flex items-center gap-2 mt-0.5">
                 <TimelineTime
-                  class="text-xxs text-muted-foreground/30 font-mono tracking-tighter uppercase"
+                  class="text-xxs text-muted-foreground font-mono tracking-tighter uppercase"
                 >
                   {{ formatTime(entry.timestamp, true) }}
                 </TimelineTime>

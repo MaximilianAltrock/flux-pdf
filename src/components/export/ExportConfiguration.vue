@@ -155,7 +155,7 @@ onMounted(() => {
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-0.5">
-          <span class="text-xxs font-bold uppercase tracking-widest text-muted-foreground/60"
+          <span class="text-xxs font-bold uppercase tracking-widest text-muted-foreground"
             >Export Target</span
           >
           <span
@@ -179,7 +179,7 @@ onMounted(() => {
       <div class="flex items-center justify-between px-1">
         <Label
           for="filename"
-          class="text-xxs font-bold uppercase tracking-widest text-muted-foreground/80"
+          class="text-xxs font-bold uppercase tracking-widest text-muted-foreground"
         >
           Output Filename
         </Label>
@@ -202,7 +202,7 @@ onMounted(() => {
     <!-- Page Range -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-1">
-        <Label class="text-xxs font-bold uppercase tracking-widest text-muted-foreground/80"
+        <Label class="text-xxs font-bold uppercase tracking-widest text-muted-foreground"
           >Page Context</Label
         >
       </div>
@@ -313,7 +313,7 @@ onMounted(() => {
               <Label for="opt-compress" class="text-sm font-semibold cursor-pointer"
                 >Object Stream Compression</Label
               >
-              <p class="text-xxs text-muted-foreground/70 font-medium">
+              <p class="text-xxs text-muted-foreground font-medium">
                 Internal PDF structure optimization
               </p>
             </div>
@@ -329,7 +329,7 @@ onMounted(() => {
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
                 <Label class="text-sm font-semibold">PDF Compression (Ghostscript)</Label>
-                <p class="text-xxs text-muted-foreground/70 font-medium">
+                <p class="text-xxs text-muted-foreground font-medium">
                   Reduce file size with image downsampling
                 </p>
               </div>

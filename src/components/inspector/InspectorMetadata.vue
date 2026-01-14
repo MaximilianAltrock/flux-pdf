@@ -71,10 +71,10 @@ function removeKeyword(k: string) {
   <div class="space-y-6 pb-6">
     <div class="flex items-start justify-between gap-3 px-1">
       <div class="flex-1">
-        <p class="text-xxs uppercase tracking-[0.1em] text-muted-foreground/60 font-bold mb-1">
+        <p class="text-xxs uppercase tracking-[0.1em] text-muted-foreground font-bold mb-1">
           Smart Metadata
         </p>
-        <p class="text-xxs text-muted-foreground/40 leading-relaxed font-medium">
+        <p class="text-xxs text-muted-foreground leading-relaxed font-medium">
           Apply attributes from source files or define them manually.
         </p>
       </div>
@@ -105,7 +105,7 @@ function removeKeyword(k: string) {
           <DropdownMenuItem
             v-if="metadataSources.length === 0"
             disabled
-            class="text-xs italic text-muted-foreground/50"
+            class="text-xs italic text-muted-foreground"
           >
             No source metadata
           </DropdownMenuItem>
@@ -119,9 +119,8 @@ function removeKeyword(k: string) {
       <Field>
         <FieldLabel
           for="metadata-title"
-          class="text-xxs uppercase tracking-[0.15em] text-muted-foreground/50 font-bold mb-2 flex items-center gap-2"
+          class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold mb-2 flex items-center gap-2"
         >
-          <div class="w-1 h-1 rounded-full bg-primary/40"></div>
           Document Title
         </FieldLabel>
         <FieldContent>
@@ -129,7 +128,7 @@ function removeKeyword(k: string) {
             id="metadata-title"
             v-model="metadataTitle"
             type="text"
-            class="h-9 text-xs font-semibold bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] placeholder:text-muted-foreground/30 transition-all hover:bg-muted/40"
+            class="h-9 text-xs font-semibold bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] placeholder:text-muted-foreground transition-all hover:bg-muted/40"
             placeholder="e.g. Project Specs 2026"
           />
         </FieldContent>
@@ -139,9 +138,8 @@ function removeKeyword(k: string) {
         <Field>
           <FieldLabel
             for="metadata-author"
-            class="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-bold mb-2 flex items-center gap-2"
+            class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold mb-2 flex items-center gap-2"
           >
-            <div class="w-1 h-1 rounded-full bg-primary/40"></div>
             Author
           </FieldLabel>
           <FieldContent>
@@ -149,7 +147,7 @@ function removeKeyword(k: string) {
               id="metadata-author"
               v-model="metadataAuthor"
               type="text"
-              class="h-8 text-xs bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] placeholder:text-muted-foreground/30 transition-all hover:bg-muted/40"
+              class="h-8 text-xs bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] placeholder:text-muted-foreground transition-all hover:bg-muted/40"
               placeholder="Name/Org"
             />
           </FieldContent>
@@ -158,9 +156,8 @@ function removeKeyword(k: string) {
         <Field>
           <FieldLabel
             for="metadata-subject"
-            class="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-bold mb-2 flex items-center gap-2"
+            class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold mb-2 flex items-center gap-2"
           >
-            <div class="w-1 h-1 rounded-full bg-primary/40"></div>
             Subject
           </FieldLabel>
           <FieldContent>
@@ -168,7 +165,7 @@ function removeKeyword(k: string) {
               id="metadata-subject"
               v-model="metadataSubject"
               type="text"
-              class="h-8 text-[11px] bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] placeholder:text-muted-foreground/30 transition-all hover:bg-muted/40"
+              class="h-8 text-[11px] bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] placeholder:text-muted-foreground transition-all hover:bg-muted/40"
               placeholder="Topic"
             />
           </FieldContent>
@@ -178,9 +175,8 @@ function removeKeyword(k: string) {
       <Field>
         <FieldLabel
           for="metadata-keywords"
-          class="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-bold mb-2 flex items-center gap-2"
+          class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold mb-2 flex items-center gap-2"
         >
-          <div class="w-1 h-1 rounded-full bg-primary/40"></div>
           Keywords / tags
         </FieldLabel>
         <FieldContent class="space-y-3">
@@ -192,7 +188,7 @@ function removeKeyword(k: string) {
               v-for="k in props.state.document.metadata.keywords"
               :key="k"
               variant="secondary"
-              class="pl-2 pr-0.5 h-6 gap-1 bg-background border border-border/40 text-foreground/70 hover:border-primary/30 transition-all rounded-[4px] shadow-xs"
+              class="pl-2 pr-0.5 h-6 gap-1 bg-background border border-border/40 text-foreground hover:border-primary/30 transition-all rounded-[4px] shadow-xs"
             >
               <span class="text-xxs font-bold tracking-tight">{{ k }}</span>
               <Button
@@ -214,11 +210,11 @@ function removeKeyword(k: string) {
               @keydown.tab.prevent="addKeyword"
               @blur="addKeyword"
               type="text"
-              class="h-8 text-xs bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] pr-8 pl-8 placeholder:text-muted-foreground/30 transition-all"
+              class="h-8 text-xs bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] pr-8 pl-8 placeholder:text-muted-foreground transition-all"
               placeholder="Type tag and press Enter..."
             />
             <div
-              class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 group-focus-within:text-primary transition-colors pointer-events-none"
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none"
             >
               <Plus class="w-3 h-3" />
             </div>

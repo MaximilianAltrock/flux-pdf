@@ -53,7 +53,7 @@
   --card-foreground: oklch(0.25 0.02 285);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.02 285);
-  --primary: oklch(0.58 0.18 285);
+  --primary: oklch(0.467 0.18 285);
   --primary-foreground: oklch(0.98 0.005 285);
   --secondary: oklch(0.95 0.01 285);
   --secondary-foreground: oklch(0.4 0.05 285);
@@ -61,20 +61,20 @@
   --muted-foreground: oklch(0.5 0.02 285);
   --accent: oklch(0.92 0.03 260); /* Slightly more blueish accent */
   --accent-foreground: oklch(0.25 0.02 285);
-  --destructive: oklch(0.6 0.18 25);
+  --destructive: oklch(0.472 0.18 25);
   --destructive-foreground: oklch(0.98 0.005 285);
   --border: oklch(0.92 0.01 285);
   --input: oklch(0.92 0.01 285);
-  --ring: oklch(0.58 0.18 285);
+  --ring: oklch(0.467 0.18 285);
 
   --sidebar: oklch(0.97 0.005 285);
   --sidebar-foreground: oklch(0.3 0.02 285);
-  --sidebar-primary: oklch(0.58 0.18 285);
+  --sidebar-primary: oklch(0.467 0.18 285);
   --sidebar-primary-foreground: oklch(0.98 0.005 285);
   --sidebar-accent: oklch(0.94 0.01 285);
   --sidebar-accent-foreground: oklch(0.25 0.02 285);
   --sidebar-border: oklch(0.91 0.01 285);
-  --sidebar-ring: oklch(0.58 0.18 285);
+  --sidebar-ring: oklch(0.467 0.18 285);
 
   --radius: 6px;
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -106,7 +106,7 @@
   --card-foreground: oklch(0.92 0.01 285);
   --popover: oklch(0.22 0.03 285);
   --popover-foreground: oklch(0.92 0.01 285);
-  --primary: oklch(0.7 0.15 285);
+  --primary: oklch(0.71 0.15 285);
   --primary-foreground: oklch(0.18 0.02 285);
   --secondary: oklch(0.25 0.04 285);
   --secondary-foreground: oklch(0.9 0.02 285);
@@ -114,20 +114,20 @@
   --muted-foreground: oklch(0.7 0.02 285);
   --accent: oklch(0.28 0.06 280);
   --accent-foreground: oklch(0.92 0.01 285);
-  --destructive: oklch(0.5 0.2 25);
+  --destructive: oklch(0.406 0.2 25);
   --destructive-foreground: oklch(0.92 0.01 285);
   --border: oklch(0.26 0.02 285);
   --input: oklch(0.26 0.02 285);
-  --ring: oklch(0.7 0.15 285);
+  --ring: oklch(0.71 0.15 285);
 
   --sidebar: oklch(0.2 0.03 285);
   --sidebar-foreground: oklch(0.9 0.01 285);
-  --sidebar-primary: oklch(0.7 0.15 285);
+  --sidebar-primary: oklch(0.71 0.15 285);
   --sidebar-primary-foreground: oklch(0.18 0.02 285);
   --sidebar-accent: oklch(0.26 0.04 285);
   --sidebar-accent-foreground: oklch(0.92 0.01 285);
   --sidebar-border: oklch(0.25 0.02 285);
-  --sidebar-ring: oklch(0.7 0.15 285);
+  --sidebar-ring: oklch(0.71 0.15 285);
 
   --shadow-color: 0 0% 0%;
 

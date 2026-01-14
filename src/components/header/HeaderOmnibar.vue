@@ -58,7 +58,7 @@ defineEmits<{
           class="ml-auto shrink-0 flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity"
         >
           <Kbd
-            class="hidden sm:inline-flex rounded-[2px] bg-background/50 border border-border/50 font-mono text-tiny px-1.5 py-0.5 text-muted-foreground whitespace-nowrap shadow-none"
+            class="hidden sm:inline-flex rounded-[2px] bg-background/50 border border-border/50 font-mono text-tiny px-1.5 py-0.5 text-foreground whitespace-nowrap shadow-none"
           >
             ⌘K
           </Kbd>

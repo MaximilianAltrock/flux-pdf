@@ -64,14 +64,12 @@ const allowModifying = computed({
             for="security-encrypted"
             class="text-tiny font-bold text-foreground transition-colors uppercase tracking-wider"
             :class="
-              props.state.document.security.isEncrypted
-                ? 'text-primary'
-                : 'text-muted-foreground/70'
+              props.state.document.security.isEncrypted ? 'text-primary' : 'text-muted-foreground'
             "
           >
             Encryption
           </FieldLabel>
-          <p class="text-xxs text-muted-foreground/40 leading-tight font-medium">
+          <p class="text-xxs text-muted-foreground leading-tight font-medium">
             Password protect this document
           </p>
         </div>
@@ -99,7 +97,7 @@ const allowModifying = computed({
           <div class="flex justify-between items-center mb-2">
             <FieldLabel
               for="security-user-pass"
-              class="text-xxs uppercase tracking-[0.15em] text-muted-foreground/50 font-bold flex items-center gap-2"
+              class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold flex items-center gap-2"
             >
               <div class="w-1 h-1 rounded-full bg-primary/40"></div>
               Open Password
@@ -107,7 +105,7 @@ const allowModifying = computed({
             <Button
               variant="ghost"
               size="icon"
-              class="h-5 w-5 text-muted-foreground/30 hover:text-foreground transition-colors rounded-[3px]"
+              class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors rounded-[3px]"
               @click="showUserPassword = !showUserPassword"
             >
               <Eye v-if="!showUserPassword" class="w-3 h-3" />
@@ -130,7 +128,7 @@ const allowModifying = computed({
           <div class="flex justify-between items-center mb-2">
             <FieldLabel
               for="security-owner-pass"
-              class="text-xxs uppercase tracking-[0.15em] text-muted-foreground/50 font-bold flex items-center gap-2"
+              class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold flex items-center gap-2"
             >
               <div class="w-1 h-1 rounded-full bg-primary/40"></div>
               Admin Password
@@ -138,7 +136,7 @@ const allowModifying = computed({
             <Button
               variant="ghost"
               size="icon"
-              class="h-5 w-5 text-muted-foreground/30 hover:text-foreground transition-colors rounded-[3px]"
+              class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors rounded-[3px]"
               @click="showOwnerPassword = !showOwnerPassword"
             >
               <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
@@ -160,7 +158,7 @@ const allowModifying = computed({
       <!-- Permissions Matrix -->
       <div class="space-y-4 pt-4 border-t border-border/30">
         <FieldLabel
-          class="text-[10px] uppercase tracking-[0.15em] text-muted-foreground/50 font-bold px-1"
+          class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold px-1"
           >Access Control</FieldLabel
         >
         <div class="grid gap-2 bg-muted/5 border border-border/20 rounded-lg p-2">
@@ -178,11 +176,11 @@ const allowModifying = computed({
             </div>
             <div class="space-y-0.5">
               <span
-                class="text-xs font-bold text-foreground/70 group-hover:text-foreground transition-colors uppercase tracking-tight"
+                class="text-xs font-bold text-foreground group-hover:text-foreground transition-colors uppercase tracking-tight"
               >
                 High-Res Printing
               </span>
-              <p class="text-xxs text-muted-foreground/30 leading-none font-medium">
+              <p class="text-xxs text-muted-foreground leading-none font-medium">
                 Allow high fidelity output
               </p>
             </div>
@@ -202,11 +200,11 @@ const allowModifying = computed({
             </div>
             <div class="space-y-0.5">
               <span
-                class="text-xs font-bold text-foreground/70 group-hover:text-foreground transition-colors uppercase tracking-tight"
+                class="text-xs font-bold text-foreground group-hover:text-foreground transition-colors uppercase tracking-tight"
               >
                 Content Copying
               </span>
-              <p class="text-xxs text-muted-foreground/30 leading-none font-medium">
+              <p class="text-xxs text-muted-foreground leading-none font-medium">
                 Extract text and media
               </p>
             </div>
@@ -226,11 +224,11 @@ const allowModifying = computed({
             </div>
             <div class="space-y-0.5">
               <span
-                class="text-[11px] font-bold text-foreground/70 group-hover:text-foreground transition-colors uppercase tracking-tight"
+                class="text-[11px] font-bold text-foreground group-hover:text-foreground transition-colors uppercase tracking-tight"
               >
                 Modification
               </span>
-              <p class="text-[10px] text-muted-foreground/30 leading-none font-medium">
+              <p class="text-[10px] text-muted-foreground leading-none font-medium">
                 Reorder or delete pages
               </p>
             </div>

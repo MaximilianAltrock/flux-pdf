@@ -97,14 +97,13 @@ async function handleDrop(e: DragEvent) {
         class="h-12 flex items-center justify-between px-3 shrink-0 border-b border-border/40 bg-muted/10 backdrop-blur-sm"
       >
         <div v-if="!isCollapsed" class="flex items-center gap-2">
-          <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
-          <h2 class="text-xxs font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">
+          <h2 class="text-xxs font-bold text-muted-foreground uppercase tracking-[0.15em]">
             Source Registry
           </h2>
         </div>
         <div v-if="isCollapsed" class="w-full flex justify-center">
           <div class="p-1.5 rounded-md bg-muted/20 border border-border/10">
-            <FileUp class="w-3.5 h-3.5 text-muted-foreground/60" />
+            <FileUp class="w-3.5 h-3.5 text-muted-foreground" />
           </div>
         </div>
       </div>
@@ -166,7 +165,7 @@ async function handleDrop(e: DragEvent) {
                         </TooltipTrigger>
                         <TooltipContent side="right">Remove Source</TooltipContent>
                       </Tooltip>
-                      <GripVertical class="w-3 h-3 text-muted-foreground/30" />
+                      <GripVertical class="w-3 h-3 text-muted-foreground" />
                     </div>
                   </div>
 
@@ -182,7 +181,7 @@ async function handleDrop(e: DragEvent) {
                         >{{ file.pageCount }}p</span
                       >
                     </div>
-                    <span class="text-tiny text-muted-foreground/40 font-mono">
+                    <span class="text-tiny text-muted-foreground font-mono">
                       {{ formatBytes(file.fileSize) }}
                     </span>
                   </div>
