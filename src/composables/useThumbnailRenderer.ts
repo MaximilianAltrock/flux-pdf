@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { PDF_PAGE_INDEX_BASE, THUMBNAIL } from '@/constants'
 import { useDocumentService } from './useDocumentService'
 import type { PageReference } from '@/types'
 
@@ -9,7 +10,7 @@ class ThumbnailCache {
   private cache = new Map<string, { url: string; lastAccessed: number }>()
   private maxSize: number
 
-  constructor(maxSize = 100) {
+  constructor(maxSize = THUMBNAIL.CACHE_MAX) {
     this.maxSize = maxSize
   }
 
@@ -72,7 +73,7 @@ class ThumbnailCache {
 }
 
 // Global thumbnail cache (fewer items since they're higher resolution)
-const thumbnailCache = new ThumbnailCache(100)
+const thumbnailCache = new ThumbnailCache(THUMBNAIL.CACHE_MAX)
 
 /**
  * Composable for rendering PDF page thumbnails
@@ -91,8 +92,8 @@ export function useThumbnailRenderer() {
    */
   async function renderThumbnail(
     pageRef: PageReference,
-    displayWidth = 200,
-    scaleFactor = 2,
+    displayWidth: number = THUMBNAIL.DEFAULT_WIDTH,
+    scaleFactor: number = THUMBNAIL.SCALE_FACTOR,
   ): Promise<string> {
     // Check cache first
     const cached = thumbnailCache.get(pageRef, displayWidth, scaleFactor)
@@ -114,7 +115,7 @@ export function useThumbnailRenderer() {
       }
 
       // Get the page (PDF.js uses 1-based indexing)
-      const page = await pdfDoc.getPage(pageRef.sourcePageIndex + 1)
+      const page = await pdfDoc.getPage(pageRef.sourcePageIndex + PDF_PAGE_INDEX_BASE)
 
       const renderWidth = displayWidth * scaleFactor
 

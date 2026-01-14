@@ -1,3 +1,12 @@
+import {
+  BYTE_UNITS,
+  BYTES_PER_KB,
+  BYTES_PER_MB,
+  FORMAT_BYTES_DECIMALS_DEFAULT,
+  FORMAT_BYTES_DECIMALS_MIN,
+  FORMAT_FILE_SIZE_DECIMALS,
+} from '@/constants'
+
 /**
  * Formats a size in bytes to a human-readable string using binary prefixes (KiB, MiB).
  *
@@ -5,13 +14,16 @@
  * @param decimals - Number of decimal places (default 2)
  * @returns Formatted string (e.g., "1.29 MB")
  */
-export function formatBytes(bytes: number, decimals: number = 2): string {
+export function formatBytes(
+  bytes: number,
+  decimals: number = FORMAT_BYTES_DECIMALS_DEFAULT,
+): string {
   if (bytes === 0) return '0 B'
   if (bytes < 0) return '0 B'
 
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  const k = BYTES_PER_KB
+  const dm = decimals < FORMAT_BYTES_DECIMALS_MIN ? FORMAT_BYTES_DECIMALS_MIN : decimals
+  const sizes = BYTE_UNITS
 
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
@@ -19,9 +31,11 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < BYTES_PER_KB) return `${bytes} B`
+  if (bytes < BYTES_PER_MB) {
+    return `${(bytes / BYTES_PER_KB).toFixed(FORMAT_FILE_SIZE_DECIMALS)} KB`
+  }
+  return `${(bytes / BYTES_PER_MB).toFixed(FORMAT_FILE_SIZE_DECIMALS)} MB`
 }
 
 export function formatTime(timestamp: number, includeSeconds = false): string {

@@ -1,3 +1,4 @@
+import type { RotationAngle } from '@/constants'
 import type { ImportErrorCode } from './errors'
 
 /**
@@ -57,7 +58,7 @@ export interface PageReference {
   id: string
   sourceFileId: string
   sourcePageIndex: number // 0-based index in the original file
-  rotation: 0 | 90 | 180 | 270
+  rotation: RotationAngle
 
   // Grouping
   groupId?: string // specific group/batch ID, defaults to sourceFileId
@@ -103,7 +104,7 @@ export interface RenderRequest {
   requestId: string
   sourceFileId: string
   pageIndex: number
-  rotation: 0 | 90 | 180 | 270
+  rotation: RotationAngle
   width: number
   height: number
 }
@@ -127,7 +128,7 @@ export interface SelectionState {
 }
 
 /**
- * UI bookmark node used by the Structure panel.
+ * bookmark node used by the Structure panel.
  */
 export interface BookmarkNode {
   id: string

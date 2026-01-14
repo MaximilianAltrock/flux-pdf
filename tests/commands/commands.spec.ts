@@ -12,6 +12,7 @@ import {
   type Command,
   COMMAND_SCHEMA_VERSION,
 } from '@/commands'
+import { ROTATION_DEFAULT_DEGREES, ROTATION_DELTA_DEGREES } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import type { PageEntry, PageReference, SourceFile } from '@/types'
 
@@ -29,7 +30,7 @@ const makePages = (sourceId: string, count: number): PageReference[] =>
     id: `${sourceId}-p${index + 1}`,
     sourceFileId: sourceId,
     sourcePageIndex: index,
-    rotation: 0,
+    rotation: ROTATION_DEFAULT_DEGREES,
     groupId: sourceId,
   }))
 
@@ -232,16 +233,19 @@ describe('RotatePagesCommand', () => {
     const pages = makePages(source.id, 2)
     store.addPages(pages)
 
-    const cmd = new RotatePagesCommand([pages[0].id, pages[1].id], 90)
+    const cmd = new RotatePagesCommand(
+      [pages[0].id, pages[1].id],
+      ROTATION_DELTA_DEGREES.RIGHT,
+    )
     cmd.execute()
 
-    expect(store.contentPages[0]?.rotation).toBe(90)
-    expect(store.contentPages[1]?.rotation).toBe(90)
+    expect(store.contentPages[0]?.rotation).toBe(ROTATION_DELTA_DEGREES.RIGHT)
+    expect(store.contentPages[1]?.rotation).toBe(ROTATION_DELTA_DEGREES.RIGHT)
 
     cmd.undo()
 
-    expect(store.contentPages[0]?.rotation).toBe(0)
-    expect(store.contentPages[1]?.rotation).toBe(0)
+    expect(store.contentPages[0]?.rotation).toBe(ROTATION_DEFAULT_DEGREES)
+    expect(store.contentPages[1]?.rotation).toBe(ROTATION_DEFAULT_DEGREES)
   })
 })
 
@@ -334,7 +338,12 @@ describe('BatchCommand', () => {
     const batch = new BatchCommand(
       [
         new AddPagesCommand(source, pages, true, 'cmd-add', 100),
-        new RotatePagesCommand([pages[0].id], 90, 'cmd-rotate', 101),
+        new RotatePagesCommand(
+          [pages[0].id],
+          ROTATION_DELTA_DEGREES.RIGHT,
+          'cmd-rotate',
+          101,
+        ),
       ],
       'Add and rotate',
       'cmd-batch',
@@ -347,7 +356,7 @@ describe('BatchCommand', () => {
     restored.execute()
 
     expect(store.sources.has(source.id)).toBe(true)
-    expect(store.contentPages[0]?.rotation).toBe(90)
+    expect(store.contentPages[0]?.rotation).toBe(ROTATION_DELTA_DEGREES.RIGHT)
 
     restored.undo()
 

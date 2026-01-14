@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
+import { ROTATION_FULL_DEGREES, type RotationAngle, type RotationDelta } from '@/constants'
 import type {
   SourceFile,
   PageReference,
@@ -109,11 +110,12 @@ export const useDocumentStore = defineStore('document', () => {
     pages.value = newOrder
   }
 
-  function rotatePage(pageId: string, degrees: 90 | -90) {
+  function rotatePage(pageId: string, degrees: RotationDelta) {
     const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (page) {
       const current = page.rotation
-      const newRotation = ((current + degrees + 360) % 360) as 0 | 90 | 180 | 270
+      const newRotation =
+        ((current + degrees + ROTATION_FULL_DEGREES) % ROTATION_FULL_DEGREES) as RotationAngle
       page.rotation = newRotation
     }
   }

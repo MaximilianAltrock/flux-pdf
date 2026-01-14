@@ -6,6 +6,7 @@ import {
   type Command,
   COMMAND_SCHEMA_VERSION,
 } from '@/commands'
+import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import {
   migrateSerializedCommand,
   migrateSerializedCommands,
@@ -22,7 +23,7 @@ describe('command migrations', () => {
     }
 
     const migrated = migrateSerializedCommand(legacy)
-    expect(migrated.version).toBe(1)
+    expect(migrated.version).toBe(COMMAND_SCHEMA_VERSION)
   })
 
   it('migrates arrays and preserves explicit versions', () => {
@@ -34,7 +35,7 @@ describe('command migrations', () => {
 
     const current: SerializedCommandRecord = {
       type: 'AddPages',
-      version: 1,
+      version: COMMAND_SCHEMA_VERSION,
       payload: { id: 'current-cmd' },
       timestamp: 3,
     }
@@ -42,8 +43,8 @@ describe('command migrations', () => {
     const migrated = migrateSerializedCommands([legacy, current])
 
     expect(migrated).toHaveLength(2)
-    expect(migrated[0]?.version).toBe(1)
-    expect(migrated[1]?.version).toBe(1)
+    expect(migrated[0]?.version).toBe(COMMAND_SCHEMA_VERSION)
+    expect(migrated[1]?.version).toBe(COMMAND_SCHEMA_VERSION)
   })
 })
 
@@ -63,7 +64,7 @@ describe('commandRegistry.deserialize', () => {
         id: 'page-1',
         sourceFileId: source.id,
         sourcePageIndex: 0,
-        rotation: 0,
+        rotation: ROTATION_DEFAULT_DEGREES,
         groupId: 'group-1',
       },
     ]

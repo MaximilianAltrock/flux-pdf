@@ -1,3 +1,4 @@
+import { PAGE_NUMBER_BASE } from '@/constants'
 import type { PageReference, SourceFile, BookmarkNode, PdfOutlineNode } from '@/types'
 
 export function autoGenBookmarksFromPages(
@@ -71,7 +72,7 @@ function mapOutlineToBookmarks(
       continue
     }
 
-    const title = item.title.trim() || `Page ${item.pageIndex + 1}`
+    const title = item.title.trim() || `Page ${item.pageIndex + PAGE_NUMBER_BASE}`
 
     nodes.push({
       id: crypto.randomUUID(),
@@ -88,7 +89,7 @@ function mapOutlineToBookmarks(
 function mapPagesToBookmarks(pages: PageReference[]): BookmarkNode[] {
   return pages.map((page) => ({
     id: crypto.randomUUID(),
-    title: `Page ${page.sourcePageIndex + 1}`,
+    title: `Page ${page.sourcePageIndex + PAGE_NUMBER_BASE}`,
     pageId: page.id,
     children: [],
     expanded: true,

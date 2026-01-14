@@ -5,6 +5,7 @@ import { PDFDocument } from 'pdf-lib'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { db } from '@/db/db'
+import { HISTORY, ROTATION_DEFAULT_DEGREES, SCHEMA_VERSION, ZOOM } from '@/constants'
 import type { FileUploadResult, PageEntry, PageReference, SourceFile } from '@/types'
 import { createPdfBytes } from '../helpers/pdf-fixtures'
 import type { DocumentAdaptersOverrides } from '@/domain/document/ports'
@@ -54,7 +55,7 @@ const makePages = (sourceId: string, count: number): PageReference[] =>
     id: `${sourceId}-p${i}`,
     sourceFileId: sourceId,
     sourcePageIndex: i,
-    rotation: 0,
+    rotation: ROTATION_DEFAULT_DEGREES,
     groupId: sourceId,
   }))
 
@@ -128,9 +129,27 @@ describe('getEstimatedSize', () => {
     store.addSourceFile(makeSource('s2', 'two.pdf', 2, 2000))
 
     const pages: PageReference[] = [
-      { id: 'p1', sourceFileId: 's1', sourcePageIndex: 0, rotation: 0, groupId: 'g1' },
-      { id: 'p2', sourceFileId: 's1', sourcePageIndex: 1, rotation: 0, groupId: 'g1' },
-      { id: 'p3', sourceFileId: 's2', sourcePageIndex: 0, rotation: 0, groupId: 'g2' },
+      {
+        id: 'p1',
+        sourceFileId: 's1',
+        sourcePageIndex: 0,
+        rotation: ROTATION_DEFAULT_DEGREES,
+        groupId: 'g1',
+      },
+      {
+        id: 'p2',
+        sourceFileId: 's1',
+        sourcePageIndex: 1,
+        rotation: ROTATION_DEFAULT_DEGREES,
+        groupId: 'g1',
+      },
+      {
+        id: 'p3',
+        sourceFileId: 's2',
+        sourcePageIndex: 0,
+        rotation: ROTATION_DEFAULT_DEGREES,
+        groupId: 'g2',
+      },
     ]
 
     expect(service.getEstimatedSize(pages)).toBe(3000)
@@ -154,13 +173,13 @@ describe('clearWorkspace', () => {
 
     await db.session.put({
       id: 'current-session',
-      schemaVersion: 1,
+      schemaVersion: SCHEMA_VERSION.SESSION,
       projectTitle: 'Test',
       activeSourceIds: ['s1'],
       pageMap: [],
       history: [],
-      historyPointer: -1,
-      zoom: 200,
+      historyPointer: HISTORY.POINTER_START,
+      zoom: ZOOM.PERCENT_BASE,
       updatedAt: Date.now(),
     })
 

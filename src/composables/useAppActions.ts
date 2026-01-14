@@ -1,4 +1,11 @@
 import { useDocumentStore } from '@/stores/document'
+import {
+  DIFF_REQUIRED_SELECTION,
+  ROTATION_DEFAULT_DEGREES,
+  ROTATION_DELTA_DEGREES,
+  TIMEOUTS_MS,
+  type RotationDelta,
+} from '@/constants'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -142,7 +149,7 @@ export function useAppActions(state: AppState) {
         id: crypto.randomUUID(),
         sourceFileId: sourceFile.id,
         sourcePageIndex: i,
-        rotation: 0,
+        rotation: ROTATION_DEFAULT_DEGREES,
         groupId,
       })
     }
@@ -166,7 +173,7 @@ export function useAppActions(state: AppState) {
     link.click()
     document.body.removeChild(link)
 
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
   }
 
   async function exportDocument(options: ExportOptions) {
@@ -323,7 +330,7 @@ export function useAppActions(state: AppState) {
   /**
    * Handle rotate selected pages action
    */
-  function handleRotateSelected(degrees: 90 | -90) {
+  function handleRotateSelected(degrees: RotationDelta) {
     if (store.selectedCount === 0) return
 
     const selectedIds = Array.from(store.selection.selectedIds)
@@ -339,11 +346,11 @@ export function useAppActions(state: AppState) {
    */
   function handleDiffSelected() {
     // 1. Validate
-    if (store.selectedCount !== 2) {
+    if (store.selectedCount !== DIFF_REQUIRED_SELECTION) {
       // 2. Feedback (Crucial for the 'D' shortcut fix)
       toast.warning(
-        'Diff requires 2 pages',
-        `You have ${store.selectedCount} selected. Select exactly 2 pages to compare.`,
+        `Diff requires ${DIFF_REQUIRED_SELECTION} pages`,
+        `You have ${store.selectedCount} selected. Select exactly ${DIFF_REQUIRED_SELECTION} pages to compare.`,
       )
       return
     }
@@ -428,10 +435,10 @@ export function useAppActions(state: AppState) {
         handleDuplicateSelected()
         break
       case UserAction.ROTATE_LEFT:
-        handleRotateSelected(-90)
+        handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT)
         break
       case UserAction.ROTATE_RIGHT:
-        handleRotateSelected(90)
+        handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)
         break
       case UserAction.SELECT_ALL:
         store.selectAll()
@@ -473,10 +480,10 @@ export function useAppActions(state: AppState) {
         handleDuplicateSelected()
         break
       case UserAction.ROTATE_LEFT:
-        handleRotateSelected(-90)
+        handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT)
         break
       case UserAction.ROTATE_RIGHT:
-        handleRotateSelected(90)
+        handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)
         break
       case UserAction.NEW_PROJECT:
         handleNewProject()

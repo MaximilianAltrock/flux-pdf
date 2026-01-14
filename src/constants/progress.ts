@@ -1,0 +1,13 @@
+export const PROGRESS = {
+  MIN: 0,
+  COMPLETE: 100,
+} as const
+
+export const EXPORT_PROGRESS = {
+  ZIP_MAX: 80,
+  ZIP_FINALIZE: 90,
+  COMPRESSION_START: 75,
+  COMPRESSION_END: 95,
+  COMPRESSION_SCALE: 0.7,
+  PAGE_COPY_MAX: 90,
+} as const

@@ -1,4 +1,5 @@
 import { ref, shallowRef } from 'vue'
+import { PROGRESS, TIMEOUTS_MS } from '@/constants'
 
 /**
  * Compression quality presets
@@ -28,7 +29,7 @@ export interface CompressionResult {
  */
 export function usePdfCompression() {
   const isCompressing = ref(false)
-  const compressionProgress = ref(0)
+  const compressionProgress = ref<number>(PROGRESS.MIN)
   const compressionError = ref<string | null>(null)
   const isWorkerReady = ref(false)
 
@@ -74,7 +75,7 @@ export function usePdfCompression() {
     const originalSize = pdfData.byteLength
 
     isCompressing.value = true
-    compressionProgress.value = 0
+    compressionProgress.value = PROGRESS.MIN
     compressionError.value = null
 
     return new Promise((resolve, reject) => {
@@ -86,7 +87,7 @@ export function usePdfCompression() {
         worker.removeEventListener('error', handleError)
         // Terminate worker if it wasn't preloaded
         if (!workerRef.value) {
-          setTimeout(() => worker.terminate(), 100)
+          setTimeout(() => worker.terminate(), TIMEOUTS_MS.WORKER_TERMINATE)
         }
         isCompressing.value = false
       }
@@ -104,7 +105,7 @@ export function usePdfCompression() {
             break
 
           case 'result': {
-            compressionProgress.value = 100
+            compressionProgress.value = PROGRESS.COMPLETE
             let compressedData = new Uint8Array(data)
             let compressedSize = compressedData.byteLength
 

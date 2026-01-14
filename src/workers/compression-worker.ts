@@ -1,3 +1,5 @@
+import { WORKER_PROGRESS, WORKER_RUNTIME } from '@/constants'
+
 /**
  * Ghostscript PDF Compression Worker
  *
@@ -135,8 +137,8 @@ function compressPdf(
       printErr: function (_text: string) {
         // Suppress stderr
       },
-      totalDependencies: 0,
-      noExitRuntime: 1,
+      totalDependencies: WORKER_RUNTIME.TOTAL_DEPENDENCIES,
+      noExitRuntime: WORKER_RUNTIME.NO_EXIT_RUNTIME,
     }
 
     // Check if Module already exists (subsequent runs)
@@ -172,7 +174,7 @@ self.addEventListener('message', async (event: MessageEvent) => {
 
   try {
     // Notify start
-    self.postMessage({ type: 'progress', progress: 10 })
+    self.postMessage({ type: 'progress', progress: WORKER_PROGRESS.START })
 
     const compressedData = await compressPdf(data, quality || 'ebook', event.data.baseUrl)
 

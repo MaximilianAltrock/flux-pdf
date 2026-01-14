@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ROTATION_DELTA_DEGREES } from '@/constants'
 
 // Mobile Components
 import MobileTopBar from '@/components/mobile/MobileTopBar.vue'
@@ -99,8 +100,8 @@ function onRemoveSource(sourceId: string) {
         :selection-mode="props.state.mobileSelectionMode.value"
         :selected-count="selectedCount"
         :has-pages="hasPages"
-        @rotate-left="props.actions.handleRotateSelected(-90)"
-        @rotate-right="props.actions.handleRotateSelected(90)"
+        @rotate-left="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT)"
+        @rotate-right="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)"
         @delete="props.actions.handleDeleteSelected"
         @duplicate="props.actions.handleDuplicateSelected"
         @export="props.actions.handleExport"
@@ -144,8 +145,8 @@ function onRemoveSource(sourceId: string) {
       :open="props.state.showActionSheet.value"
       :selected-count="selectedCount"
       @update:open="(val) => !val && props.state.closeActionSheet()"
-      @rotate-left="props.actions.handleRotateSelected(-90)"
-      @rotate-right="props.actions.handleRotateSelected(90)"
+      @rotate-left="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT)"
+      @rotate-right="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)"
       @duplicate="props.actions.handleDuplicateSelected"
       @delete="props.actions.handleDeleteSelected"
       @export-selected="props.actions.handleExportSelected"

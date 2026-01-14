@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '@/constants'
 import { db, type SessionState } from '@/db/db'
 import type { PageEntry, DocumentMetadata, SecurityMetadata } from '@/types'
 import type { SerializedCommand } from '@/commands'
@@ -17,7 +18,7 @@ export interface SessionSnapshot {
   metadataDirty?: boolean
 }
 
-export const SESSION_SCHEMA_VERSION = 1
+export const SESSION_SCHEMA_VERSION = SCHEMA_VERSION.SESSION
 
 export type SessionStateRecord = Omit<SessionState, 'schemaVersion' | 'history'> & {
   schemaVersion?: number
@@ -54,7 +55,7 @@ export function migrateSessionState(record: SessionStateRecord): SessionState {
   const history = migrateSerializedCommands(record.history ?? [])
 
   switch (schemaVersion) {
-    case 1:
+    case SESSION_SCHEMA_VERSION:
       return {
         ...record,
         schemaVersion,

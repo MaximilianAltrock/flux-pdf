@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { PDFDocument, PDFName } from 'pdf-lib'
 import { addBookmarks, generateRawPdf, mapBookmarksToExport } from '@/domain/document/export'
+import {
+  ROTATION_DEFAULT_DEGREES,
+  ROTATION_DELTA_DEGREES,
+  type RotationAngle,
+} from '@/constants'
 import type { BookmarkNode, PageReference } from '@/types'
 import { createPdfBytes } from '../helpers/pdf-fixtures'
 
 const makePageRef = (
   id: string,
   sourcePageIndex: number,
-  rotation: 0 | 90 | 180 | 270 = 0,
+  rotation: RotationAngle = ROTATION_DEFAULT_DEGREES,
 ): PageReference => ({
   id,
   sourceFileId: 'source-1',
@@ -24,7 +29,10 @@ describe('generateRawPdf', () => {
       sourceBytes.byteOffset + sourceBytes.byteLength,
     )
 
-    const pages = [makePageRef('p1', 0, 90), makePageRef('p2', 1, 0)]
+    const pages = [
+      makePageRef('p1', 0, ROTATION_DELTA_DEGREES.RIGHT),
+      makePageRef('p2', 1, ROTATION_DEFAULT_DEGREES),
+    ]
 
     const pdfBytes = await generateRawPdf(pages, {
       getPdfBlob: async (sourceId) => (sourceId === 'source-1' ? sourceBuffer : undefined),
@@ -32,7 +40,7 @@ describe('generateRawPdf', () => {
 
     const output = await PDFDocument.load(pdfBytes)
     expect(output.getPageCount()).toBe(2)
-    expect(output.getPage(0).getRotation().angle).toBe(90)
+    expect(output.getPage(0).getRotation().angle).toBe(ROTATION_DELTA_DEGREES.RIGHT)
   })
 
   it('applies metadata to the exported PDF', async () => {
@@ -42,7 +50,7 @@ describe('generateRawPdf', () => {
       sourceBytes.byteOffset + sourceBytes.byteLength,
     )
 
-    const pages = [makePageRef('p1', 0, 0)]
+    const pages = [makePageRef('p1', 0, ROTATION_DEFAULT_DEGREES)]
 
     const pdfBytes = await generateRawPdf(pages, {
       metadata: {
@@ -62,7 +70,7 @@ describe('generateRawPdf', () => {
   })
 
   it('throws when a source file is missing', async () => {
-    const pages = [makePageRef('p1', 0, 0)]
+    const pages = [makePageRef('p1', 0, ROTATION_DEFAULT_DEGREES)]
     await expect(
       generateRawPdf(pages, { getPdfBlob: async () => undefined }),
     ).rejects.toThrow('Source file not found')

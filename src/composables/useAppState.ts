@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { ZOOM } from '@/constants'
 import { useMobile } from '@/composables/useMobile'
 import type { PageReference } from '@/types'
 
@@ -15,12 +16,11 @@ export function useAppState() {
   const isLoading = ref(false)
   const loadingMessage = ref('')
 
-  const zoom = ref(220)
-  const MIN_ZOOM = 120
-  const MAX_ZOOM = 320
-  const ZOOM_STEP = 20
+  const zoom = ref<number>(ZOOM.DEFAULT)
 
-  const zoomPercentage = computed(() => Math.round((zoom.value / 200) * 100))
+  const zoomPercentage = computed(() =>
+    Math.round((zoom.value / ZOOM.PERCENT_BASE) * ZOOM.PERCENT_MAX),
+  )
 
   const currentTool = ref<'select' | 'razor'>('select')
 
@@ -70,15 +70,15 @@ export function useAppState() {
   }
 
   function setZoom(level: number) {
-    zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
+    zoom.value = Math.min(ZOOM.MAX, Math.max(ZOOM.MIN, level))
   }
 
   function zoomIn() {
-    setZoom(zoom.value + ZOOM_STEP)
+    setZoom(zoom.value + ZOOM.STEP)
   }
 
   function zoomOut() {
-    setZoom(zoom.value - ZOOM_STEP)
+    setZoom(zoom.value - ZOOM.STEP)
   }
 
   function setCurrentTool(tool: 'select' | 'razor') {

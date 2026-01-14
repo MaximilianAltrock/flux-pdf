@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { PROGRESS, ROTATION_DEFAULT_DEGREES, ROTATION_DELTA_DEGREES } from '@/constants'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAppActions } from '@/composables/useAppActions'
 import { useAppState } from '@/composables/useAppState'
@@ -10,7 +11,14 @@ const mocks = vi.hoisted(() => {
   const mobileState = { value: false }
   const canShareFiles = { value: false }
   const exportJob = {
-    value: { status: 'idle', progress: 0, error: null, errorCode: null },
+    value: null as
+      | {
+          status: string
+          progress: number
+          error: null
+          errorCode: null
+        }
+      | null,
   }
 
   return {
@@ -88,7 +96,7 @@ const makePages = (sourceId: string, count: number): PageReference[] =>
     id: `${sourceId}-p${index + 1}`,
     sourceFileId: sourceId,
     sourcePageIndex: index,
-    rotation: 0,
+    rotation: ROTATION_DEFAULT_DEGREES,
     groupId: sourceId,
   }))
 
@@ -113,7 +121,12 @@ beforeEach(() => {
   useCommandManager().clearHistory()
   mocks.mobileState.value = false
   mocks.canShareFiles.value = false
-  mocks.exportJob.value = { status: 'idle', progress: 0, error: null, errorCode: null }
+  mocks.exportJob.value = {
+    status: 'idle',
+    progress: PROGRESS.MIN,
+    error: null,
+    errorCode: null,
+  }
   vi.clearAllMocks()
 })
 
@@ -123,16 +136,16 @@ describe('useAppActions history integration', () => {
     const pageId = store.contentPages[0]!.id
 
     store.selectPage(pageId, false)
-    actions.handleRotateSelected(90)
+    actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)
 
     expect(historyCount(actions)).toBe(1)
-    expect(store.contentPages[0]?.rotation).toBe(90)
+    expect(store.contentPages[0]?.rotation).toBe(ROTATION_DELTA_DEGREES.RIGHT)
 
     actions.undo()
-    expect(store.contentPages[0]?.rotation).toBe(0)
+    expect(store.contentPages[0]?.rotation).toBe(ROTATION_DEFAULT_DEGREES)
 
     actions.redo()
-    expect(store.contentPages[0]?.rotation).toBe(90)
+    expect(store.contentPages[0]?.rotation).toBe(ROTATION_DELTA_DEGREES.RIGHT)
   })
 
   it('tracks duplicate actions in history', () => {

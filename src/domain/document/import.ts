@@ -2,6 +2,7 @@ import * as pdfjs from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
+import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import { db } from '@/db/db'
 import type {
   DocumentMetadata,
@@ -135,7 +136,7 @@ export async function loadPdfFile(
         id: crypto.randomUUID(),
         sourceFileId,
         sourcePageIndex: i,
-        rotation: 0,
+        rotation: ROTATION_DEFAULT_DEGREES,
         groupId,
       })
     }

@@ -1,4 +1,5 @@
 import { ref, watch, computed } from 'vue'
+import { PAGE_NUMBER_BASE } from '@/constants'
 import type { DividerReference, PageEntry, PageReference } from '@/types'
 import { isDividerEntry, isPageEntry } from '@/types'
 
@@ -36,7 +37,7 @@ export function useGridLogic(document: GridDocument) {
   const contentPageNumberMap = computed(() => {
     const map = new Map<string, number>()
     contentPages.value.forEach((page, index) => {
-      map.set(page.id, index + 1)
+      map.set(page.id, index + PAGE_NUMBER_BASE)
     })
     return map
   })

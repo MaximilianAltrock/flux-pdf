@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '@/constants'
 import type { PageReference } from '@/types'
 
 /**
@@ -27,7 +28,7 @@ export interface SerializedCommand {
 /**
  * Current command schema version
  */
-export const COMMAND_SCHEMA_VERSION = 1
+export const COMMAND_SCHEMA_VERSION = SCHEMA_VERSION.COMMAND
 
 /**
  * Base interface for all commands

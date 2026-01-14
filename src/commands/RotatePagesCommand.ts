@@ -1,6 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
+import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 
 /**
@@ -9,7 +10,7 @@ import { useDocumentStore } from '@/stores/document'
 interface RotatePagesPayload {
   id: string
   pageIds: string[]
-  degrees: 90 | -90
+  degrees: RotationDelta
 }
 
 /**
@@ -26,17 +27,19 @@ export class RotatePagesCommand extends BaseCommand {
   public readonly pageIds: string[]
 
   /** Rotation amount in degrees (positive = clockwise) */
-  public readonly degrees: 90 | -90
+  public readonly degrees: RotationDelta
 
-  constructor(pageIds: string[], degrees: 90 | -90, id?: string, createdAt?: number) {
+  constructor(pageIds: string[], degrees: RotationDelta, id?: string, createdAt?: number) {
     super(id, createdAt)
 
     // Validate inputs
     if (!pageIds || pageIds.length === 0) {
       throw new Error('RotatePagesCommand requires at least one page ID')
     }
-    if (degrees !== 90 && degrees !== -90) {
-      throw new Error('Rotation degrees must be 90 or -90')
+    if (degrees !== ROTATION_DELTA_DEGREES.RIGHT && degrees !== ROTATION_DELTA_DEGREES.LEFT) {
+      throw new Error(
+        `Rotation degrees must be ${ROTATION_DELTA_DEGREES.RIGHT} or ${ROTATION_DELTA_DEGREES.LEFT}`,
+      )
     }
 
     this.pageIds = [...pageIds] // Defensive copy
@@ -55,7 +58,10 @@ export class RotatePagesCommand extends BaseCommand {
 
   undo(): void {
     const store = useDocumentStore()
-    const reverseDegrees = (this.degrees === 90 ? -90 : 90) as 90 | -90
+    const reverseDegrees =
+      this.degrees === ROTATION_DELTA_DEGREES.RIGHT
+        ? ROTATION_DELTA_DEGREES.LEFT
+        : ROTATION_DELTA_DEGREES.RIGHT
     for (const pageId of this.pageIds) {
       store.rotatePage(pageId, reverseDegrees)
     }

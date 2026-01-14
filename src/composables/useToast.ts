@@ -1,4 +1,5 @@
 import { toast } from 'vue-sonner'
+import { TIMEOUTS_MS } from '@/constants'
 
 export type ToastType = 'success' | 'destructive' | 'warning' | 'info'
 
@@ -39,7 +40,7 @@ export function useToast() {
             onClick: onUndo,
           }
         : undefined,
-      duration: 6000,
+      duration: TIMEOUTS_MS.TOAST_DESTRUCTIVE,
     })
   }
 

@@ -1,4 +1,5 @@
 import { onMounted, onUnmounted, type Ref } from 'vue'
+import { GRID_NAVIGATION } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { UserAction } from '@/types/actions'
@@ -174,11 +175,12 @@ export function useKeyboardShortcuts(
 
       // Calculate grid columns based on container width and thumbnail size
       const gridContainer = document.querySelector('.grid.gap-4') as HTMLElement | null
-      let columns = 4 // Default fallback
+      let columns: number = GRID_NAVIGATION.DEFAULT_COLUMNS // Default fallback
       if (gridContainer) {
-        const containerWidth = gridContainer.clientWidth - 48 // Account for padding
-        const thumbnailWidth = state.zoom.value + 20 + 16 // zoom + minmax offset + gap
-        columns = Math.max(1, Math.floor(containerWidth / thumbnailWidth))
+        const containerWidth = gridContainer.clientWidth - GRID_NAVIGATION.CONTAINER_PADDING_PX
+        const thumbnailWidth =
+          state.zoom.value + GRID_NAVIGATION.THUMBNAIL_OFFSET_PX + GRID_NAVIGATION.GAP_PX
+        columns = Math.max(GRID_NAVIGATION.MIN_COLUMNS, Math.floor(containerWidth / thumbnailWidth))
       }
 
       // Calculate new index based on arrow direction

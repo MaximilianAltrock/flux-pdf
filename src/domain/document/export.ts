@@ -1,4 +1,5 @@
 import { PDFDocument, PDFName, PDFNumber, PDFArray, PDFString, PDFRef, PDFDict, degrees } from 'pdf-lib'
+import { EXPORT_PROGRESS, PAGE_NUMBER_BASE } from '@/constants'
 import type { PDFPage } from 'pdf-lib'
 import type { BookmarkNode, PageEntry, PageReference, DocumentMetadata } from '@/types'
 
@@ -94,14 +95,14 @@ export function parsePageRange(rangeStr: string, maxPages: number): number[] {
       const end = parseInt(endStr, 10)
 
       if (!isNaN(start) && !isNaN(end)) {
-        for (let i = Math.max(1, start); i <= Math.min(maxPages, end); i++) {
-          indices.add(i - 1)
+        for (let i = Math.max(PAGE_NUMBER_BASE, start); i <= Math.min(maxPages, end); i++) {
+          indices.add(i - PAGE_NUMBER_BASE)
         }
       }
     } else {
       const pageNum = parseInt(part, 10)
-      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= maxPages) {
-        indices.add(pageNum - 1)
+      if (!isNaN(pageNum) && pageNum >= PAGE_NUMBER_BASE && pageNum <= maxPages) {
+        indices.add(pageNum - PAGE_NUMBER_BASE)
       }
     }
   }
@@ -233,7 +234,7 @@ export async function generateRawPdf(
       processedPages++
 
       if (onProgress) {
-        onProgress(Math.round((processedPages / totalPages) * 90))
+        onProgress(Math.round((processedPages / totalPages) * EXPORT_PROGRESS.PAGE_COPY_MAX))
       }
     }
 

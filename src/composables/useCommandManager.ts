@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { HISTORY } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { commandRegistry } from '@/commands'
 import {
@@ -11,16 +12,11 @@ import {
 import type { SerializedCommandRecord } from '@/commands/migrations'
 
 /**
- * Maximum number of commands to keep in history
- */
-const MAX_HISTORY_SIZE = 50
-
-/**
  * Global command history state (singleton)
  * Defined outside to persist across component mounts
  */
 const history = ref<HistoryEntry[]>([])
-const historyPointer = ref(-1)
+const historyPointer = ref<number>(HISTORY.POINTER_START)
 const sessionStartTime = ref(Date.now())
 
 /**
@@ -47,7 +43,7 @@ export function useCommandManager() {
 
   function rehydrateHistory(
     serializedHistory: SerializedCommandRecord[] = [],
-    pointer = -1,
+    pointer: number = HISTORY.POINTER_START,
     updatedAt?: number,
   ): void {
     sessionStartTime.value = updatedAt || Date.now()
@@ -69,7 +65,10 @@ export function useCommandManager() {
 
     history.value = rehydratedEntries
 
-    const clampedPointer = Math.max(-1, Math.min(pointer ?? -1, rehydratedEntries.length - 1))
+    const clampedPointer = Math.max(
+      HISTORY.POINTER_START,
+      Math.min(pointer ?? HISTORY.POINTER_START, rehydratedEntries.length - 1),
+    )
     historyPointer.value = clampedPointer
 
     if (store.pages.length === 0 && clampedPointer >= 0) {
@@ -123,9 +122,9 @@ export function useCommandManager() {
     const rootEntry: HistoryDisplayEntry = {
       command: rootCommand,
       timestamp: sessionStartTime.value,
-      isCurrent: historyPointer.value === -1,
-      isUndone: historyPointer.value < -1, // Never undone
-      pointer: -1,
+      isCurrent: historyPointer.value === HISTORY.POINTER_START,
+      isUndone: historyPointer.value < HISTORY.POINTER_START, // Never undone
+      pointer: HISTORY.POINTER_START,
     }
 
     const mapped = history.value.map((entry, index) => ({
@@ -161,8 +160,8 @@ export function useCommandManager() {
     })
 
     // Trim history if too long
-    if (history.value.length > MAX_HISTORY_SIZE) {
-      history.value = history.value.slice(-MAX_HISTORY_SIZE)
+    if (history.value.length > HISTORY.MAX_ENTRIES) {
+      history.value = history.value.slice(-HISTORY.MAX_ENTRIES)
     }
 
     historyPointer.value = history.value.length - 1
@@ -205,7 +204,7 @@ export function useCommandManager() {
    */
   function clearHistory(): void {
     history.value = []
-    historyPointer.value = -1
+    historyPointer.value = HISTORY.POINTER_START
   }
 
   /**
@@ -213,7 +212,7 @@ export function useCommandManager() {
    * @param index - Target history index
    */
   function jumpTo(index: number): void {
-    if (index < -1 || index >= history.value.length) return
+    if (index < HISTORY.POINTER_START || index >= history.value.length) return
 
     // Undo or redo to reach the target state
     while (historyPointer.value > index) {

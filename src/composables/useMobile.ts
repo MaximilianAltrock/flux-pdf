@@ -1,10 +1,13 @@
 import { ref, computed, watch, type Ref } from 'vue'
-
-const MOBILE_BREAKPOINT = 768
+import { HAPTIC_PATTERNS, MOBILE, TIMEOUTS_MS } from '@/constants'
 
 // Shared reactive state (singleton pattern)
-const screenWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
-const screenHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 768)
+const screenWidth = ref(
+  typeof window !== 'undefined' ? window.innerWidth : MOBILE.FALLBACK_WIDTH_PX,
+)
+const screenHeight = ref(
+  typeof window !== 'undefined' ? window.innerHeight : MOBILE.FALLBACK_HEIGHT_PX,
+)
 
 let listenerAttached = false
 
@@ -25,7 +28,7 @@ export function useMobile() {
     window.addEventListener('resize', updateDimensions)
   }
 
-  const isMobile = computed(() => screenWidth.value < MOBILE_BREAKPOINT)
+  const isMobile = computed(() => screenWidth.value < MOBILE.BREAKPOINT_PX)
 
   /**
    * Trigger haptic feedback via Vibration API
@@ -33,15 +36,8 @@ export function useMobile() {
   function haptic(pattern: 'light' | 'medium' | 'heavy' | 'success' = 'light') {
     if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return
 
-    const patterns = {
-      light: [10],
-      medium: [20],
-      heavy: [30, 10, 30],
-      success: [20, 50, 20], // Double buzz for export complete
-    }
-
     try {
-      navigator.vibrate(patterns[pattern])
+      navigator.vibrate(HAPTIC_PATTERNS[pattern])
     } catch {
       // Haptics not supported
     }
@@ -100,7 +96,7 @@ export function useMobile() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
 
     haptic('success')
     return { shared: false, downloaded: true }

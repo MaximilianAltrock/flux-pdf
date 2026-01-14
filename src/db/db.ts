@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { SCHEMA_VERSION } from '@/constants'
 import type { PageEntry, PdfOutlineNode, DocumentMetadata, SecurityMetadata } from '@/types'
 import type { SerializedCommand } from '@/commands'
 
@@ -97,7 +98,7 @@ export class FluxDatabase extends Dexie {
   constructor() {
     super('FluxPDF_DB')
 
-    this.version(1).stores({
+    this.version(SCHEMA_VERSION.DB).stores({
       session: 'id', // Singleton - always 'current-session'
       files: 'id', // Source file ID
     })

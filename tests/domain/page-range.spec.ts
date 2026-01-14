@@ -5,13 +5,14 @@ import {
   splitPagesIntoSegments,
   validatePageRange,
 } from '@/domain/document/export'
+import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import type { PageEntry, PageReference } from '@/types'
 
 const makePage = (id: string, sourceFileId = 's1', sourcePageIndex = 0): PageReference => ({
   id,
   sourceFileId,
   sourcePageIndex,
-  rotation: 0,
+  rotation: ROTATION_DEFAULT_DEGREES,
   groupId: 'g1',
   isDivider: false,
 })

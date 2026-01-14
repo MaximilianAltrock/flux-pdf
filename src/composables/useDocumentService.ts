@@ -1,5 +1,6 @@
 import { ref, watch, type Ref } from 'vue'
 import JSZip from 'jszip'
+import { EXPORT_PROGRESS, HISTORY, PROGRESS, TIMEOUTS_MS, ZOOM } from '@/constants'
 import type { StoredFile } from '@/db/db'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
@@ -47,7 +48,7 @@ export interface JobState {
 function createJobState(): JobState {
   return {
     status: 'idle',
-    progress: 0,
+    progress: PROGRESS.MIN,
     error: null,
     errorCode: null,
   }
@@ -68,7 +69,6 @@ const restoreJob = ref<JobState>(createJobState())
 const isInitialized = ref(false)
 let persistenceInitialized = false
 let activeAdapters = createDocumentAdapters()
-const DEFAULT_ZOOM = 220
 
 export type DocumentUiState = {
   zoom: Ref<number>
@@ -144,7 +144,7 @@ export function useDocumentService(
           pageMap: store.pages,
           history: serializeHistory(),
           historyPointer: getHistoryPointer(),
-          zoom: ui?.zoom.value ?? DEFAULT_ZOOM,
+          zoom: ui?.zoom.value ?? ZOOM.DEFAULT,
           bookmarksTree: store.bookmarksTree,
           bookmarksDirty,
           metadata: store.metadata,
@@ -154,7 +154,7 @@ export function useDocumentService(
       } catch (error) {
         console.error('Failed to save session to IndexedDB:', error)
       }
-    }, 1000)
+    }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
 
     watch(
       [
@@ -181,7 +181,7 @@ export function useDocumentService(
       return { ok: true, value: { results: [], successes: [], errors: [], totalPages: 0 } }
     }
 
-    importJob.value = { status: 'running', progress: 0, error: null }
+    importJob.value = { status: 'running', progress: PROGRESS.MIN, error: null }
     const loadingLabel =
       fileList.length === 1
         ? `Processing ${fileList[0]?.name ?? 'file'}...`
@@ -222,7 +222,7 @@ export function useDocumentService(
 
       const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)
 
-      importJob.value = { status: 'success', progress: 100, error: null }
+      importJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
       return { ok: true, value: { results, successes, errors, totalPages } }
     } catch (error) {
       const message = getImportErrorMessage(
@@ -232,7 +232,7 @@ export function useDocumentService(
       const importError = makeDocumentError('IMPORT_FAILED', message, error)
       importJob.value = {
         status: 'error',
-        progress: 0,
+        progress: PROGRESS.MIN,
         error: importError.message,
         errorCode: importError.code,
       }
@@ -243,7 +243,12 @@ export function useDocumentService(
   }
 
   function clearExportError(): void {
-    exportJob.value = { status: 'idle', progress: 0, error: null, errorCode: null }
+    exportJob.value = {
+      status: 'idle',
+      progress: PROGRESS.MIN,
+      error: null,
+      errorCode: null,
+    }
   }
 
   async function generateRawPdf(
@@ -279,14 +284,14 @@ export function useDocumentService(
       const error = makeDocumentError('EXPORT_NO_PAGES')
       exportJob.value = {
         status: 'error',
-        progress: 0,
+        progress: PROGRESS.MIN,
         error: error.message,
         errorCode: error.code,
       }
       return { ok: false, error }
     }
 
-    exportJob.value = { status: 'running', progress: 0, error: null }
+    exportJob.value = { status: 'running', progress: PROGRESS.MIN, error: null }
 
     try {
       if (segments.length > 1) {
@@ -305,15 +310,17 @@ export function useDocumentService(
           })
 
           zip.file(`${filename}-part${i + 1}.pdf`, pdfBytes)
-          exportJob.value.progress = Math.round(((i + 1) / segments.length) * 80)
+          exportJob.value.progress = Math.round(
+            ((i + 1) / segments.length) * EXPORT_PROGRESS.ZIP_MAX,
+          )
         }
 
-        exportJob.value.progress = 90
+        exportJob.value.progress = EXPORT_PROGRESS.ZIP_FINALIZE
         const zipContent = await zip.generateAsync({ type: 'uint8array' })
-        exportJob.value.progress = 100
+        exportJob.value.progress = PROGRESS.COMPLETE
 
         const zipFilename = `${filename}.zip`
-        exportJob.value = { status: 'success', progress: 100, error: null }
+        exportJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
         return {
           ok: true,
           value: {
@@ -336,7 +343,7 @@ export function useDocumentService(
         onProgress: (val) => {
           const scaledProgress =
             options.compressionQuality && options.compressionQuality !== 'none'
-              ? Math.round(val * 0.7)
+              ? Math.round(val * EXPORT_PROGRESS.COMPRESSION_SCALE)
               : val
           exportJob.value.progress = scaledProgress
         },
@@ -368,7 +375,7 @@ export function useDocumentService(
       }
 
       if (options.compressionQuality && options.compressionQuality !== 'none') {
-        exportJob.value.progress = 75
+        exportJob.value.progress = EXPORT_PROGRESS.COMPRESSION_START
         let result
         try {
           result = await adapters.compression.compressPdf(pdfBytes, {
@@ -393,13 +400,13 @@ export function useDocumentService(
         if (originalSize > 0) {
           compressionRatio = 1 - pdfBytes.byteLength / originalSize
         }
-        exportJob.value.progress = 95
+        exportJob.value.progress = EXPORT_PROGRESS.COMPRESSION_END
       }
 
-      exportJob.value.progress = 100
+      exportJob.value.progress = PROGRESS.COMPLETE
 
       const pdfFilename = `${filename}.pdf`
-      exportJob.value = { status: 'success', progress: 100, error: null }
+      exportJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
       return {
         ok: true,
         value: {
@@ -427,7 +434,7 @@ export function useDocumentService(
 
       exportJob.value = {
         status: 'error',
-        progress: 0,
+        progress: PROGRESS.MIN,
         error: documentError.message,
         errorCode: documentError.code,
       }
@@ -480,7 +487,7 @@ export function useDocumentService(
   async function restoreSession(): Promise<Result<null>> {
     if (isInitialized.value) return { ok: true, value: null }
 
-    restoreJob.value = { status: 'running', progress: 0, error: null }
+    restoreJob.value = { status: 'running', progress: PROGRESS.MIN, error: null }
     ui?.setLoading(true, 'Restoring session...')
 
     try {
@@ -536,15 +543,15 @@ export function useDocumentService(
       if (session?.history) {
         rehydrateHistory(session.history, session.historyPointer, session.updatedAt)
       } else {
-        rehydrateHistory([], -1, session?.updatedAt)
+        rehydrateHistory([], HISTORY.POINTER_START, session?.updatedAt)
       }
 
-      restoreJob.value = { status: 'success', progress: 100, error: null }
+      restoreJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
       isInitialized.value = true
       return { ok: true, value: null }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Restore failed'
-      restoreJob.value = { status: 'error', progress: 0, error: message }
+      restoreJob.value = { status: 'error', progress: PROGRESS.MIN, error: message }
       return { ok: false, error: { message, cause: error } }
     } finally {
       ui?.setLoading(false)
