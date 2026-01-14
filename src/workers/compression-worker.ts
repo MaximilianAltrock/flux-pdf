@@ -29,7 +29,7 @@ type _GsModule = {
     readFile: (name: string, opts?: { encoding: string }) => Uint8Array
   }
   calledRun: boolean
-  callMain: () => void
+  callMain: (args?: string[]) => void
   preRun: Array<() => void>
   postRun: Array<() => void>
   arguments: string[]
@@ -52,25 +52,55 @@ const moduleContext = self as unknown as { Module?: GsModuleLike }
 let wasmLoaded = false
 let currentResolve: ((data: ArrayBuffer) => void) | null = null
 let currentReject: ((error: Error) => void) | null = null
+let ghostscriptOnMessagePatched = false
 
 /**
  * Load the Ghostscript WASM module
  */
-function loadGhostscript(baseUrl: string) {
-  if (!wasmLoaded) {
-    // Ensure baseUrl ends with / if it doesn't (though Vite usually provides it with trailing slash)
-    const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-    const workerUrl = `${safeBaseUrl}gs/gs-worker.js`
+function patchGhostscriptOnMessage(): void {
+  if (ghostscriptOnMessagePatched) {
+    return
+  }
 
-    console.log(`[Compression Worker] Loading Ghostscript from: ${workerUrl}`)
+  const globalScope = self as unknown as {
+    onmessage?: ((event: MessageEvent) => void) | null
+  }
 
-    try {
-      importScripts(workerUrl)
-      wasmLoaded = true
-    } catch (e) {
-      console.error('[Compression Worker] Failed to load Ghostscript:', e)
-      throw new Error(`Failed to load Ghostscript from ${workerUrl}`)
+  if (typeof globalScope.onmessage !== 'function') {
+    return
+  }
+
+  const ghostscriptOnMessage = globalScope.onmessage
+  globalScope.onmessage = (event: MessageEvent) => {
+    const data = event.data as { funcName?: unknown } | null
+    if (data && typeof data === 'object' && 'funcName' in data) {
+      ghostscriptOnMessage?.call(self, event)
     }
+  }
+
+  ghostscriptOnMessagePatched = true
+}
+
+async function loadGhostscript(baseUrl: string): Promise<void> {
+  if (wasmLoaded) {
+    return
+  }
+
+  const normalizedBaseUrl = baseUrl ? (baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`) : '/'
+  const locationBase =
+    self.location.origin === 'null' ? self.location.href : self.location.origin
+  const resolvedBaseUrl = new URL(normalizedBaseUrl, locationBase).toString()
+  const workerUrl = new URL('gs/gs-worker.js', resolvedBaseUrl).toString()
+
+  console.log(`[Compression Worker] Loading Ghostscript from: ${workerUrl}`)
+
+  try {
+    await import(/* @vite-ignore */ workerUrl)
+    patchGhostscriptOnMessage()
+    wasmLoaded = true
+  } catch (e) {
+    console.error('[Compression Worker] Failed to load Ghostscript:', e)
+    throw new Error(`Failed to load Ghostscript from ${workerUrl}`)
   }
 }
 
@@ -134,8 +164,10 @@ function compressPdf(
       print: function (_text: string) {
         // Suppress stdout
       },
-      printErr: function (_text: string) {
-        // Suppress stderr
+      printErr: function (text: string) {
+        if (text) {
+          console.error('[Compression Worker]', text)
+        }
       },
       totalDependencies: WORKER_RUNTIME.TOTAL_DEPENDENCIES,
       noExitRuntime: WORKER_RUNTIME.NO_EXIT_RUNTIME,
@@ -144,12 +176,9 @@ function compressPdf(
     // Check if Module already exists (subsequent runs)
     if (!moduleContext.Module) {
       moduleContext.Module = moduleConfig
-      try {
-        loadGhostscript(baseUrl)
-      } catch (e) {
+      void loadGhostscript(baseUrl).catch((e) => {
         reject(e instanceof Error ? e : new Error(String(e)))
-        return
-      }
+      })
     } else {
       const module = moduleContext.Module as _GsModule
       // Reset for subsequent compressions
@@ -157,7 +186,7 @@ function compressPdf(
       module.postRun = moduleConfig.postRun
       module.preRun = moduleConfig.preRun
       module.arguments = moduleConfig.arguments
-      module.callMain()
+      module.callMain(moduleConfig.arguments)
     }
   })
 }
@@ -181,7 +210,7 @@ self.addEventListener('message', async (event: MessageEvent) => {
     // Send result back to main thread
     self.postMessage({ type: 'result', data: compressedData }, { transfer: [compressedData] })
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Compression failed'
+    const errorMessage = error instanceof Error ? error.message : String(error)
     self.postMessage({ type: 'error', error: errorMessage })
   }
 })

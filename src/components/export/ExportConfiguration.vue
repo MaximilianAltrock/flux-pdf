@@ -18,6 +18,7 @@ import type { PageReference } from '@/types'
 import type { CompressionQuality } from '@/composables/usePdfCompression'
 import type { FacadeState } from '@/composables/useDocumentFacade'
 import type { AppActions } from '@/composables/useAppActions'
+import { useVModel } from '@vueuse/core'
 
 export interface ExportSettings {
   filename: string
@@ -46,20 +47,16 @@ const pageRangeError = ref<string | null>(null)
 const showAdvanced = ref(false)
 
 // Local proxy for settings to avoid deep mutation issues
-const localSettings = ref<ExportSettings>({ ...props.settings })
 
-watch(
-  () => props.settings,
-  (newVal) => {
-    localSettings.value = { ...newVal }
-  },
-  { deep: true },
-)
+const localSettings = useVModel(props, 'settings', emit, {
+  passive: true,
+  deep: true,
+  clone: true,
+})
 
 watch(
   localSettings,
-  (newVal) => {
-    emit('update:settings', newVal)
+  () => {
     validateForm()
   },
   { deep: true },
@@ -317,11 +314,7 @@ onMounted(() => {
                 Internal PDF structure optimization
               </p>
             </div>
-            <Checkbox
-              id="opt-compress"
-              :checked="localSettings.compress"
-              @update:checked="(v: boolean) => (localSettings.compress = v)"
-            />
+            <Checkbox id="opt-compress" v-model="localSettings.compress" />
           </div>
 
           <!-- Ghostscript Compression Quality -->

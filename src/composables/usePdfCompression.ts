@@ -41,7 +41,9 @@ export function usePdfCompression() {
    */
   function createWorker(): Worker {
     // Use Vite's worker import syntax for proper bundling
-    const worker = new Worker(new URL('../workers/compression-worker.ts', import.meta.url))
+    const worker = new Worker(new URL('../workers/compression-worker.ts', import.meta.url), {
+      type: 'module',
+    })
     return worker
   }
 
@@ -131,6 +133,9 @@ export function usePdfCompression() {
           }
 
           case 'error':
+            if (import.meta.env.DEV) {
+              console.error('[Compression] Worker error:', error)
+            }
             compressionError.value = error
             cleanup()
             reject(new Error(error))
@@ -139,6 +144,9 @@ export function usePdfCompression() {
       }
 
       const handleError = (error: ErrorEvent) => {
+        if (import.meta.env.DEV) {
+          console.error('[Compression] Worker exception:', error)
+        }
         compressionError.value = error.message || 'Worker error'
         cleanup()
         reject(new Error(error.message || 'Compression worker failed'))
@@ -153,13 +161,19 @@ export function usePdfCompression() {
         pdfData.byteOffset + pdfData.byteLength,
       )
 
+      const locationBase =
+        window.location.origin === 'null' ? window.location.href : window.location.origin
+      const documentBase = document.baseURI ? new URL('.', document.baseURI).toString() : ''
+      const baseUrl =
+        documentBase || new URL(import.meta.env.BASE_URL, locationBase).toString()
+
       // Send compression request with transferable buffer
       worker.postMessage(
         {
           type: 'compress',
           data: buffer,
           quality,
-          baseUrl: import.meta.env.BASE_URL,
+          baseUrl,
         },
         { transfer: [buffer] },
       )

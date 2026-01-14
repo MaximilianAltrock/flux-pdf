@@ -160,6 +160,7 @@ declare module 'vue' {
     PageGridItem: typeof import('./src/components/page-grid/PageGridItem.vue')['default']
     PageGridOverlay: typeof import('./src/components/page-grid/PageGridOverlay.vue')['default']
     PagePreviewModal: typeof import('./src/components/PagePreviewModal.vue')['default']
+    PasswordPromptDialog: typeof import('./src/components/PasswordPromptDialog.vue')['default']
     PdfThumbnail: typeof import('./src/components/PdfThumbnail.vue')['default']
     Progress: typeof import('./src/components/ui/progress/Progress.vue')['default']
     RadioGroup: typeof import('./src/components/ui/radio-group/RadioGroup.vue')['default']
