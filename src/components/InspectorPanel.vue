@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { FileText, Tag, Lock } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
 
@@ -16,10 +18,23 @@ const props = defineProps<{
   state: FacadeState
   actions: AppActions
 }>()
+
+const inspectorLabelMinSize = 15
+const showTabLabels = ref(true)
+
+function handleInspectorResize(size: number) {
+  showTabLabels.value = size >= inspectorLabelMinSize
+}
 </script>
 
 <template>
-  <ResizablePanel as-child :default-size="20" :min-size="15" :max-size="30">
+  <ResizablePanel
+    as-child
+    :default-size="15"
+    :min-size="10"
+    :max-size="20"
+    @resize="handleInspectorResize"
+  >
     <aside
       class="bg-sidebar border-l border-border flex flex-col overflow-hidden h-full select-none"
     >
@@ -36,40 +51,57 @@ const props = defineProps<{
                 class="h-9 px-2 border-b border-border/40 bg-muted/10 backdrop-blur-sm flex items-center"
               >
                 <TabsList class="bg-transparent h-7 p-0 gap-2 w-full justify-start">
-                  <TabsTrigger
-                    value="structure"
-                    class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
-                  >
-                    <FileText
-                      class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
-                    />
-                    structure
-                    <div
-                      class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
-                    ></div>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="metadata"
-                    class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
-                  >
-                    <Tag class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform" />
-                    metadata
-                    <div
-                      class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
-                    ></div>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="security"
-                    class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
-                  >
-                    <Lock
-                      class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
-                    />
-                    security
-                    <div
-                      class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
-                    ></div>
-                  </TabsTrigger>
+                  <Tooltip :disabled="showTabLabels">
+                    <TooltipTrigger as-child>
+                      <TabsTrigger
+                        value="structure"
+                        class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
+                      >
+                        <FileText
+                          class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
+                        />
+                        <span :class="showTabLabels ? '' : 'sr-only'">Structure</span>
+                        <div
+                          class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
+                        ></div>
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Structure</TooltipContent>
+                  </Tooltip>
+                  <Tooltip :disabled="showTabLabels">
+                    <TooltipTrigger as-child>
+                      <TabsTrigger
+                        value="metadata"
+                        class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
+                      >
+                        <Tag
+                          class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
+                        />
+                        <span :class="showTabLabels ? '' : 'sr-only'">Metadata</span>
+                        <div
+                          class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
+                        ></div>
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Metadata</TooltipContent>
+                  </Tooltip>
+                  <Tooltip :disabled="showTabLabels">
+                    <TooltipTrigger as-child>
+                      <TabsTrigger
+                        value="security"
+                        class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
+                      >
+                        <Lock
+                          class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
+                        />
+                        <span :class="showTabLabels ? '' : 'sr-only'">Security</span>
+                        <div
+                          class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
+                        ></div>
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Security</TooltipContent>
+                  </Tooltip>
                 </TabsList>
               </div>
 

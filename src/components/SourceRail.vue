@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ChevronLeft, ChevronRight, GripVertical, FileUp, X } from 'lucide-vue-next'
+import { GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -9,6 +9,7 @@ import { ResizablePanel } from '@/components/ui/resizable'
 import { formatBytes } from '@/utils/format'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
+
 const props = defineProps<{
   state: FacadeState
   actions: AppActions
@@ -76,15 +77,7 @@ async function handleDrop(e: DragEvent) {
 </script>
 
 <template>
-  <ResizablePanel
-    as-child
-    :default-size="18"
-    :min-size="10"
-    :max-size="30"
-    :collapsed-size="5"
-    collapsible
-    v-slot="{ isCollapsed, collapse, expand }"
-  >
+  <ResizablePanel as-child :default-size="15" :min-size="10" :max-size="20">
     <aside
       class="bg-sidebar border-r flex flex-col relative group/rail h-full min-w-0"
       @dragover="handleDragOver"
@@ -96,15 +89,10 @@ async function handleDrop(e: DragEvent) {
       <div
         class="h-12 flex items-center justify-between px-3 shrink-0 border-b border-border/40 bg-muted/10 backdrop-blur-sm"
       >
-        <div v-if="!isCollapsed" class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
           <h2 class="text-xxs font-bold text-muted-foreground uppercase tracking-[0.15em]">
             Source Registry
           </h2>
-        </div>
-        <div v-if="isCollapsed" class="w-full flex justify-center">
-          <div class="p-1.5 rounded-md bg-muted/20 border border-border/10">
-            <FileUp class="w-3.5 h-3.5 text-muted-foreground" />
-          </div>
         </div>
       </div>
 
@@ -136,14 +124,7 @@ async function handleDrop(e: DragEvent) {
               ></div>
 
               <div class="flex-1 flex flex-col min-w-0 p-2 justify-center">
-                <div v-if="isCollapsed" class="w-full flex justify-center">
-                  <div
-                    class="w-2 h-2 rounded-full border border-primary/20"
-                    :style="{ backgroundColor: props.state.document.getSourceColor(file.id) }"
-                  ></div>
-                </div>
-
-                <div v-else class="flex flex-col gap-1">
+                <div class="flex flex-col gap-1">
                   <div class="flex items-center justify-between gap-2">
                     <span class="text-xs text-foreground font-bold truncate leading-tight flex-1">
                       {{ file.filename }}
@@ -192,7 +173,7 @@ async function handleDrop(e: DragEvent) {
 
           <!-- Empty State -->
           <Empty
-            v-if="files.length === 0 && !isCollapsed"
+            v-if="files.length === 0"
             class="border-2 border-dashed border-border rounded-2xl p-6 text-center mt-2 bg-muted/5 group/empty transition-colors hover:border-primary/30"
           >
             <EmptyHeader>
@@ -214,16 +195,6 @@ async function handleDrop(e: DragEvent) {
           </Empty>
         </div>
       </ScrollArea>
-
-      <Button
-        variant="outline"
-        size="icon"
-        class="absolute right-2 bottom-6 h-7 w-7 rounded-full bg-card border-border shadow-md opacity-0 group-hover/rail:opacity-100 transition-opacity z-10"
-        @click="isCollapsed ? expand() : collapse()"
-      >
-        <ChevronRight v-if="isCollapsed" class="w-3.5 h-3.5" />
-        <ChevronLeft v-else class="w-3.5 h-3.5" />
-      </Button>
       <!-- Drop Zone Overlay -->
       <div
         v-if="isDragOver"
