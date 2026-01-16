@@ -13,6 +13,7 @@ export interface DocumentImportAdapter {
   getPdfDocument(sourceFileId: string): Promise<PDFDocumentProxy>
   getPdfBlob(sourceFileId: string): Promise<ArrayBuffer | undefined>
   clearPdfCache(): void
+  evictPdfCache(sourceFileIds: string[]): void
 }
 
 export interface DocumentSessionAdapter {
@@ -23,6 +24,8 @@ export interface DocumentSessionAdapter {
 export interface DocumentStorageAdapter {
   loadStoredFilesByIds(ids: string[]): Promise<StoredFile[]>
   loadAllStoredFiles(): Promise<StoredFile[]>
+  listStoredFileIds(): Promise<string[]>
+  deleteStoredFilesByIds(ids: string[]): Promise<number>
   clearFiles(): Promise<void>
   clearSession(): Promise<void>
 }

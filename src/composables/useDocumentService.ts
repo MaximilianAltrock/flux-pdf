@@ -25,6 +25,7 @@ import {
   type ExportResult,
   type GeneratorOptions,
 } from '@/domain/document/export'
+import { collectReachableSourceIds } from '@/domain/document/storage-gc'
 import {
   getExportErrorMessage,
   getImportErrorMessage,
@@ -173,6 +174,49 @@ export function useDocumentService(
       },
       { deep: true },
     )
+
+    const scheduleGarbageCollection = useDebounceFn(() => {
+      void garbageCollectStoredSources()
+    }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
+
+    watch(
+      [historyList, () => store.pages, () => store.sourceFileList],
+      () => {
+        scheduleGarbageCollection()
+      },
+      { deep: true },
+    )
+  }
+
+  const gcInFlight = ref(false)
+
+  async function garbageCollectStoredSources(): Promise<void> {
+    if (gcInFlight.value) return
+    gcInFlight.value = true
+
+    try {
+      if (importJob.value.status === 'running' || restoreJob.value.status === 'running') {
+        return
+      }
+
+      const keepIds = collectReachableSourceIds({
+        sources: store.sourceFileList,
+        pages: store.pages,
+        history: serializeHistory(),
+      })
+
+      const storedIds = await activeAdapters.storage.listStoredFileIds()
+      const orphanIds = storedIds.filter((id) => !keepIds.has(id))
+
+      if (orphanIds.length === 0) return
+
+      await activeAdapters.storage.deleteStoredFilesByIds(orphanIds)
+      activeAdapters.import.evictPdfCache(orphanIds)
+    } catch (error) {
+      console.warn('Failed to garbage collect stored sources:', error)
+    } finally {
+      gcInFlight.value = false
+    }
   }
 
   async function importFiles(files: FileList | File[]): Promise<Result<ImportSummary>> {

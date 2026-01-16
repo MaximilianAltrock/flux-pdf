@@ -1,6 +1,6 @@
 import { db } from '@/db/db'
 import { usePdfCompression } from '@/composables/usePdfCompression'
-import { loadPdfFiles, getPdfDocument, getPdfBlob, clearPdfCache } from '../import'
+import { loadPdfFiles, getPdfDocument, getPdfBlob, clearPdfCache, evictPdfCache } from '../import'
 import { loadSession, persistSession } from '../session'
 import type {
   DocumentAdapters,
@@ -16,6 +16,7 @@ const defaultImportAdapter: DocumentImportAdapter = {
   getPdfDocument,
   getPdfBlob,
   clearPdfCache,
+  evictPdfCache,
 }
 
 const defaultSessionAdapter: DocumentSessionAdapter = {
@@ -26,6 +27,14 @@ const defaultSessionAdapter: DocumentSessionAdapter = {
 const defaultStorageAdapter: DocumentStorageAdapter = {
   loadStoredFilesByIds: (ids) => db.files.where('id').anyOf(ids).toArray(),
   loadAllStoredFiles: () => db.files.toArray(),
+  listStoredFileIds: async () => {
+    const keys = await db.files.toCollection().primaryKeys()
+    return keys.map((key) => String(key))
+  },
+  deleteStoredFilesByIds: (ids) => {
+    if (ids.length === 0) return Promise.resolve(0)
+    return db.files.where('id').anyOf(ids).delete()
+  },
   clearFiles: () => db.files.clear(),
   clearSession: () => db.session.clear(),
 }

@@ -35,9 +35,11 @@ class ThumbnailCache {
 
   set(pageRef: PageReference, width: number, scaleFactor: number, url: string): void {
     const key = this.getKey(pageRef, width, scaleFactor)
+    const existing = this.cache.get(key)
 
-    // Evict if at capacity
-    if (this.cache.size >= this.maxSize) {
+    if (existing) {
+      URL.revokeObjectURL(existing.url)
+    } else if (this.cache.size >= this.maxSize) {
       this.evictLRU()
     }
 

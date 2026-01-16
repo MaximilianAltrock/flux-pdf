@@ -203,6 +203,12 @@ export function clearPdfCache(): void {
   pdfDocCache.clear()
 }
 
+export function evictPdfCache(sourceFileIds: string[]): void {
+  for (const sourceFileId of sourceFileIds) {
+    pdfDocCache.delete(sourceFileId)
+  }
+}
+
 type PdfJsOutlineItem = {
   title?: string
   dest?: unknown
