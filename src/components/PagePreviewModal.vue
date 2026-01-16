@@ -163,8 +163,7 @@ onBackButton(
   <Dialog :open="open" @update:open="(val) => emit('update:open', val)">
     <DialogContent
       :show-close-button="false"
-      class="max-w-none w-screen h-screen p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none"
-      :class="isMobile ? 'bg-black' : 'bg-background/98'"
+      class="max-w-none w-screen h-screen p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none bg-background"
     >
       <DialogHeader class="sr-only">
         <DialogTitle>Page Preview - Page {{ pageNumber }}</DialogTitle>
@@ -172,25 +171,19 @@ onBackButton(
 
       <!-- Header / Controls -->
       <header
-        class="flex items-center justify-between px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased"
-        :class="[
-          isMobile
-            ? 'absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent text-white'
-            : 'glass-surface border-b border-border/40',
-          isSwiping ? 'opacity-0' : 'opacity-100',
-        ]"
+        class="flex items-center justify-between px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased bg-card border-b border-border"
+        :class="[isSwiping ? 'opacity-0' : 'opacity-100']"
       >
         <!-- Left Section: Meta / Page Counter -->
         <div class="flex items-center gap-6 min-w-[200px]">
           <div class="flex flex-col">
             <span
-              class="text-xxs font-bold tracking-[0.2em] uppercase text-muted-foreground/60 leading-none mb-1"
+              class="ui-kicker opacity-70 leading-none mb-1"
             >
               Document Preview
             </span>
             <span
-              class="text-sm font-medium font-mono"
-              :class="isMobile ? 'text-white' : 'text-foreground'"
+              class="ui-mono text-sm font-medium text-foreground"
             >
               PAGE {{ pageNumber.toString().padStart(2, '0') }}
               <span class="opacity-40">/ {{ totalPages.toString().padStart(2, '0') }}</span>
@@ -201,12 +194,12 @@ onBackButton(
         <!-- Center Section: Zoom Controls (Desktop Only) -->
         <div
           v-if="!isMobile"
-          class="flex items-center bg-muted/40 rounded-lg p-0.5 border border-border/40"
+          class="ui-panel-muted rounded-sm p-0.5 flex items-center"
         >
           <Button
             variant="ghost"
             size="icon"
-            class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/60"
+            class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/40"
             title="Zoom Out"
             @click="zoomOut"
           >
@@ -216,7 +209,7 @@ onBackButton(
           <Button
             variant="ghost"
             size="sm"
-            class="h-8 px-3 text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200"
+            class="h-8 px-3 ui-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
             @click="resetZoom"
           >
             {{ Math.round(zoom * 100) }}%
@@ -225,7 +218,7 @@ onBackButton(
           <Button
             variant="ghost"
             size="icon"
-            class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/60"
+            class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/40"
             title="Zoom In"
             @click="zoomIn"
           >
@@ -240,12 +233,7 @@ onBackButton(
             <Button
               variant="ghost"
               size="icon"
-              class="h-10 w-10 transition-all duration-200 hover:rotate-90"
-              :class="
-                isMobile
-                  ? 'text-white/80 active:bg-white/10'
-                  : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
-              "
+              class="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-transform duration-200 hover:rotate-90"
             >
               <X class="w-5 h-5" />
             </Button>
@@ -260,7 +248,7 @@ onBackButton(
       >
         <!-- Skeleton for Loading -->
         <div v-if="isLoading" class="w-full h-full flex items-center justify-center">
-          <Skeleton class="w-[300px] h-[400px] rounded-lg shadow-2xl" />
+          <Skeleton class="w-[300px] h-[400px] rounded-lg shadow-lg" />
         </div>
 
         <!-- Image -->
@@ -268,7 +256,7 @@ onBackButton(
           v-else-if="previewUrl"
           ref="imageRef"
           :src="previewUrl"
-          class="max-w-full max-h-full object-contain transition-transform duration-200 shadow-2xl bg-white select-none"
+          class="max-w-full max-h-full object-contain transition-transform duration-200 shadow-lg bg-card select-none"
           :style="{ transform: `scale(${zoom})` }"
         />
 
@@ -277,9 +265,9 @@ onBackButton(
           v-if="isMobile && !isLoading && zoom === 1"
           class="absolute inset-0 flex justify-between pointer-events-none px-2 items-center opacity-30"
         >
-          <ChevronLeft v-if="hasPrevious" class="w-8 h-8 text-white drop-shadow-md" />
+          <ChevronLeft v-if="hasPrevious" class="w-8 h-8 text-muted-foreground/60" />
           <div v-else class="w-8"></div>
-          <ChevronRight v-if="hasNext" class="w-8 h-8 text-white drop-shadow-md" />
+          <ChevronRight v-if="hasNext" class="w-8 h-8 text-muted-foreground/60" />
         </div>
       </div>
 
@@ -292,7 +280,7 @@ onBackButton(
           v-if="hasPrevious"
           variant="outline"
           size="icon"
-          class="pointer-events-auto h-14 w-14 rounded-full glass-surface shadow-2xl transition-all duration-300 hover:scale-110 hover:bg-background active:scale-95 border-border/40 group"
+          class="pointer-events-auto h-11 w-11 rounded-md shadow-sm transition-colors group"
           @click="goToPrevious"
         >
           <ChevronLeft
@@ -305,7 +293,7 @@ onBackButton(
           v-if="hasNext"
           variant="outline"
           size="icon"
-          class="pointer-events-auto h-14 w-14 rounded-full glass-surface shadow-2xl transition-all duration-300 hover:scale-110 hover:bg-background active:scale-95 border-border/40 group"
+          class="pointer-events-auto h-11 w-11 rounded-md shadow-sm transition-colors group"
           @click="goToNext"
         >
           <ChevronRight

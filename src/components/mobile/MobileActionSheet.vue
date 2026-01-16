@@ -65,46 +65,46 @@ function handleAction(
         <div class="grid grid-cols-4 gap-2 px-4 py-4">
           <Button
             variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-xl hover:bg-muted/20 active:bg-muted/30 transition-colors"
+            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
             @click="handleAction('rotateLeft')"
           >
-            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
               <RotateCcw class="w-5 h-5 text-primary" />
             </div>
-            <span class="text-xs">Left</span>
+            <span class="text-xs font-medium">Left</span>
           </Button>
 
           <Button
             variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-xl hover:bg-muted/20 active:bg-muted/30 transition-colors"
+            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
             @click="handleAction('rotateRight')"
           >
-            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
               <RotateCw class="w-5 h-5 text-primary" />
             </div>
-            <span class="text-xs">Right</span>
+            <span class="text-xs font-medium">Right</span>
           </Button>
 
           <Button
             variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-xl hover:bg-muted/20 active:bg-muted/30 transition-colors"
+            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
             @click="handleAction('duplicate')"
           >
-            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
               <Copy class="w-5 h-5 text-primary" />
             </div>
-            <span class="text-xs">Copy</span>
+            <span class="text-xs font-medium">Copy</span>
           </Button>
 
           <Button
             variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-xl hover:bg-muted/20 active:bg-muted/30 transition-colors"
+            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
             @click="handleAction('exportSelected')"
           >
-            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
               <Download class="w-5 h-5 text-primary" />
             </div>
-            <span class="text-xs">Export</span>
+            <span class="text-xs font-medium">Export</span>
           </Button>
         </div>
 
@@ -112,7 +112,7 @@ function handleAction(
         <div class="px-4 pb-4">
           <Button
             variant="destructive"
-            class="w-full h-14 flex items-center justify-center gap-2 py-3.5 bg-destructive/10 text-destructive rounded-xl font-medium active:bg-destructive/20 transition-colors shadow-none"
+            class="w-full h-12 flex items-center justify-center gap-2 py-3 text-sm font-semibold shadow-none"
             @click="handleAction('delete')"
           >
             <Trash2 class="w-5 h-5" />

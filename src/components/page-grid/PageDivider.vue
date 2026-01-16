@@ -17,38 +17,34 @@ const label = computed(
   <div
     :class="[
       isMobile
-        ? 'col-span-full py-5 flex items-center justify-center relative select-none'
-        : 'h-full py-10 flex items-center justify-center relative select-none group/divider transition-all duration-300',
+        ? 'col-span-full py-4 flex items-center justify-center relative select-none'
+        : 'h-full py-8 flex items-center justify-center relative select-none group/divider',
     ]"
   >
     <div
       :class="[
         isMobile
-          ? 'absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent'
-          : 'absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent group-hover/divider:via-primary transition-all duration-500',
+          ? 'absolute inset-x-0 h-px bg-border/60'
+          : 'absolute inset-x-0 h-px bg-border/70 group-hover/divider:bg-primary/40 transition-colors',
       ]"
-    ></div>
-    <div
-      v-if="!isMobile"
-      class="absolute inset-x-1/4 h-[2px] bg-primary/5 blur-sm group-hover/divider:bg-primary/20 group-hover/divider:inset-x-0 group-hover/divider:blur-md transition-all duration-700"
     ></div>
 
     <div
       :class="[
-        'relative glass-surface bg-background/90 rounded-full border-border/80 shadow-md flex items-center',
+        'relative bg-background/80 border border-border shadow-xs flex items-center',
         isMobile
-          ? 'px-4 py-1.5 gap-2.5'
-          : 'backdrop-blur-md px-5 py-2 gap-3 transition-all duration-300 group-hover/divider:border-primary/50 group-hover/divider:shadow-lg group-hover/divider:scale-[1.02] -translate-y-0.5',
+          ? 'px-4 py-1.5 gap-2.5 opacity-90'
+          : 'px-4 py-1.5 gap-2 opacity-70 transition-opacity group-hover/divider:opacity-100',
       ]"
     >
-      <div v-if="!isMobile" class="p-1.5 bg-primary/10 rounded-full">
-        <Scissors class="w-3.5 h-3.5 text-primary animate-pulse" />
+      <div v-if="!isMobile" class="p-1 bg-primary/10 rounded-sm">
+        <Scissors class="w-3.5 h-3.5 text-primary" />
       </div>
-      <Scissors v-else class="w-3 h-3 text-primary animate-pulse" />
+      <Scissors v-else class="w-3 h-3 text-primary" />
       <span
         :class="[
-          'font-mono font-bold text-muted-foreground uppercase',
-          isMobile ? 'text-[0.65rem] tracking-[0.15em]' : 'text-xxs tracking-[0.25em]',
+          'ui-kicker ui-mono text-muted-foreground',
+          isMobile ? 'tracking-[0.15em]' : 'tracking-[0.2em]',
         ]"
       >
         {{ label }}

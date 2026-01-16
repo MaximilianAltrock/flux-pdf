@@ -33,8 +33,8 @@ const styles = computed(() => {
       icon: 'text-destructive',
     },
     warning: {
-      iconBg: 'bg-amber-100',
-      icon: 'text-amber-600',
+      iconBg: 'bg-primary/10',
+      icon: 'text-primary',
     },
     info: {
       iconBg: 'bg-primary/10',
@@ -74,7 +74,6 @@ const styles = computed(() => {
           :class="
             cn(
               state.variant === 'danger' && buttonVariants({ variant: 'destructive' }),
-              state.variant === 'warning' && 'bg-amber-600 hover:bg-amber-700 text-white',
             )
           "
           @click="handleConfirm"

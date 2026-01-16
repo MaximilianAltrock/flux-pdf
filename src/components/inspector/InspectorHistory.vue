@@ -39,21 +39,21 @@ watch(
 
 <template>
   <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-    <div class="h-9 px-4 border-b border-border/40 flex items-center justify-between bg-sidebar/50">
-      <h2
-        class="text-xxs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2"
-      >
+    <div
+      class="h-9 px-4 border-b border-sidebar-border flex items-center justify-between bg-sidebar"
+    >
+      <h2 class="ui-kicker flex items-center gap-2">
         Session History
         <span class="w-1 h-1 rounded-full bg-primary/40"></span>
       </h2>
       <Badge
         variant="outline"
-        class="text-xxs h-4 font-mono opacity-50 p-0 px-1.5 border-none shadow-none text-muted-foreground"
+        class="ui-mono text-[10px] h-4 opacity-60 px-1.5"
         >{{ historyList.length }} steps</Badge
       >
     </div>
 
-    <ScrollArea ref="historyScrollArea" class="flex-1 min-h-0 bg-background/5">
+    <ScrollArea ref="historyScrollArea" class="flex-1 min-h-0 bg-sidebar">
       <div class="py-6 px-4">
         <Timeline v-if="historyList.length > 0" size="sm" variant="history" class="w-full">
           <TimelineItem
@@ -67,13 +67,13 @@ watch(
           >
             <template #title>
               <TimelineTitle
-                class="text-xs font-bold truncate transition-colors leading-tight"
+                class="ui-label truncate transition-colors leading-tight"
                 :class="[
                   entry.isCurrent
                     ? 'text-primary'
                     : 'text-foreground/80 group-hover:text-foreground',
                   entry.isUndone
-                    ? 'text-muted-foreground/60 italic line-through decoration-muted-foreground/20 font-medium'
+                    ? 'text-muted-foreground/60 italic line-through decoration-muted-foreground/20'
                     : '',
                 ]"
               >
@@ -82,9 +82,7 @@ watch(
             </template>
             <template #description>
               <div class="flex items-center gap-2 mt-0.5">
-                <TimelineTime
-                  class="text-xxs text-muted-foreground font-mono tracking-tighter uppercase"
-                >
+                <TimelineTime class="ui-caption ui-mono uppercase tracking-[0.2em]">
                   {{ formatTime(entry.timestamp, true) }}
                 </TimelineTime>
               </div>
@@ -94,12 +92,12 @@ watch(
 
         <div
           v-else
-          class="h-full flex flex-col items-center justify-center p-8 opacity-20 text-center grayscale"
+          class="h-full flex flex-col items-center justify-center p-8 text-center"
         >
-          <div class="bg-muted rounded-full p-3 mb-2 border border-border">
+          <div class="ui-panel-muted rounded-md p-3 mb-2">
             <History class="w-5 h-5" />
           </div>
-          <p class="text-xxs font-bold uppercase tracking-widest">No Activity</p>
+          <p class="ui-kicker opacity-70">No Activity</p>
         </div>
       </div>
     </ScrollArea>

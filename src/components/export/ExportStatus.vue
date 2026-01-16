@@ -30,42 +30,40 @@ const emit = defineEmits<{
     <!-- Export complete state -->
     <div
       v-if="complete"
-      class="text-center py-8 bg-card/30 rounded-2xl border border-border/40 shadow-sm backdrop-blur-sm"
+      class="text-center py-8 bg-card rounded-md border border-border shadow-sm"
     >
       <div class="relative inline-block mb-4">
-        <div class="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full"></div>
-        <CheckCircle class="w-16 h-16 text-emerald-500 relative z-10" />
+        <div class="absolute inset-0 bg-primary/10 rounded-full"></div>
+        <CheckCircle class="w-16 h-16 text-primary relative z-10" />
       </div>
       <h3 class="text-lg font-bold tracking-tight text-foreground mb-1">Export Successful</h3>
-      <p class="text-xs text-muted-foreground max-w-[240px] mx-auto mb-4">
+      <p class="ui-caption max-w-[240px] mx-auto mb-4">
         Your professional document has been generated and downloaded.
       </p>
 
       <div
         v-if="stats"
-        class="flex flex-col gap-1 p-3 bg-background/80 rounded-xl border border-border/20 text-left w-full max-w-[320px] mx-auto"
+        class="ui-panel flex flex-col gap-1 p-3 rounded-md text-left w-full max-w-[320px] mx-auto"
       >
         <div
-          class="flex justify-between items-center text-xxs font-bold uppercase tracking-wider text-muted-foreground/60 gap-4"
+          class="flex justify-between items-center ui-kicker text-muted-foreground/70 gap-4"
         >
           <span class="shrink-0">Output Label</span>
-          <span class="font-mono text-emerald-500 shrink-0">{{ stats.durationMs }}ms</span>
+          <span class="ui-mono text-primary shrink-0">{{ stats.durationMs }}ms</span>
         </div>
         <div
-          class="text-xs font-mono font-medium truncate text-foreground mb-1 min-w-0"
+          class="ui-mono text-xs font-medium truncate text-foreground mb-1 min-w-0"
           :title="stats.filename"
         >
           {{ stats.filename }}
         </div>
-        <div class="flex justify-between items-center pt-1.5 border-t border-border/20">
-          <span class="text-xxs font-bold uppercase tracking-wider text-muted-foreground/60"
-            >File Size</span
-          >
+        <div class="flex justify-between items-center pt-1.5 border-t border-border/30">
+          <span class="ui-kicker text-muted-foreground/70">File Size</span>
           <div class="flex flex-col items-end">
-            <span class="text-xs font-mono font-bold text-foreground">{{
+            <span class="ui-mono text-xs font-semibold text-foreground">{{
               formatBytes(stats.sizeKB * 1024)
             }}</span>
-            <span v-if="stats.compressionRatio" class="text-xxs font-mono text-emerald-500">
+            <span v-if="stats.compressionRatio" class="ui-mono text-xs text-primary">
               -{{ Math.round(stats.compressionRatio * 100) }}% ({{
                 formatBytes(stats.originalSizeKB! * 1024)
               }})
@@ -84,7 +82,7 @@ const emit = defineEmits<{
           {{ error }}
         </AlertDescription>
         <div class="mt-3">
-          <Button variant="ghost" class="bg-muted/10 hover:bg-muted/20" @click="emit('retry')">
+          <Button variant="secondary" @click="emit('retry')">
             Try Again
           </Button>
         </div>
@@ -98,23 +96,18 @@ const emit = defineEmits<{
         <div
           class="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"
         ></div>
-        <div
-          class="absolute inset-0 flex items-center justify-center font-mono font-bold text-base text-primary"
-        >
+        <div class="absolute inset-0 flex items-center justify-center ui-mono text-base text-primary">
           {{ progress }}%
         </div>
       </div>
       <div class="text-center space-y-1">
         <span class="text-base font-bold tracking-tight text-foreground block">Generating PDF</span>
-        <span
-          class="text-xs text-muted-foreground font-mono uppercase tracking-[0.2em] animate-pulse"
-          >Processing Assets...</span
-        >
+        <span class="ui-kicker ui-mono opacity-70">Processing Assets...</span>
       </div>
 
       <div class="w-full max-w-xs mt-8 bg-muted/20 rounded-full h-1 overflow-hidden">
         <div
-          class="h-full bg-primary transition-all duration-300 shadow-[0_0_8px_var(--primary)]"
+          class="h-full bg-primary transition-all duration-300"
           :style="{ width: `${progress}%` }"
         ></div>
       </div>

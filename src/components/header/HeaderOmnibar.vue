@@ -27,8 +27,8 @@ defineEmits<{
       <button
         @click="$emit('command')"
         :disabled="state.isLoading.value"
-        class="w-full h-[32px] bg-muted/30 hover:bg-muted/50 border border-border/50 hover:border-primary/30 rounded-md flex items-center px-3 gap-2 transition-all group cursor-text disabled:cursor-wait disabled:opacity-90"
-        :class="{ 'ring-1 ring-primary/20 border-primary/30': state.isLoading.value }"
+        class="w-full h-8 bg-card border border-border rounded-sm flex items-center px-3 gap-2 transition-colors group cursor-text hover:bg-muted/20 disabled:cursor-wait disabled:opacity-70"
+        :class="{ 'ring-1 ring-primary/20 border-primary/40': state.isLoading.value }"
       >
         <div class="flex items-center justify-center w-4 h-4 shrink-0">
           <Spinner v-if="state.isLoading.value" class="w-3.5 h-3.5 text-primary" />
@@ -58,9 +58,9 @@ defineEmits<{
           class="ml-auto shrink-0 flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity"
         >
           <Kbd
-            class="hidden sm:inline-flex rounded-[2px] bg-background/50 border border-border/50 font-mono text-tiny px-1.5 py-0.5 text-foreground whitespace-nowrap shadow-none"
+            class="hidden sm:inline-flex ui-mono text-[10px]"
           >
-            ⌘K
+            Cmd+K
           </Kbd>
         </div>
       </button>

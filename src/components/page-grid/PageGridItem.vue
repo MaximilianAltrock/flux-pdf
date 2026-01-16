@@ -96,7 +96,7 @@ function handleRotate() {
     <ContextMenuContent>
       <!-- Header/Label -->
       <ContextMenuLabel
-        class="text-xs text-text-muted font-medium border-b border-border px-3 py-2"
+        class="text-xs text-muted-foreground font-medium border-b border-border px-3 py-2"
       >
         {{
           state.document.selectedCount > 1
@@ -106,26 +106,26 @@ function handleRotate() {
       </ContextMenuLabel>
 
       <ContextMenuItem @select="handlePreview">
-        <Eye class="w-4 h-4 mr-2 text-text-muted" />
+        <Eye class="w-4 h-4 mr-2 text-muted-foreground" />
         <span>Preview</span>
         <ContextMenuShortcut>Space</ContextMenuShortcut>
       </ContextMenuItem>
 
       <ContextMenuItem @select="emit('contextAction', UserAction.DUPLICATE, page)">
-        <Copy class="w-4 h-4 mr-2 text-text-muted" />
+        <Copy class="w-4 h-4 mr-2 text-muted-foreground" />
         <span>Duplicate</span>
       </ContextMenuItem>
 
       <ContextMenuSeparator />
 
       <ContextMenuItem @select="emit('contextAction', UserAction.ROTATE_LEFT, page)">
-        <RotateCcw class="w-4 h-4 mr-2 text-text-muted" />
+        <RotateCcw class="w-4 h-4 mr-2 text-muted-foreground" />
         <span>Rotate Left</span>
-        <ContextMenuShortcut>⇧R</ContextMenuShortcut>
+        <ContextMenuShortcut>Shift+R</ContextMenuShortcut>
       </ContextMenuItem>
 
       <ContextMenuItem @select="emit('contextAction', UserAction.ROTATE_RIGHT, page)">
-        <RotateCw class="w-4 h-4 mr-2 text-text-muted" />
+        <RotateCw class="w-4 h-4 mr-2 text-muted-foreground" />
         <span>Rotate Right</span>
         <ContextMenuShortcut>R</ContextMenuShortcut>
       </ContextMenuItem>
@@ -134,27 +134,27 @@ function handleRotate() {
 
       <template v-if="state.document.selectedCount > 0">
         <ContextMenuItem @select="emit('contextAction', UserAction.SELECT_ALL, page)">
-          <CheckSquare class="w-4 h-4 mr-2 text-text-muted" />
+          <CheckSquare class="w-4 h-4 mr-2 text-muted-foreground" />
           <span>Select All</span>
-          <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+          <ContextMenuShortcut>Cmd+A</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuItem @select="emit('contextAction', UserAction.EXPORT_SELECTED, page)">
-          <Download class="w-4 h-4 mr-2 text-text-muted" />
+          <Download class="w-4 h-4 mr-2 text-muted-foreground" />
           <span>Export Selected</span>
-          <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+          <ContextMenuShortcut>Cmd+A</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuSeparator />
       </template>
 
       <ContextMenuItem
-        class="text-danger focus:text-danger focus:bg-danger/10"
+        class="text-destructive focus:text-destructive focus:bg-destructive/10"
         @select="handleDelete"
       >
         <Trash2 class="w-4 h-4 mr-2" />
         <span>Delete</span>
-        <ContextMenuShortcut class="text-danger/50">Del</ContextMenuShortcut>
+        <ContextMenuShortcut class="text-destructive/50">Del</ContextMenuShortcut>
       </ContextMenuItem>
     </ContextMenuContent>
   </ContextMenu>

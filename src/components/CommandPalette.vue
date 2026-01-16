@@ -106,7 +106,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'undo',
     label: 'Undo',
-    shortcut: '⌘Z',
+    shortcut: 'Cmd+Z',
     icon: Undo2,
     action: () => {
       props.actions.undo()
@@ -118,7 +118,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'redo',
     label: 'Redo',
-    shortcut: '⇧⌘Z',
+    shortcut: 'Shift+Cmd+Z',
     icon: Redo2,
     action: () => {
       props.actions.redo()
@@ -132,7 +132,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'select-all',
     label: 'Select all pages',
-    shortcut: '⌘A',
+    shortcut: 'Cmd+A',
     icon: CheckSquare,
     action: () => {
       props.actions.selectAllPages()
@@ -176,7 +176,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'rotate-left',
     label: 'Rotate selected left',
-    shortcut: '⇧R',
+    shortcut: 'Shift+R',
     icon: RotateCcw,
     action: () => emit('action', UserAction.ROTATE_LEFT),
     enabled: () => props.state.document.selectedCount > 0,
@@ -194,7 +194,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'duplicate',
     label: 'Duplicate selected pages',
-    shortcut: '⌘D',
+    shortcut: 'Cmd+D',
     icon: Copy,
     action: () => emit('action', UserAction.DUPLICATE),
     enabled: () => props.state.document.selectedCount > 0,

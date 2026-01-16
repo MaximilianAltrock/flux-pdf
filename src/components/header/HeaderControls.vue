@@ -33,13 +33,9 @@ const canExport = computed(() => props.state.document.pageCount > 0)
 <template>
   <div class="flex items-center justify-end gap-2 w-[300px]">
     <!-- Tool Switcher -->
-    <div class="bg-muted/30 p-0.5 rounded-md border border-border/40 flex items-center">
-      <ToggleGroup type="single" v-model="currentTool" class="h-7 gap-0">
-        <ToggleGroupItem
-          value="select"
-          aria-label="Select tool"
-          class="px-2 h-6 w-9 rounded-[3px] data-[state=on]:bg-background data-[state=on]:shadow-xs transition-all"
-        >
+    <div class="ui-panel-muted p-0.5 rounded-sm flex items-center">
+      <ToggleGroup type="single" v-model="currentTool" variant="outline" size="sm" :spacing="0">
+        <ToggleGroupItem value="select" aria-label="Select tool" class="w-9">
           <Tooltip>
             <TooltipTrigger as-child>
               <span class="flex items-center justify-center">
@@ -47,18 +43,14 @@ const canExport = computed(() => props.state.document.pageCount > 0)
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" :side-offset="8">
-              <p class="text-xs">
+              <p class="ui-caption">
                 Select Tool
-                <span class="text-muted-foreground ml-1 text-xxs font-mono">(V)</span>
+                <span class="ui-mono ml-1">(V)</span>
               </p>
             </TooltipContent>
           </Tooltip>
         </ToggleGroupItem>
-        <ToggleGroupItem
-          value="razor"
-          aria-label="Razor tool"
-          class="px-2 h-6 w-9 rounded-[3px] data-[state=on]:bg-background data-[state=on]:shadow-xs transition-all"
-        >
+        <ToggleGroupItem value="razor" aria-label="Razor tool" class="w-9">
           <Tooltip>
             <TooltipTrigger as-child>
               <span class="flex items-center justify-center">
@@ -66,9 +58,7 @@ const canExport = computed(() => props.state.document.pageCount > 0)
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" :side-offset="8">
-              <p class="text-xs">
-                Razor Tool <span class="text-muted-foreground ml-1 text-xxs font-mono">(R)</span>
-              </p>
+              <p class="ui-caption">Razor Tool <span class="ui-mono ml-1">(R)</span></p>
             </TooltipContent>
           </Tooltip>
         </ToggleGroupItem>
@@ -78,26 +68,16 @@ const canExport = computed(() => props.state.document.pageCount > 0)
     <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
 
     <!-- Zoom Area -->
-    <div class="flex items-center gap-0.5 bg-muted/20 rounded-md border border-border/30 h-8 px-1">
-      <Button
-        variant="ghost"
-        size="icon"
-        class="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-[3px]"
-        @click="$emit('zoom-out')"
-      >
+    <div class="ui-panel-muted h-8 px-1 rounded-sm flex items-center gap-0.5">
+      <Button variant="ghost" size="icon-sm" class="rounded-sm" @click="$emit('zoom-out')">
         <Minus class="w-3 h-3" />
       </Button>
 
-      <span class="text-xxs font-bold w-9 text-center text-muted-foreground select-none font-mono">
+      <span class="ui-caption ui-mono w-10 text-center select-none">
         {{ Math.round(state.zoomPercentage.value) }}%
       </span>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        class="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-[3px]"
-        @click="$emit('zoom-in')"
-      >
+      <Button variant="ghost" size="icon-sm" class="rounded-sm" @click="$emit('zoom-in')">
         <Plus class="w-3 h-3" />
       </Button>
     </div>
@@ -115,10 +95,10 @@ const canExport = computed(() => props.state.document.pageCount > 0)
       @click="$emit('export')"
       :disabled="!canExport"
       size="sm"
-      class="h-8 font-bold px-4 gap-2 shadow-sm rounded-md bg-primary hover:scale-[1.02] active:scale-[0.98] transition-transform"
+      class="h-8 px-4 gap-2 shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
     >
       <Download class="w-3.5 h-3.5" />
-      <span class="text-xs">Export</span>
+      <span class="text-xs font-semibold">Export</span>
     </Button>
   </div>
 </template>

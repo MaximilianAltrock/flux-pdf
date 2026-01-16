@@ -82,11 +82,9 @@ function onCommandAction(action: UserAction) {
                   Or drag files from your desktop or sources panel
                 </p>
                 <div
-                  class="flex flex-wrap justify-center gap-2 text-xxs uppercase tracking-wider opacity-70"
+                  class="flex flex-wrap justify-center gap-2 ui-kicker opacity-70"
                 >
-                  <span class="px-2 py-1 bg-muted rounded border border-border"
-                    >CMD+K for commands</span
-                  >
+                  <span class="px-2 py-1 ui-panel-muted ui-mono">CMD+K for commands</span>
                 </div>
               </div>
             </div>
@@ -107,11 +105,11 @@ function onCommandAction(action: UserAction) {
           <Transition name="fade">
             <div
               v-if="isLoading"
-              class="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm"
+              class="absolute inset-0 bg-background/90 flex items-center justify-center z-50"
             >
               <div class="flex flex-col items-center gap-3">
                 <Spinner class="w-10 h-10 text-primary" />
-                <span class="text-muted-foreground font-medium">{{ loadingMessage }}</span>
+                <span class="ui-caption">{{ loadingMessage }}</span>
               </div>
             </div>
           </Transition>

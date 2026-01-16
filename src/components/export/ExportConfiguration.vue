@@ -144,29 +144,27 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- File info summary -->
-    <div class="flex items-center gap-4 p-4 bg-card border border-border/40 rounded-xl shadow-sm">
+    <div class="ui-panel rounded-md p-4 flex items-center gap-4">
       <div
-        class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0"
+        class="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0"
       >
         <FileText class="w-5 h-5 text-primary" />
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-0.5">
-          <span class="text-xxs font-bold uppercase tracking-widest text-muted-foreground"
-            >Export Target</span
-          >
+          <span class="ui-kicker">Export Target</span>
           <span
-            class="text-xxs font-mono font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded"
+            class="ui-mono text-[10px] font-semibold text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/30 rounded-sm"
             >{{ pageCount }} PAGES</span
           >
         </div>
         <p class="text-sm font-semibold text-foreground truncate">
           {{ pageRangeDescription }}
         </p>
-        <p class="text-xxs font-mono text-muted-foreground">
+        <p class="ui-caption ui-mono">
           Est. size:
           <span class="text-foreground/80">{{ formatBytes(getEstimatedSize(pagesToExport)) }}</span>
-          <span class="ml-1 text-xxs opacity-50">({{ getEstimatedSize(pagesToExport) }} B)</span>
+          <span class="ml-1 text-xs opacity-50">({{ getEstimatedSize(pagesToExport) }} B)</span>
         </p>
       </div>
     </div>
@@ -174,24 +172,21 @@ onMounted(() => {
     <!-- Filename -->
     <div class="space-y-2">
       <div class="flex items-center justify-between px-1">
-        <Label
-          for="filename"
-          class="text-xxs font-bold uppercase tracking-widest text-muted-foreground"
-        >
+        <Label for="filename" class="ui-kicker">
           Output Filename
         </Label>
       </div>
-      <InputGroup class="bg-card/50">
+      <InputGroup class="rounded-sm">
         <InputGroupInput
           id="filename"
           ref="filenameInputRef"
           v-model="localSettings.filename"
           type="text"
           placeholder="untitled-project"
-          class="h-10 font-mono text-sm border-border/40 focus-visible:ring-primary/20"
+          class="ui-mono text-sm"
         />
-        <InputGroupAddon align="inline-end" class="border-border/40">
-          <InputGroupText class="font-mono text-xs opacity-60">.pdf</InputGroupText>
+        <InputGroupAddon align="inline-end">
+          <InputGroupText class="ui-mono text-[10px] opacity-60">.pdf</InputGroupText>
         </InputGroupAddon>
       </InputGroup>
     </div>
@@ -199,9 +194,7 @@ onMounted(() => {
     <!-- Page Range -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-1">
-        <Label class="text-xxs font-bold uppercase tracking-widest text-muted-foreground"
-          >Page Context</Label
-        >
+        <Label class="ui-kicker">Page Context</Label>
       </div>
 
       <RadioGroup v-model="localSettings.pageRangeMode" class="grid grid-cols-1 gap-2">
@@ -209,12 +202,11 @@ onMounted(() => {
           <RadioGroupItem id="range-all" value="all" class="peer sr-only" />
           <Label
             for="range-all"
-            class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+            class="flex items-center justify-between px-3 h-10 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
           >
-            <span class="text-sm font-medium">Whole Document</span>
-            <span class="text-xxs font-mono text-muted-foreground"
-              >{{ document.pageCount }} pages</span
-            >
+            <span class="ui-label">Whole Document</span>
+            <span class="ui-mono text-[10px] text-muted-foreground"
+              >{{ document.pageCount }} pages</span>
           </Label>
         </div>
 
@@ -227,17 +219,16 @@ onMounted(() => {
           />
           <Label
             for="range-selected"
-            class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+            class="flex items-center justify-between px-3 h-10 rounded-sm border border-border transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
             :class="
               document.selectedCount > 0
-                ? 'cursor-pointer hover:bg-muted/40'
-                : 'opacity-50 cursor-not-allowed grayscale bg-muted/20'
+                ? 'cursor-pointer hover:bg-muted/20'
+                : 'opacity-50 cursor-not-allowed bg-muted/10'
             "
           >
-            <span class="text-sm font-medium">Selected Frames</span>
-            <span class="text-xxs font-mono text-muted-foreground"
-              >{{ document.selectedCount }} items</span
-            >
+            <span class="ui-label">Selected Frames</span>
+            <span class="ui-mono text-[10px] text-muted-foreground"
+              >{{ document.selectedCount }} items</span>
           </Label>
         </div>
 
@@ -245,10 +236,10 @@ onMounted(() => {
           <RadioGroupItem id="range-custom" value="custom" class="peer sr-only" />
           <Label
             for="range-custom"
-            class="flex items-center justify-between px-4 h-11 rounded-xl border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+            class="flex items-center justify-between px-3 h-10 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
           >
-            <span class="text-sm font-medium">Manual Range</span>
-            <span class="text-xxs font-mono text-muted-foreground">User defined</span>
+            <span class="ui-label">Manual Range</span>
+            <span class="ui-mono text-[10px] text-muted-foreground">User defined</span>
           </Label>
         </div>
       </RadioGroup>
@@ -261,17 +252,17 @@ onMounted(() => {
           v-model="localSettings.customPageRange"
           type="text"
           placeholder="e.g., 1-5, 8, 10-12"
-          class="h-10 font-mono text-xs border-border/40 px-4 bg-muted/20"
+          class="h-9 ui-mono text-xs px-3"
           :class="
             pageRangeError
               ? 'border-destructive focus-visible:ring-destructive/20'
-              : 'focus-visible:ring-primary/20'
+              : ''
           "
         />
-        <p v-if="pageRangeError" class="text-xxs font-bold text-destructive mt-2 pl-1 uppercase">
-          Error: {{ pageRangeError }}
+        <p v-if="pageRangeError" class="ui-caption text-destructive mt-2 pl-1">
+          {{ pageRangeError }}
         </p>
-        <p v-else class="text-xxs font-medium text-muted-foreground/60 mt-2 pl-1 tracking-tight">
+        <p v-else class="ui-caption text-muted-foreground/70 mt-2 pl-1">
           Enter comma-separated page numbers or ranges (e.g. 1-4, 7, 12).
         </p>
       </div>
@@ -280,13 +271,13 @@ onMounted(() => {
     <!-- Advanced Options Toggle -->
     <Collapsible
       v-model:open="showAdvanced"
-      class="bg-muted/10 rounded-xl border border-border/20 overflow-hidden"
+      class="ui-panel-muted rounded-md overflow-hidden"
     >
       <CollapsibleTrigger as-child>
         <Button
           type="button"
           variant="ghost"
-          class="w-full h-10 px-4 py-0 justify-between text-xxs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all"
+          class="w-full h-9 px-4 py-0 justify-between ui-kicker text-muted-foreground hover:text-foreground transition-colors"
         >
           <div class="flex items-center gap-2">
             <Settings class="w-3 h-3" />
@@ -304,13 +295,13 @@ onMounted(() => {
         <div class="p-5 pt-0 grid grid-cols-1 gap-4">
           <!-- Object Stream Compression -->
           <div
-            class="flex items-center justify-between p-4 bg-background/50 border border-border/20 rounded-xl"
+            class="ui-panel rounded-md p-4 flex items-center justify-between"
           >
             <div class="space-y-0.5">
-              <Label for="opt-compress" class="text-sm font-semibold cursor-pointer"
-                >Object Stream Compression</Label
-              >
-              <p class="text-xxs text-muted-foreground font-medium">
+              <Label for="opt-compress" class="ui-label cursor-pointer">
+                Object Stream Compression
+              </Label>
+              <p class="ui-caption">
                 Internal PDF structure optimization
               </p>
             </div>
@@ -318,11 +309,11 @@ onMounted(() => {
           </div>
 
           <!-- Ghostscript Compression Quality -->
-          <div class="p-4 bg-background/50 border border-border/20 rounded-xl space-y-3">
+          <div class="ui-panel rounded-md p-4 space-y-3">
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
-                <Label class="text-sm font-semibold">PDF Compression (Ghostscript)</Label>
-                <p class="text-xxs text-muted-foreground font-medium">
+                <Label class="ui-label">PDF Compression (Ghostscript)</Label>
+                <p class="ui-caption">
                   Reduce file size with image downsampling
                 </p>
               </div>
@@ -332,40 +323,40 @@ onMounted(() => {
                 <RadioGroupItem id="cq-none" value="none" class="peer sr-only" />
                 <Label
                   for="cq-none"
-                  class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                  class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
-                  <span class="text-xs font-medium">Off</span>
-                  <span class="text-xxs text-muted-foreground">No compression</span>
+                  <span class="ui-label">Off</span>
+                  <span class="ui-caption">No compression</span>
                 </Label>
               </div>
               <div class="relative">
                 <RadioGroupItem id="cq-screen" value="screen" class="peer sr-only" />
                 <Label
                   for="cq-screen"
-                  class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                  class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
-                  <span class="text-xs font-medium">Screen</span>
-                  <span class="text-xxs text-muted-foreground">72 dpi · Max compression</span>
+                  <span class="ui-label">Screen</span>
+                  <span class="ui-caption">72 dpi - Max compression</span>
                 </Label>
               </div>
               <div class="relative">
                 <RadioGroupItem id="cq-ebook" value="ebook" class="peer sr-only" />
                 <Label
                   for="cq-ebook"
-                  class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                  class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
-                  <span class="text-xs font-medium">Ebook</span>
-                  <span class="text-xxs text-muted-foreground">150 dpi · Recommended</span>
+                  <span class="ui-label">Ebook</span>
+                  <span class="ui-caption">150 dpi - Recommended</span>
                 </Label>
               </div>
               <div class="relative">
                 <RadioGroupItem id="cq-printer" value="printer" class="peer sr-only" />
                 <Label
                   for="cq-printer"
-                  class="flex flex-col px-3 py-2 rounded-lg border border-border/40 bg-card/30 cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/40"
+                  class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
-                  <span class="text-xs font-medium">Printer</span>
-                  <span class="text-xxs text-muted-foreground">300 dpi · High quality</span>
+                  <span class="ui-label">Printer</span>
+                  <span class="ui-caption">300 dpi - High quality</span>
                 </Label>
               </div>
             </RadioGroup>

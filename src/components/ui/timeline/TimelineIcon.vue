@@ -91,8 +91,7 @@ const hasIcon = computed(() => {
         props.variant === 'dot'
           ? 'relative rounded-full border-2 transition-colors'
           : 'relative flex items-center justify-center rounded-full ring-background shadow-sm transition-colors',
-        props.status === 'in-progress' &&
-          'animate-pulse shadow-[0_0_8px_var(--primary)] border-primary bg-primary',
+        props.status === 'in-progress' && 'animate-pulse border-primary bg-primary',
         sizeClasses,
         colorClasses,
         props.class,

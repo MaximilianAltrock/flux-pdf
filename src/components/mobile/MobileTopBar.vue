@@ -55,7 +55,7 @@ function handleRedo() {
     <Button
       v-if="selectionMode"
       variant="ghost"
-      class="w-10 h-10 -ml-2 flex items-center justify-center text-primary-foreground active:opacity-70 transition-opacity"
+      class="h-10 w-10 -ml-2 text-primary-foreground active:opacity-70 transition-opacity"
       @click="handleExitSelection"
     >
       <X class="w-5 h-5" />
@@ -63,7 +63,7 @@ function handleRedo() {
     <Button
       v-else
       variant="ghost"
-      class="w-10 h-10 -ml-2 flex items-center justify-center text-foreground active:opacity-70 transition-opacity"
+      class="h-10 w-10 -ml-2 text-foreground active:opacity-70 transition-opacity"
       @click="emit('menu')"
     >
       <Menu class="w-5 h-5" />
@@ -77,7 +77,7 @@ function handleRedo() {
       <Button
         v-else
         variant="ghost"
-        class="text-foreground font-semibold truncate max-w-[180px] px-3 py-1.5 rounded-lg active:bg-muted/10 transition-colors border border-transparent active:border-border h-auto"
+        class="text-foreground font-semibold truncate max-w-[180px] px-2 py-1 rounded-sm active:bg-muted/20 transition-colors border border-transparent h-auto"
         @click="handleTitleTap"
       >
         {{ displayTitle }}
@@ -89,7 +89,7 @@ function handleRedo() {
       <Button
         variant="ghost"
         size="icon"
-        class="w-10 h-10 flex items-center justify-center transition-all active:scale-90"
+        class="w-10 h-10 transition-transform active:scale-90"
         :class="[
           selectionMode ? 'text-primary-foreground/80' : 'text-muted-foreground',
           props.actions.canUndo.value ? '' : 'opacity-40',
@@ -102,7 +102,7 @@ function handleRedo() {
       <Button
         variant="ghost"
         size="icon"
-        class="w-10 h-10 -mr-2 flex items-center justify-center transition-all active:scale-90"
+        class="w-10 h-10 -mr-2 transition-transform active:scale-90"
         :class="[
           selectionMode ? 'text-primary-foreground/80' : 'text-muted-foreground',
           props.actions.canRedo.value ? '' : 'opacity-40',

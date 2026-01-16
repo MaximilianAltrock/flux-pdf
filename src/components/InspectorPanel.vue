@@ -36,68 +36,41 @@ function handleInspectorResize(size: number) {
     @resize="handleInspectorResize"
   >
     <aside
-      class="bg-sidebar border-l border-border flex flex-col overflow-hidden h-full select-none"
+      class="bg-sidebar border-l border-sidebar-border text-sidebar-foreground flex flex-col overflow-hidden h-full select-none"
     >
       <ResizablePanelGroup direction="vertical">
         <!-- Top Half: Document Controller -->
-        <ResizablePanel :default-size="60" :min-size="30" class="flex flex-col overflow-hidden">
-          <div class="flex-1 min-h-0 w-full flex flex-col overflow-hidden">
+        <ResizablePanel :default-size="60" :min-size="30" class="flex flex-col">
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
             <!-- TAB BAR -->
-            <Tabs
-              default-value="structure"
-              class="flex-1 min-h-0 flex flex-col gap-0 overflow-hidden"
-            >
+            <Tabs default-value="structure" class="flex-1 min-h-0 gap-0">
               <div
-                class="h-9 px-2 border-b border-border/40 bg-muted/10 backdrop-blur-sm flex items-center"
+                class="h-9 px-2 border-b border-sidebar-border/40 bg-sidebar flex items-center"
               >
-                <TabsList class="bg-transparent h-7 p-0 gap-2 w-full justify-start">
+                <TabsList class="bg-transparent gap-1 w-full justify-start">
                   <Tooltip :disabled="showTabLabels">
                     <TooltipTrigger as-child>
-                      <TabsTrigger
-                        value="structure"
-                        class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
-                      >
-                        <FileText
-                          class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
-                        />
+                      <TabsTrigger value="structure">
+                        <FileText />
                         <span :class="showTabLabels ? '' : 'sr-only'">Structure</span>
-                        <div
-                          class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
-                        ></div>
                       </TabsTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">Structure</TooltipContent>
                   </Tooltip>
                   <Tooltip :disabled="showTabLabels">
                     <TooltipTrigger as-child>
-                      <TabsTrigger
-                        value="metadata"
-                        class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
-                      >
-                        <Tag
-                          class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
-                        />
+                      <TabsTrigger value="metadata">
+                        <Tag />
                         <span :class="showTabLabels ? '' : 'sr-only'">Metadata</span>
-                        <div
-                          class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
-                        ></div>
                       </TabsTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">Metadata</TooltipContent>
                   </Tooltip>
                   <Tooltip :disabled="showTabLabels">
                     <TooltipTrigger as-child>
-                      <TabsTrigger
-                        value="security"
-                        class="h-7 px-2 text-xxs font-bold uppercase tracking-tight text-muted-foreground/60 data-[state=active]:text-primary data-[state=active]:bg-primary/10 rounded-[3px] transition-all flex items-center gap-1.5 relative group"
-                      >
-                        <Lock
-                          class="w-3 h-3 group-data-[state=active]:scale-110 transition-transform"
-                        />
+                      <TabsTrigger value="security">
+                        <Lock />
                         <span :class="showTabLabels ? '' : 'sr-only'">Security</span>
-                        <div
-                          class="absolute -bottom-[5px] inset-x-1 h-[1.5px] bg-primary rounded-t-full scale-x-0 group-data-[state=active]:scale-x-100 transition-transform origin-center"
-                        ></div>
                       </TabsTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">Security</TooltipContent>
@@ -106,22 +79,19 @@ function handleInspectorResize(size: number) {
               </div>
 
               <!-- TAB CONTENT AREA -->
-              <ScrollArea class="flex-1 min-h-0">
+              <ScrollArea class="flex-1 min-h-0 bg-sidebar">
                 <!-- A. STRUCTURE TAB -->
-                <TabsContent
-                  value="structure"
-                  class="m-0 focus-visible:outline-none h-full flex flex-col"
-                >
+                <TabsContent value="structure">
                   <InspectorStructure :state="props.state" :actions="props.actions" />
                 </TabsContent>
 
                 <!-- B. METADATA TAB -->
-                <TabsContent value="metadata" class="p-5 m-0 focus-visible:outline-none">
+                <TabsContent value="metadata" class="p-5">
                   <InspectorMetadata :state="props.state" :actions="props.actions" />
                 </TabsContent>
 
                 <!-- C. SECURITY TAB -->
-                <TabsContent value="security" class="p-5 m-0 focus-visible:outline-none">
+                <TabsContent value="security" class="p-5">
                   <InspectorSecurity :state="props.state" :actions="props.actions" />
                 </TabsContent>
               </ScrollArea>
@@ -129,10 +99,10 @@ function handleInspectorResize(size: number) {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle with-handle class="hover:bg-primary/20 transition-colors" />
+        <ResizableHandle with-handle />
 
         <!-- Bottom Half: History -->
-        <ResizablePanel :default-size="40" :min-size="20" class="flex flex-col bg-sidebar/30">
+        <ResizablePanel :default-size="40" :min-size="20" class="flex flex-col">
           <InspectorHistory :state="props.state" :actions="props.actions" />
         </ResizablePanel>
       </ResizablePanelGroup>

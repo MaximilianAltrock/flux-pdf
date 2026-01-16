@@ -1,7 +1,3 @@
-### Export modal not responsive with large file names.
-
-### Toaster needs rework
-
 ### Deselecting page in PageGrid with click outside does not work, but esc works
 
-### Fix Timeline and toc alignment in the left alignement layout.
+### Dropping Files onto SourceRail adds them to the PageGrid. This isn´t how it´s supposed to be

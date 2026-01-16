@@ -126,17 +126,15 @@ function handleZoom(delta: number) {
   <Dialog :open="open" @update:open="(val) => emit('update:open', val)">
     <DialogContent
       :show-close-button="false"
-      class="max-w-none w-screen h-screen p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none bg-background/98"
+      class="max-w-none w-screen h-screen p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none bg-background"
     >
       <!-- Header -->
       <DialogHeader
-        class="h-14 border-b border-border/40 flex items-center justify-between px-6 bg-card/50 backdrop-blur-md shrink-0 space-y-0 flex-row z-50"
+        class="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0 space-y-0 flex-row z-50"
       >
         <div class="flex items-center gap-6">
           <div class="flex flex-col">
-            <span
-              class="text-xxs font-bold tracking-[0.2em] uppercase text-muted-foreground/60 leading-none mb-1"
-            >
+            <span class="ui-kicker opacity-70 leading-none mb-1">
               Visual Correlation
             </span>
             <DialogTitle class="text-sm font-semibold flex items-center gap-2">
@@ -151,16 +149,16 @@ function handleZoom(delta: number) {
             <div
               class="flex items-center gap-2 px-2.5 py-1 bg-primary/10 rounded-md border border-primary/20"
             >
-              <span class="text-xxs font-black text-primary">A</span>
+              <span class="text-xs font-black text-primary">A</span>
               <span class="text-xs font-mono font-medium text-primary/80"
                 >PAGE {{ (props.pages[0].sourcePageIndex + 1).toString().padStart(2, '0') }}</span
               >
             </div>
-            <span class="text-xxs font-bold text-muted-foreground/40 italic">VS</span>
+            <span class="text-xs font-bold text-muted-foreground/40 italic">VS</span>
             <div
               class="flex items-center gap-2 px-2.5 py-1 bg-destructive/10 rounded-md border border-destructive/20"
             >
-              <span class="text-xxs font-black text-destructive">B</span>
+              <span class="text-xs font-black text-destructive">B</span>
               <span class="text-xs font-mono font-medium text-destructive/80"
                 >PAGE {{ (props.pages[1].sourcePageIndex + 1).toString().padStart(2, '0') }}</span
               >
@@ -183,9 +181,7 @@ function handleZoom(delta: number) {
       <div class="flex-1 overflow-hidden relative flex items-center justify-center bg-dots p-8">
         <div v-if="isLoading" class="flex flex-col items-center gap-3">
           <Spinner class="w-8 h-8 text-primary" />
-          <span class="text-xs text-muted-foreground font-mono uppercase tracking-widest"
-            >Rendering...</span
-          >
+          <span class="ui-kicker ui-mono opacity-70">Rendering...</span>
         </div>
 
         <!-- IMAGE CONTAINER -->
@@ -195,13 +191,13 @@ function handleZoom(delta: number) {
             :class="
               viewMode === 'side-by-side'
                 ? 'flex gap-12 items-start'
-                : 'relative shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] border border-border/40'
+                : 'relative shadow-lg border border-border/40'
             "
             :style="{ transform: `scale(${zoom})` }"
           >
             <!-- Page A (Base) -->
             <div
-              class="relative bg-white shadow-2xl rounded-sm overflow-hidden"
+              class="relative bg-card shadow-lg rounded-sm overflow-hidden"
               :class="{
                 'ring-4 ring-primary/20 border border-primary/40': viewMode === 'side-by-side',
               }"
@@ -209,7 +205,7 @@ function handleZoom(delta: number) {
               <img :src="urlA!" class="block max-h-[70vh] w-auto select-none" />
               <div
                 v-if="viewMode === 'side-by-side'"
-                class="absolute top-3 left-3 flex items-center justify-center w-6 h-6 rounded bg-primary text-xxs font-black text-primary-foreground shadow-lg"
+                class="absolute top-3 left-3 flex items-center justify-center w-6 h-6 rounded bg-primary text-xs font-black text-primary-foreground"
               >
                 A
               </div>
@@ -217,10 +213,10 @@ function handleZoom(delta: number) {
 
             <!-- Page B (Overlay) -->
             <div
-              class="shadow-2xl transition-all duration-300 rounded-sm overflow-hidden"
+              class="shadow-lg transition-all duration-300 rounded-sm overflow-hidden"
               :class="
                 viewMode === 'side-by-side'
-                  ? 'relative ring-4 ring-destructive/20 border border-destructive/40 bg-white'
+                  ? 'relative ring-4 ring-destructive/20 border border-destructive/40 bg-card'
                   : 'absolute inset-0 w-full h-full bg-transparent pointer-events-none'
               "
             >
@@ -236,7 +232,7 @@ function handleZoom(delta: number) {
               />
               <div
                 v-if="viewMode === 'side-by-side'"
-                class="absolute top-3 left-3 flex items-center justify-center w-6 h-6 rounded bg-destructive text-xxs font-black text-white shadow-lg"
+                class="absolute top-3 left-3 flex items-center justify-center w-6 h-6 rounded bg-destructive text-xs font-black text-destructive-foreground"
               >
                 B
               </div>
@@ -247,30 +243,27 @@ function handleZoom(delta: number) {
         <!-- Floating Controls -->
         <div class="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none z-50">
           <div
-            class="bg-card/90 backdrop-blur-lg pointer-events-auto rounded-2xl shadow-2xl px-4 py-2 flex items-center gap-6 transition-all hover:bg-card border border-border/40 antialiased"
+            class="ui-panel pointer-events-auto rounded-md px-4 py-2 flex items-center gap-6 transition-colors"
           >
             <!-- Mode Toggle -->
             <div class="flex flex-col gap-1.5 px-1 font-sans">
-              <span
-                class="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest pl-1"
-                >View Mode</span
-              >
+              <span class="ui-kicker opacity-70 pl-1">View Mode</span>
               <ToggleGroup
                 type="single"
                 :model-value="viewMode"
                 @update:model-value="(val) => handleViewModeChange(val as string)"
                 variant="outline"
-                class="bg-muted/40 p-1 rounded-xl gap-1 border border-border/20"
+                class="ui-panel-muted p-1 gap-1 rounded-sm"
               >
                 <ToggleGroupItem
                   value="overlay"
-                  class="px-3 py-1.5 h-8 gap-2 text-xs font-medium rounded-lg"
+                  class="px-3 py-1.5 h-8 gap-2 rounded-sm ui-label"
                 >
                   <Layers class="w-3.5 h-3.5" /> Overlay
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="side-by-side"
-                  class="px-3 py-1.5 h-8 gap-2 text-xs font-medium rounded-lg"
+                  class="px-3 py-1.5 h-8 gap-2 rounded-sm ui-label"
                 >
                   <Columns class="w-3.5 h-3.5" /> Side-by-Side
                 </ToggleGroupItem>
@@ -285,11 +278,8 @@ function handleZoom(delta: number) {
               :class="{ 'opacity-30 pointer-events-none': viewMode === 'side-by-side' }"
             >
               <div class="flex items-center justify-between px-1">
-                <span
-                  class="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest"
-                  >Ghost Opacity</span
-                >
-                <span class="text-xxs font-mono font-bold text-primary">{{ opacity[0] }}%</span>
+                <span class="ui-kicker opacity-70">Ghost Opacity</span>
+                <span class="ui-mono text-xs font-semibold text-primary">{{ opacity[0] }}%</span>
               </div>
               <div class="flex items-center gap-3">
                 <Eye class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -309,15 +299,15 @@ function handleZoom(delta: number) {
             <div class="flex items-center gap-3">
               <!-- Blink Mode -->
               <div class="flex flex-col items-center gap-1">
-                <span class="text-[8px] font-bold text-muted-foreground/40 uppercase">Blink</span>
+                <span class="ui-kicker opacity-50">Blink</span>
                 <Button
                   @click="toggleBlink"
                   variant="ghost"
                   size="icon"
-                  class="h-9 w-9 rounded-xl transition-all duration-300"
+                  class="h-9 w-9 rounded-md transition-colors"
                   :class="
                     isBlinking
-                      ? 'bg-amber-500/20 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                      ? 'bg-primary/15 text-primary'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                   "
                   title="Toggle Blink Mode"
@@ -328,13 +318,13 @@ function handleZoom(delta: number) {
 
               <!-- Zoom -->
               <div class="flex flex-col items-center gap-1">
-                <span class="text-[8px] font-bold text-muted-foreground/40 uppercase">Zoom</span>
-                <div class="flex items-center bg-muted/40 rounded-xl p-0.5 border border-border/20">
+                <span class="ui-kicker opacity-50">Zoom</span>
+                <div class="ui-panel-muted flex items-center rounded-md p-0.5">
                   <Button
                     variant="ghost"
                     size="icon"
                     @click="handleZoom(-0.25)"
-                    class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+                    class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-sm"
                   >
                     <ZoomOut class="w-4 h-4" />
                   </Button>
@@ -343,7 +333,7 @@ function handleZoom(delta: number) {
                     variant="ghost"
                     size="icon"
                     @click="handleZoom(0.25)"
-                    class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+                    class="h-8 w-8 text-muted-foreground hover:text-foreground rounded-sm"
                   >
                     <ZoomIn class="w-4 h-4" />
                   </Button>
@@ -360,7 +350,10 @@ function handleZoom(delta: number) {
 <style scoped>
 .bg-dots {
   background-color: transparent;
-  background-image: radial-gradient(rgb(var(--border)) 1px, transparent 1px);
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--border), transparent 60%) 1px,
+    transparent 1px
+  );
   background-size: 20px 20px;
 }
 </style>

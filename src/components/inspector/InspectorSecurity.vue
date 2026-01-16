@@ -51,43 +51,33 @@ const allowModifying = computed({
 <template>
   <div class="space-y-6 pb-6">
     <div
-      class="bg-muted/10 border border-border/30 rounded-lg p-3 transition-all"
+      class="ui-panel-muted rounded-md p-3 transition-colors"
       :class="
-        props.state.document.security.isEncrypted
-          ? 'border-primary/30 ring-1 ring-primary/10 bg-primary/[0.03]'
-          : 'bg-muted/5'
+        props.state.document.security.isEncrypted ? 'border-primary/40 ring-1 ring-primary/20' : ''
       "
     >
       <Field orientation="horizontal" class="items-center justify-between gap-4">
         <div class="space-y-1">
           <FieldLabel
             for="security-encrypted"
-            class="text-tiny font-bold text-foreground transition-colors uppercase tracking-wider"
-            :class="
-              props.state.document.security.isEncrypted ? 'text-primary' : 'text-muted-foreground'
-            "
+            class="ui-kicker transition-colors"
+            :class="props.state.document.security.isEncrypted ? 'text-primary' : ''"
           >
             Encryption
           </FieldLabel>
-          <p class="text-xxs text-muted-foreground leading-tight font-medium">
-            Password protect this document
-          </p>
+          <p class="ui-caption leading-tight">Password protect this document</p>
         </div>
-        <Switch
-          id="security-encrypted"
-          v-model="securityEncrypted"
-          class="data-[state=checked]:bg-primary h-5 w-9"
-        />
+        <Switch id="security-encrypted" v-model="securityEncrypted" />
       </Field>
     </div>
 
     <!-- Password Fields (Animated) -->
     <div
-      class="space-y-6 overflow-hidden transition-all duration-500 ease-in-out"
+      class="space-y-6 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
       :class="
         props.state.document.security.isEncrypted
-          ? 'opacity-100 max-h-[800px] blur-0'
-          : 'opacity-0 max-h-0 blur-sm pointer-events-none'
+          ? 'opacity-100 max-h-[800px]'
+          : 'opacity-0 max-h-0 pointer-events-none'
       "
     >
       <FieldGroup class="gap-5 px-1">
@@ -96,14 +86,14 @@ const allowModifying = computed({
           <div class="flex justify-between items-center mb-2">
             <FieldLabel
               for="security-user-pass"
-              class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold flex items-center gap-2"
+              class="ui-kicker flex items-center gap-2"
             >
               Open Password
             </FieldLabel>
             <Button
               variant="ghost"
-              size="icon"
-              class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors rounded-[3px]"
+              size="icon-sm"
+              class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors"
               @click="showUserPassword = !showUserPassword"
             >
               <Eye v-if="!showUserPassword" class="w-3 h-3" />
@@ -115,8 +105,8 @@ const allowModifying = computed({
               id="security-user-pass"
               v-model="securityUserPassword"
               :type="showUserPassword ? 'text' : 'password'"
-              class="h-8 text-xs font-mono bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] transition-all"
-              placeholder="••••••••"
+              class="h-8 text-xs ui-mono"
+              placeholder="Enter password"
             />
           </FieldContent>
         </Field>
@@ -126,14 +116,14 @@ const allowModifying = computed({
           <div class="flex justify-between items-center mb-2">
             <FieldLabel
               for="security-owner-pass"
-              class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold flex items-center gap-2"
+              class="ui-kicker flex items-center gap-2"
             >
               Admin Password
             </FieldLabel>
             <Button
               variant="ghost"
-              size="icon"
-              class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors rounded-[3px]"
+              size="icon-sm"
+              class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors"
               @click="showOwnerPassword = !showOwnerPassword"
             >
               <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
@@ -145,86 +135,62 @@ const allowModifying = computed({
               id="security-owner-pass"
               v-model="securityOwnerPassword"
               :type="showOwnerPassword ? 'text' : 'password'"
-              class="h-8 text-[11px] font-mono bg-muted/20 focus-visible:bg-background border-border/30 rounded-[4px] transition-all"
-              placeholder="••••••••"
+              class="h-8 text-xs ui-mono"
+              placeholder="Enter password"
             />
           </FieldContent>
         </Field>
       </FieldGroup>
 
       <!-- Permissions Matrix -->
-      <div class="space-y-4 pt-4 border-t border-border/30">
-        <FieldLabel
-          class="text-xxs uppercase tracking-[0.15em] text-muted-foreground font-bold px-1"
-          >Access Control</FieldLabel
-        >
-        <div class="grid gap-2 bg-muted/5 border border-border/20 rounded-lg p-2">
+      <div class="space-y-4 pt-4 border-t border-border">
+        <FieldLabel class="ui-kicker px-1">Access Control</FieldLabel>
+        <div class="grid gap-2 ui-panel-muted rounded-md p-2">
           <label
             for="perm-print"
-            class="flex items-center gap-3 p-2 rounded-md hover:bg-muted/10 transition-colors cursor-pointer group"
+            class="flex items-center gap-3 p-2 rounded-sm hover:bg-muted/20 transition-colors cursor-pointer group"
           >
             <div class="flex items-center justify-center">
               <Checkbox
                 id="perm-print"
                 v-model="allowPrinting"
-                class="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 rounded-[3px]"
               />
             </div>
             <div class="space-y-0.5">
-              <span
-                class="text-xs font-bold text-foreground group-hover:text-foreground transition-colors uppercase tracking-tight"
-              >
-                High-Res Printing
-              </span>
-              <p class="text-xxs text-muted-foreground leading-none font-medium">
-                Allow high fidelity output
-              </p>
+              <span class="ui-label">High-res printing</span>
+              <p class="ui-caption leading-none">Allow high fidelity output</p>
             </div>
           </label>
 
           <label
             for="perm-copy"
-            class="flex items-center gap-3 p-2 rounded-md hover:bg-muted/10 transition-colors cursor-pointer group"
+            class="flex items-center gap-3 p-2 rounded-sm hover:bg-muted/20 transition-colors cursor-pointer group"
           >
             <div class="flex items-center justify-center">
               <Checkbox
                 id="perm-copy"
                 v-model="allowCopying"
-                class="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 rounded-[3px]"
               />
             </div>
             <div class="space-y-0.5">
-              <span
-                class="text-xs font-bold text-foreground group-hover:text-foreground transition-colors uppercase tracking-tight"
-              >
-                Content Copying
-              </span>
-              <p class="text-xxs text-muted-foreground leading-none font-medium">
-                Extract text and media
-              </p>
+              <span class="ui-label">Content copying</span>
+              <p class="ui-caption leading-none">Extract text and media</p>
             </div>
           </label>
 
           <label
             for="perm-mod"
-            class="flex items-center gap-3 p-2 rounded-md hover:bg-muted/10 transition-colors cursor-pointer group"
+            class="flex items-center gap-3 p-2 rounded-sm hover:bg-muted/20 transition-colors cursor-pointer group"
           >
             <div class="flex items-center justify-center">
               <Checkbox
                 id="perm-mod"
                 v-model="allowModifying"
-                class="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 rounded-[3px]"
               />
             </div>
             <div class="space-y-0.5">
-              <span
-                class="text-[11px] font-bold text-foreground group-hover:text-foreground transition-colors uppercase tracking-tight"
-              >
-                Modification
-              </span>
-              <p class="text-[10px] text-muted-foreground leading-none font-medium">
-                Reorder or delete pages
-              </p>
+              <span class="ui-label">Modification</span>
+              <p class="ui-caption leading-none">Reorder or delete pages</p>
             </div>
           </label>
         </div>

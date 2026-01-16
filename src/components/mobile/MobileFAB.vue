@@ -29,12 +29,7 @@ function handleTap() {
 
 <template>
   <button
-    class="fixed z-40 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 active:scale-90"
-    :class="[
-      selectionMode && selectedCount > 0
-        ? 'bg-primary right-4 bottom-24'
-        : 'bg-primary right-4 bottom-24',
-    ]"
+    class="fixed z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-90 bg-primary right-4 bottom-24"
     style="margin-bottom: env(safe-area-inset-bottom, 0px)"
     @click="handleTap"
   >

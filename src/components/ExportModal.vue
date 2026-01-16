@@ -164,13 +164,13 @@ const displayPageCount = computed(() => {
 
 <template>
   <Dialog :open="open" @update:open="onOpenChange">
-    <DialogScrollContent class="sm:max-w-xl p-0 overflow-hidden bg-background/98">
+    <DialogScrollContent class="sm:max-w-xl p-0 overflow-hidden">
       <DialogHeader
-        class="h-14 border-b border-border/40 flex items-center justify-between px-6 bg-card/50 backdrop-blur-md shrink-0 space-y-0 flex-row z-50 antialiased"
+        class="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0 space-y-0 flex-row z-50"
       >
         <div class="flex flex-col">
           <span
-            class="text-xxs font-bold tracking-[0.2em] uppercase text-muted-foreground/60 leading-none mb-1"
+            class="ui-kicker opacity-70 leading-none mb-1"
           >
             Production Pipeline
           </span>
@@ -214,12 +214,12 @@ const displayPageCount = computed(() => {
       </div>
 
       <DialogFooter
-        class="p-4 border-t border-border/40 glass-surface backdrop-blur-md flex items-center justify-end gap-3 shrink-0 z-50 antialiased"
+        class="p-4 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0 z-50"
       >
         <Button
           v-if="!exportComplete && !exportError"
           variant="ghost"
-          class="h-9 px-4 text-xxs font-bold uppercase tracking-widest hover:bg-muted transition-all"
+          class="h-9 px-4 ui-label hover:bg-muted/60 transition-colors"
           :disabled="isExporting"
           @click="handleClose"
         >
@@ -228,7 +228,7 @@ const displayPageCount = computed(() => {
 
         <Button
           v-if="exportComplete"
-          class="h-9 px-6 text-xxs font-bold uppercase tracking-widest shadow-lg shadow-primary/10 transition-all"
+          class="h-9 px-6 ui-label shadow-sm"
           @click="handleClose"
         >
           Exit Process
@@ -237,7 +237,7 @@ const displayPageCount = computed(() => {
         <Button
           v-else-if="!exportError"
           :disabled="!isConfigValid || isExporting"
-          class="h-9 px-6 text-xxs font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-95"
+          class="h-9 px-6 ui-label shadow-sm transition-transform active:scale-95"
           @click="handleExport"
         >
           <Download class="w-3.5 h-3.5 mr-2" />

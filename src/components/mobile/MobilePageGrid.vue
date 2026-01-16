@@ -265,14 +265,14 @@ onUnmounted(() => {
     <Transition name="slide-down">
       <div
         v-if="jumpModeActive"
-        class="sticky top-0 z-20 bg-primary px-4 py-3 flex items-center justify-between text-white shadow-lg"
+        class="sticky top-0 z-20 bg-primary px-4 py-3 flex items-center justify-between text-primary-foreground shadow-sm"
       >
-        <span class="font-medium">
+        <span class="text-sm font-semibold">
           Tap where to move {{ props.state.document.selectedCount }} page{{
             props.state.document.selectedCount > 1 ? 's' : ''
           }}
         </span>
-        <button class="text-sm font-medium opacity-80 active:opacity-100" @click="cancelJumpMode">
+        <button class="text-xs font-semibold opacity-80 active:opacity-100" @click="cancelJumpMode">
           Cancel
         </button>
       </div>
@@ -296,7 +296,7 @@ onUnmounted(() => {
       <template v-for="(pageRef, index) in localPages" :key="pageRef.id">
         <button
           v-if="shouldShowJumpTarget(index)"
-          class="col-span-full h-14 -my-1 border-2 border-dashed border-primary/60 rounded-xl flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
+          class="col-span-full h-12 -my-1 border border-dashed border-primary/60 rounded-md flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
           @click="handleJumpToPosition(index)"
         >
           <ArrowDown class="w-4 h-4" />
@@ -318,10 +318,10 @@ onUnmounted(() => {
           <Transition name="pop">
             <div
               v-if="props.selectionMode && isSelected(pageRef.id)"
-              class="absolute -top-1 -right-1 z-10 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg"
+              class="absolute -top-1 -right-1 z-10 w-6 h-6 bg-primary rounded-sm flex items-center justify-center shadow-sm"
             >
               <svg
-                class="w-4 h-4 text-white"
+                class="w-4 h-4 text-primary-foreground"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -335,7 +335,7 @@ onUnmounted(() => {
           <Transition name="fade">
             <div
               v-if="longPressPageId === pageRef.id"
-              class="absolute inset-0 bg-primary/20 rounded-lg z-10 pointer-events-none"
+              class="absolute inset-0 bg-primary/20 rounded-md z-10 pointer-events-none"
             />
           </Transition>
 
@@ -356,7 +356,7 @@ onUnmounted(() => {
 
       <button
         v-if="jumpModeActive"
-        class="col-span-full h-14 border-2 border-dashed border-primary/60 rounded-xl flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
+        class="col-span-full h-12 border border-dashed border-primary/60 rounded-md flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
         @click="handleJumpToPosition(localPages.length)"
       >
         <ArrowDown class="w-4 h-4" />
@@ -375,7 +375,7 @@ onUnmounted(() => {
         class="sticky bottom-4 flex justify-center pointer-events-none"
       >
         <button
-          class="pointer-events-auto px-5 py-2.5 bg-surface border border-border rounded-full shadow-xl text-sm font-medium text-text active:scale-95 transition-transform"
+          class="pointer-events-auto px-4 py-2 ui-panel rounded-md text-sm font-medium text-foreground active:scale-95 transition-transform"
           @click="activateJumpMode"
         >
           Tap to move selection
@@ -385,12 +385,12 @@ onUnmounted(() => {
 
     <p
       v-if="contentPages.length > 0 && !jumpModeActive"
-      class="text-center text-xs text-text-muted py-4 px-6"
+      class="text-center ui-caption py-4 px-6"
     >
       {{
         props.selectionMode
-          ? 'Drag to reorder • Tap to select'
-          : 'Long-press to select • Tap to preview'
+          ? 'Drag to reorder / Tap to select'
+          : 'Long-press to select / Tap to preview'
       }}
     </p>
 
@@ -398,9 +398,9 @@ onUnmounted(() => {
       v-if="contentPages.length === 0"
       class="absolute inset-0 flex items-center justify-center p-8"
     >
-      <div class="text-center text-text-muted">
-        <p class="text-lg font-medium mb-2">No pages yet</p>
-        <p class="text-sm">Tap + to add a PDF</p>
+      <div class="text-center text-muted-foreground">
+        <p class="text-sm font-semibold mb-2">No pages yet</p>
+        <p class="ui-caption">Tap + to add a PDF</p>
       </div>
     </div>
   </div>

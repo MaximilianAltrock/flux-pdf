@@ -187,9 +187,9 @@ function handleContextAction(action: UserAction, pageRef: PageReference) {
 
     <p
       v-if="localPages.length > 0"
-      class="text-center text-xxs text-text-muted mt-6 font-mono opacity-50 uppercase tracking-widest"
+      class="text-center ui-caption ui-mono mt-6 opacity-60 uppercase tracking-[0.2em]"
     >
-      Drag to reorder • Double-click to preview • Right-click for options
+      Drag to reorder / Double-click to preview / Right-click for options
     </p>
   </div>
 </template>

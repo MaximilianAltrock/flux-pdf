@@ -76,17 +76,17 @@ function handleKeydown(event: KeyboardEvent) {
             v-model="editedTitle"
             type="text"
             placeholder="Enter project name"
-            class="text-base h-12"
+            class="h-10 text-sm"
             @keydown="handleKeydown"
           />
-          <p class="mt-2 text-xs text-muted-foreground px-1 text-center">
+          <p class="mt-2 ui-caption px-1 text-center">
             This will be the filename when you export
           </p>
         </div>
 
         <!-- Actions -->
         <DrawerFooter class="pt-0">
-          <Button class="w-full h-12 text-base font-semibold" @click="handleSave"> Save </Button>
+          <Button class="w-full h-10 text-sm font-semibold" @click="handleSave">Save</Button>
           <!-- Safe Area -->
           <div style="height: env(safe-area-inset-bottom, 0px)" />
         </DrawerFooter>

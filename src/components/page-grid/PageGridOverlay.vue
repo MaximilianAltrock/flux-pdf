@@ -13,39 +13,31 @@ defineProps<{
       class="absolute inset-0 z-50 flex items-center justify-center p-8 pointer-events-none"
     >
       <!-- Blurred Backdrop -->
-      <div
-        class="absolute inset-0 bg-primary/5 backdrop-blur-[2px] transition-all duration-500"
-      ></div>
+      <div class="absolute inset-0 bg-primary/5 transition-opacity duration-300"></div>
 
       <!-- High-Fidelity Card -->
       <Transition name="scale-in" appear>
         <div
-          class="relative glass-surface bg-background/40 rounded-3xl shadow-2xl px-12 py-10 text-center flex flex-col items-center gap-6 border-2 border-primary/20 max-w-sm w-full animate-float"
+          class="relative ui-panel rounded-md px-8 py-6 text-center flex flex-col items-center gap-4 border border-primary/20 max-w-sm w-full"
         >
-          <!-- Animated Icon Container -->
-          <div class="relative">
-            <div class="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse"></div>
-            <div
-              class="relative w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/30 shadow-inner"
-            >
-              <UploadCloud class="w-10 h-10 text-primary animate-bounce-subtle" />
-            </div>
+          <div
+            class="w-14 h-14 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20"
+          >
+            <UploadCloud class="w-7 h-7 text-primary" />
           </div>
 
           <!-- Text Content -->
-          <div class="space-y-2">
-            <h3 class="text-xl font-bold tracking-tight text-foreground antialiased uppercase">
-              Release to Append
-            </h3>
+          <div class="space-y-1">
+            <h3 class="text-sm font-semibold text-foreground">Release to append</h3>
             <p
-              class="text-xs font-medium text-muted-foreground/80 tracking-wide font-mono antialiased"
+              class="ui-caption ui-mono uppercase tracking-[0.2em]"
             >
-              PDF · IMAGES · PROJECT FILES
+              PDF / IMAGES / PROJECT FILES
             </p>
           </div>
 
           <!-- Decorative bottom line -->
-          <div class="w-12 h-1 bg-primary/40 rounded-full"></div>
+          <div class="w-10 h-px bg-primary/40"></div>
         </div>
       </Transition>
     </div>
@@ -72,33 +64,4 @@ defineProps<{
   transform: scale(0.9) translateY(20px);
 }
 
-/* Subtle floating animation */
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-/* Custom subtle bounce */
-@keyframes bounce-subtle {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-.animate-bounce-subtle {
-  animation: bounce-subtle 2s ease-in-out infinite;
-}
 </style>

@@ -83,7 +83,7 @@ function openFileDialog() {
 
 <template>
   <Card
-    class="relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer shadow-none gap-0"
+    class="relative border border-dashed rounded-md p-10 text-center transition-colors duration-200 cursor-pointer shadow-none gap-4"
     :class="
       isDragging
         ? 'border-primary bg-primary/5 scale-[1.02]'
@@ -106,18 +106,18 @@ function openFileDialog() {
 
     <!-- Icon -->
     <div
-      class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors"
+      class="mx-auto w-14 h-14 rounded-md flex items-center justify-center transition-colors"
       :class="isDragging ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'"
     >
       <component :is="dropIcon" class="w-8 h-8" />
     </div>
 
     <!-- Text -->
-    <h3 class="text-lg font-semibold mb-2" :class="isDragging ? 'text-primary' : 'text-foreground'">
+    <h3 class="text-sm font-semibold" :class="isDragging ? 'text-primary' : 'text-foreground'">
       {{ isDragging ? dropMessage : 'Upload PDF files' }}
     </h3>
 
-    <p class="text-sm text-muted-foreground mb-4">
+    <p class="ui-caption">
       {{
         isDragging && dragType === 'source'
           ? 'Release to add all pages from this source'
@@ -126,12 +126,12 @@ function openFileDialog() {
     </p>
 
     <!-- Supported formats hint -->
-    <p v-if="!isDragging" class="text-xs text-muted-foreground">Supports: .pdf files</p>
+    <p v-if="!isDragging" class="ui-caption opacity-70">Supports: .pdf files</p>
 
     <!-- Drag overlay animation -->
     <div
       v-if="isDragging"
-      class="absolute inset-4 border-2 border-primary/50 rounded-lg pointer-events-none"
+      class="absolute inset-4 border border-primary/50 rounded-md pointer-events-none"
       style="animation: dropzone-pulse 1s ease-in-out infinite"
     />
   </Card>

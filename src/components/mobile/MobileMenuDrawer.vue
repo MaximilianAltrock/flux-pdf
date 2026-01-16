@@ -106,28 +106,28 @@ function handleNewProject() {
           <!-- Document Info -->
           <div class="px-4 py-4">
             <div
-              class="flex items-center gap-2 text-muted-foreground mb-3 font-medium uppercase tracking-wider text-xxs"
+              class="flex items-center gap-2 ui-kicker mb-3"
             >
               <Info class="w-3.5 h-3.5" />
               <span>Document Info</span>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <Card class="bg-background/50 border-border rounded-lg shadow-none">
+              <Card class="rounded-md shadow-none">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">
                     {{ props.state.document.pageCount }}
                   </div>
-                  <div class="text-xxs text-muted-foreground uppercase font-medium">Pages</div>
+                  <div class="ui-kicker">Pages</div>
                 </CardContent>
               </Card>
-              <Card class="bg-background/50 border-border rounded-lg shadow-none">
+              <Card class="rounded-md shadow-none">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">{{ sources.length }}</div>
-                  <div class="text-xxs text-muted-foreground uppercase font-medium">Files</div>
+                  <div class="ui-kicker">Files</div>
                 </CardContent>
               </Card>
             </div>
-            <div class="mt-3 text-xs text-muted-foreground">
+            <div class="mt-3 ui-caption">
               Est. size: {{ formatFileSize(totalSize) }}
             </div>
           </div>
@@ -138,7 +138,7 @@ function handleNewProject() {
           <div class="p-4 space-y-3">
             <div class="flex items-center justify-between px-1">
               <div
-                class="flex items-center gap-2 text-xxs font-bold text-muted-foreground uppercase tracking-wider"
+                class="flex items-center gap-2 ui-kicker"
               >
                 <FileText class="w-3.5 h-3.5" />
                 <span>Source Files</span>
@@ -148,7 +148,7 @@ function handleNewProject() {
 
             <Empty
               v-if="sources.length === 0"
-              class="py-10 border border-dashed rounded-xl bg-muted/5"
+              class="py-10 border border-dashed rounded-md bg-muted/10"
             >
               <EmptyHeader>
                 <EmptyMedia variant="icon" class="mx-auto mb-2 opacity-20">
@@ -162,7 +162,9 @@ function handleNewProject() {
               <Item
                 v-for="source in sources"
                 :key="source.id"
-                class="group relative bg-background border border-border rounded-xl active:bg-muted/50 overflow-hidden pr-0"
+                variant="outline"
+                size="sm"
+                class="group relative overflow-hidden pr-0"
               >
                 <ItemMedia variant="icon" class="ml-4 mr-0">
                   <FileText class="w-5 h-5 text-primary" />
@@ -171,7 +173,7 @@ function handleNewProject() {
                   <ItemTitle class="text-sm font-semibold truncate">{{
                     source.filename
                   }}</ItemTitle>
-                  <ItemDescription class="text-xxs text-muted-foreground mt-0.5">
+                  <ItemDescription class="text-xs text-muted-foreground mt-0.5">
                     {{ formatFileSize(source.fileSize) }}
                   </ItemDescription>
                 </ItemContent>
@@ -192,7 +194,7 @@ function handleNewProject() {
           <!-- History Section -->
           <div class="p-4 space-y-3">
             <div
-              class="flex items-center justify-between px-1 text-xxs font-bold text-muted-foreground uppercase tracking-wider"
+              class="flex items-center justify-between px-1 ui-kicker"
             >
               <div class="flex items-center gap-2">
                 <Clock class="w-3.5 h-3.5" />
@@ -202,7 +204,7 @@ function handleNewProject() {
 
             <Empty
               v-if="historyList.length === 0"
-              class="py-8 border border-dashed rounded-xl bg-muted/5 flex flex-col items-center justify-center text-muted-foreground"
+              class="py-8 border border-dashed rounded-md bg-muted/10 flex flex-col items-center justify-center text-muted-foreground"
             >
               <EmptyHeader>
                 <EmptyMedia variant="icon" class="mx-auto mb-2 opacity-20">
@@ -217,21 +219,23 @@ function handleNewProject() {
                 v-for="(cmd, idx) in historyList.slice().reverse()"
                 :key="idx"
                 as-child
-                class="w-full rounded-lg active:bg-muted/50 p-0"
+                variant="outline"
+                size="sm"
+                class="w-full p-0"
               >
                 <button
                   @click="handleHistoryJump(historyList.length - 1 - idx)"
                   class="flex items-center w-full"
                 >
                   <ItemMedia variant="icon" class="ml-3 mr-0 w-8 h-8 rounded-full bg-muted/30">
-                    <div class="text-xxs font-mono opacity-50">
+                    <div class="text-xs font-mono opacity-50">
                       {{ historyList.length - idx }}
                     </div>
                   </ItemMedia>
                   <ItemContent class="flex-1 text-left min-w-0 py-2.5 px-3">
                     <ItemTitle class="text-sm font-medium">{{ cmd.command.name }}</ItemTitle>
                     <ItemDescription
-                      class="text-xxs text-muted-foreground flex items-center gap-1.5 mt-0.5"
+                      class="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"
                     >
                       <Clock class="w-3 h-3" />
                       {{ formatTime(cmd.timestamp) }}
@@ -249,7 +253,7 @@ function handleNewProject() {
           <div class="px-4 py-4">
             <Button
               variant="outline"
-              class="w-full justify-between h-12 px-4 bg-background border-border"
+              class="w-full justify-between h-12 px-4"
               @click="toggleTheme"
             >
               <div class="flex items-center gap-3">
@@ -267,7 +271,7 @@ function handleNewProject() {
         </div>
       </ScrollArea>
 
-      <div class="p-4 border-t border-border bg-card/80 backdrop-blur-sm">
+      <div class="p-4 border-t border-border bg-card">
         <Button
           variant="destructive"
           class="w-full gap-3 h-12 text-sm font-semibold"
@@ -283,7 +287,7 @@ function handleNewProject() {
           </Badge>
         </Button>
         <div
-          class="mt-4 text-center text-xxs text-muted-foreground font-medium uppercase tracking-[0.2em]"
+          class="mt-4 text-center ui-kicker opacity-70"
         >
           FluxPDF Editor
         </div>

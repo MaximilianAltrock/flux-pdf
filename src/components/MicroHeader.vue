@@ -59,7 +59,7 @@ const emit = defineEmits<{
 
 <template>
   <header
-    class="h-[48px] border-b border-border flex items-center justify-between px-4 shrink-0 z-30 relative select-none bg-sidebar backdrop-blur-md"
+    class="h-[48px] border-b border-sidebar-border text-sidebar-foreground flex items-center justify-between px-4 shrink-0 z-30 relative select-none bg-sidebar"
   >
     <!-- Left: Context Zone -->
     <div class="flex items-center gap-4 w-[280px]">
@@ -67,15 +67,15 @@ const emit = defineEmits<{
         <DropdownMenuTrigger as-child>
           <Button
             variant="ghost"
-            size="icon"
-            class="w-8 h-8 hover:bg-primary/10 transition-all rounded-[4px] group"
+            size="icon-sm"
+            class="group"
           >
             <div
-              class="w-4 h-4 bg-gradient-to-br from-primary to-primary/60 rounded-[3px] shadow-[0_0_8px_rgba(var(--primary),0.3)] group-hover:scale-110 transition-transform"
+              class="w-4 h-4 bg-gradient-to-br from-primary to-primary/60 rounded-[3px] shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_30%,transparent)] group-hover:scale-110 transition-transform"
             ></div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" class="w-48 shadow-lg border-border/40 backdrop-blur-xl">
+        <DropdownMenuContent align="start" class="w-48">
           <DropdownMenuItem @select="emit('new-project')" class="gap-2">
             <FilePlus class="w-4 h-4" />
             <span class="font-medium">New Project</span>
@@ -97,13 +97,13 @@ const emit = defineEmits<{
             v-model="displayTitle"
             @blur="finishEditing"
             @keyup.enter="finishEditing"
-            class="h-7 text-xs font-bold px-2 focus-visible:ring-1 border-primary/20 bg-background/50"
+            class="h-7 text-xs font-semibold px-2"
           />
         </div>
         <div
           v-else
           @click="startEditing"
-          class="text-xs font-bold text-foreground/80 px-2 py-1 rounded-[4px] cursor-text truncate transition-all border border-transparent hover:bg-muted/50 hover:text-foreground inline-flex items-center gap-2"
+          class="ui-label text-foreground/80 px-2 py-1 rounded-sm cursor-text truncate transition-colors border border-transparent hover:bg-muted/40 hover:text-foreground inline-flex items-center gap-2"
           :class="{ 'opacity-50 pointer-events-none': state.document.isTitleLocked }"
           :title="state.document.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
         >

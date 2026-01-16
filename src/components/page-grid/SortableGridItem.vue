@@ -125,15 +125,15 @@ onUnmounted(() => {
       v-if="closestEdge"
       class="absolute top-0 bottom-0 w-[2px] bg-primary z-[100] pointer-events-none transition-all duration-200"
       :class="{
-        'left-[-4px] shadow-[0_0_12px_var(--primary)]': closestEdge === 'left',
-        'right-[-4px] shadow-[0_0_12px_var(--primary)]': closestEdge === 'right',
+        'left-[-4px]': closestEdge === 'left',
+        'right-[-4px]': closestEdge === 'right',
       }"
     >
       <div
-        class="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]"
+        class="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full"
       ></div>
       <div
-        class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]"
+        class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full"
       ></div>
     </div>
   </div>

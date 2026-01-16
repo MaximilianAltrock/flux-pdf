@@ -61,7 +61,7 @@ function handleAction(action: BottomBarEvent) {
         @click="handleAction('rotateLeft')"
       >
         <RotateCcw class="w-5 h-5" />
-        <span class="text-xxs font-medium">Left</span>
+        <span class="text-xs font-medium">Left</span>
       </Button>
 
       <Button
@@ -70,7 +70,7 @@ function handleAction(action: BottomBarEvent) {
         @click="handleAction('rotateRight')"
       >
         <RotateCw class="w-5 h-5" />
-        <span class="text-xxs font-medium">Right</span>
+        <span class="text-xs font-medium">Right</span>
       </Button>
 
       <Button
@@ -79,7 +79,7 @@ function handleAction(action: BottomBarEvent) {
         @click="handleAction('duplicate')"
       >
         <Copy class="w-5 h-5" />
-        <span class="text-xxs font-medium">Copy</span>
+        <span class="text-xs font-medium">Copy</span>
       </Button>
 
       <Button
@@ -88,7 +88,7 @@ function handleAction(action: BottomBarEvent) {
         @click="handleAction('delete')"
       >
         <Trash2 class="w-5 h-5" />
-        <span class="text-xxs font-medium">Delete</span>
+        <span class="text-xs font-medium">Delete</span>
       </Button>
     </ButtonGroup>
 
@@ -96,7 +96,7 @@ function handleAction(action: BottomBarEvent) {
     <div v-else class="h-16 flex items-center px-4">
       <Button
         v-if="hasPages"
-        class="flex-1 h-12 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-xl font-semibold active:bg-primary/90 transition-colors shadow-sm text-base"
+        class="flex-1 h-12 flex items-center justify-center gap-2 font-semibold text-sm shadow-sm"
         @click="handleAction('export')"
       >
         <component :is="canShareFiles ? Share2 : Download" class="w-5 h-5" />
