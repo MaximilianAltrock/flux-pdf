@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { FileText, Clock, Sun, Moon, Trash2, ChevronRight, Info, FilePlus } from 'lucide-vue-next'
-import { useColorMode } from '@vueuse/core'
 import { useMobile } from '@/composables/useMobile'
+import { useThemeToggle } from '@/composables/useThemeToggle'
 import { formatFileSize, formatTime } from '@/utils/format'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -36,26 +36,7 @@ const emit = defineEmits<{
 
 const { historyList, jumpTo } = props.actions
 const { haptic } = useMobile()
-const mode = useColorMode()
-
-const toggleTheme = (event: MouseEvent) => {
-  const { clientX: x, clientY: y } = event
-  const newMode = mode.value === 'dark' ? 'light' : 'dark'
-
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  if (!document.startViewTransition || prefersReducedMotion) {
-    mode.value = newMode
-    return
-  }
-
-  document.documentElement.style.setProperty('--x', `${x}px`)
-  document.documentElement.style.setProperty('--y', `${y}px`)
-
-  document.startViewTransition(() => {
-    mode.value = newMode
-  })
-}
+const { toggleTheme } = useThemeToggle()
 
 const sources = computed(() => props.state.document.sourceFileList)
 

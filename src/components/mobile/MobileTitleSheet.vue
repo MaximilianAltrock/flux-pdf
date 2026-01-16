@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { useTimeoutFn } from '@vueuse/core'
 import { useMobile } from '@/composables/useMobile'
 import {
   Drawer,
@@ -27,21 +28,27 @@ const { haptic } = useMobile()
 
 const inputRef = ref<InstanceType<typeof Input> | null>(null)
 const editedTitle = ref('')
+const { start: startFocusTimer, stop: stopFocusTimer } = useTimeoutFn(
+  () => {
+    const el =
+      inputRef.value?.$el?.querySelector?.('input') || inputRef.value?.$el || inputRef.value
+    el?.focus()
+    el?.select?.()
+  },
+  150,
+  { immediate: false },
+)
 
 watch(
   () => props.open,
   async (isOpen) => {
+    stopFocusTimer()
     if (isOpen) {
       editedTitle.value = props.state.document.projectTitle
       await nextTick()
       // Small delay to let the drawer animate in
-      setTimeout(() => {
-        // Since Input might be a functional component or nested, we try to find the actual input
-        const el =
-          inputRef.value?.$el?.querySelector?.('input') || inputRef.value?.$el || inputRef.value
-        el?.focus()
-        el?.select?.()
-      }, 150)
+      // Since Input might be a functional component or nested, we try to find the actual input
+      startFocusTimer()
     }
   },
   { immediate: true },

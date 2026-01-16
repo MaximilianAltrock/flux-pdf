@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { useGridLogic } from '@/composables/useGridLogic'
@@ -96,6 +97,11 @@ function handleFileDragOver(event: DragEvent) {
   event.preventDefault()
 }
 
+function resetFileDragState() {
+  dragCounter.value = 0
+  isFileDragOver.value = false
+}
+
 function handleFileDragLeave(event: DragEvent) {
   event.preventDefault()
   if (isDragging.value) return
@@ -109,8 +115,7 @@ function handleFileDragLeave(event: DragEvent) {
 
 async function handleFileDrop(event: DragEvent) {
   event.preventDefault()
-  dragCounter.value = 0
-  isFileDragOver.value = false
+  resetFileDragState()
   if (isDragging.value) return
 
   const jsonData = event.dataTransfer?.getData('application/json')
@@ -140,6 +145,14 @@ function handlePreview(pageRef: PageReference) {
 function handleContextAction(action: UserAction, pageRef: PageReference) {
   emit('contextAction', action, pageRef)
 }
+
+useEventListener('dragend', resetFileDragState)
+useEventListener('drop', resetFileDragState)
+useEventListener('dragleave', (event) => {
+  if (event.relatedTarget === null) {
+    resetFileDragState()
+  }
+})
 </script>
 
 <template>

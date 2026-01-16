@@ -113,6 +113,8 @@ const pageRangeDescription = computed(() => {
   }
 })
 
+const estimatedSize = computed(() => getEstimatedSize(pagesToExport.value))
+
 function validateForm() {
   let isValid = true
 
@@ -152,7 +154,7 @@ onMounted(() => {
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-0.5">
-          <span class="ui-kicker">Export Target</span>
+          <span class="ui-kicker">Export summary</span>
           <span
             class="ui-mono text-[10px] font-semibold text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/30 rounded-sm"
             >{{ pageCount }} PAGES</span
@@ -162,9 +164,9 @@ onMounted(() => {
           {{ pageRangeDescription }}
         </p>
         <p class="ui-caption ui-mono">
-          Est. size:
-          <span class="text-foreground/80">{{ formatBytes(getEstimatedSize(pagesToExport)) }}</span>
-          <span class="ml-1 text-xs opacity-50">({{ getEstimatedSize(pagesToExport) }} B)</span>
+          Estimated size:
+          <span class="text-foreground/80">{{ formatBytes(estimatedSize) }}</span>
+          <span class="ml-1 text-xs opacity-50">({{ estimatedSize }} B)</span>
         </p>
       </div>
     </div>
@@ -173,7 +175,7 @@ onMounted(() => {
     <div class="space-y-2">
       <div class="flex items-center justify-between px-1">
         <Label for="filename" class="ui-kicker">
-          Output Filename
+          File name
         </Label>
       </div>
       <InputGroup class="rounded-sm">
@@ -194,7 +196,7 @@ onMounted(() => {
     <!-- Page Range -->
     <div class="space-y-3">
       <div class="flex items-center justify-between px-1">
-        <Label class="ui-kicker">Page Context</Label>
+        <Label class="ui-kicker">Page range</Label>
       </div>
 
       <RadioGroup v-model="localSettings.pageRangeMode" class="grid grid-cols-1 gap-2">
@@ -204,7 +206,7 @@ onMounted(() => {
             for="range-all"
             class="flex items-center justify-between px-3 h-10 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
           >
-            <span class="ui-label">Whole Document</span>
+            <span class="ui-label">All pages</span>
             <span class="ui-mono text-[10px] text-muted-foreground"
               >{{ document.pageCount }} pages</span>
           </Label>
@@ -226,7 +228,7 @@ onMounted(() => {
                 : 'opacity-50 cursor-not-allowed bg-muted/10'
             "
           >
-            <span class="ui-label">Selected Frames</span>
+            <span class="ui-label">Selected pages</span>
             <span class="ui-mono text-[10px] text-muted-foreground"
               >{{ document.selectedCount }} items</span>
           </Label>
@@ -238,8 +240,8 @@ onMounted(() => {
             for="range-custom"
             class="flex items-center justify-between px-3 h-10 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
           >
-            <span class="ui-label">Manual Range</span>
-            <span class="ui-mono text-[10px] text-muted-foreground">User defined</span>
+            <span class="ui-label">Custom range</span>
+            <span class="ui-mono text-[10px] text-muted-foreground">Custom</span>
           </Label>
         </div>
       </RadioGroup>
@@ -281,7 +283,7 @@ onMounted(() => {
         >
           <div class="flex items-center gap-2">
             <Settings class="w-3 h-3" />
-            System Parameters
+            Advanced options
           </div>
           <ChevronDown
             class="w-3 h-3 transition-transform duration-300"
@@ -299,10 +301,10 @@ onMounted(() => {
           >
             <div class="space-y-0.5">
               <Label for="opt-compress" class="ui-label cursor-pointer">
-                Object Stream Compression
+                Object stream compression
               </Label>
               <p class="ui-caption">
-                Internal PDF structure optimization
+                Optimize PDF structure (no visual changes)
               </p>
             </div>
             <Checkbox id="opt-compress" v-model="localSettings.compress" />
@@ -312,9 +314,9 @@ onMounted(() => {
           <div class="ui-panel rounded-md p-4 space-y-3">
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
-                <Label class="ui-label">PDF Compression (Ghostscript)</Label>
+                <Label class="ui-label">PDF compression (Ghostscript)</Label>
                 <p class="ui-caption">
-                  Reduce file size with image downsampling
+                  Reduce file size by downsampling images.
                 </p>
               </div>
             </div>
@@ -325,7 +327,7 @@ onMounted(() => {
                   for="cq-none"
                   class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
-                  <span class="ui-label">Off</span>
+                  <span class="ui-label">None</span>
                   <span class="ui-caption">No compression</span>
                 </Label>
               </div>
@@ -336,7 +338,7 @@ onMounted(() => {
                   class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
                   <span class="ui-label">Screen</span>
-                  <span class="ui-caption">72 dpi - Max compression</span>
+                  <span class="ui-caption">72 dpi - Highest compression</span>
                 </Label>
               </div>
               <div class="relative">
@@ -346,7 +348,7 @@ onMounted(() => {
                   class="flex flex-col px-3 py-2 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
                 >
                   <span class="ui-label">Ebook</span>
-                  <span class="ui-caption">150 dpi - Recommended</span>
+                  <span class="ui-caption">150 dpi - Balanced</span>
                 </Label>
               </div>
               <div class="relative">

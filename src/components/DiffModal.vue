@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useIntervalFn } from '@vueuse/core'
 import { X, ZoomIn, ZoomOut, Eye, Layers, Zap, Columns } from 'lucide-vue-next'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import type { PageReference } from '@/types'
@@ -38,12 +39,29 @@ const opacity = ref([100]) // Shadcn Slider uses array for multi-thumb
 const blendMode = ref<'difference' | 'normal'>('difference')
 const viewMode = ref('overlay')
 const isBlinking = ref(false)
-let blinkInterval: number | null = null
+const { pause: stopBlinkTimer, resume: startBlinkTimer } = useIntervalFn(
+  () => {
+    opacity.value = opacity.value[0] === 100 ? [0] : [100]
+  },
+  400,
+  { immediate: false },
+)
 
 // Load Images High-Res
 watch(
-  () => props.open,
-  async (isOpen) => {
+  () => [
+    props.open,
+    props.pages?.[0]?.id,
+    props.pages?.[0]?.rotation,
+    props.pages?.[1]?.id,
+    props.pages?.[1]?.rotation,
+  ],
+  async ([isOpen], _prev, onInvalidate) => {
+    let canceled = false
+    onInvalidate(() => {
+      canceled = true
+    })
+
     if (isOpen && props.pages) {
       isLoading.value = true
       zoom.value = 1
@@ -58,12 +76,18 @@ watch(
           renderThumbnail(pageA, 800, 3),
           renderThumbnail(pageB, 800, 3),
         ])
-        urlA.value = a
-        urlB.value = b
+        if (!canceled) {
+          urlA.value = a
+          urlB.value = b
+        }
       } catch (e) {
-        console.error(e)
+        if (!canceled) {
+          console.error(e)
+        }
       } finally {
-        isLoading.value = false
+        if (!canceled) {
+          isLoading.value = false
+        }
       }
     }
 
@@ -98,19 +122,13 @@ function toggleBlink() {
     blendMode.value = 'normal'
     isBlinking.value = true
     opacity.value = [100]
-
-    blinkInterval = window.setInterval(() => {
-      opacity.value = opacity.value[0] === 100 ? [0] : [100]
-    }, 400)
+    startBlinkTimer()
   }
 }
 
 function stopBlink() {
   isBlinking.value = false
-  if (blinkInterval) {
-    clearInterval(blinkInterval)
-    blinkInterval = null
-  }
+  stopBlinkTimer()
   opacity.value = [100]
   if (viewMode.value === 'overlay') {
     blendMode.value = 'difference'
@@ -134,12 +152,10 @@ function handleZoom(delta: number) {
       >
         <div class="flex items-center gap-6">
           <div class="flex flex-col">
-            <span class="ui-kicker opacity-70 leading-none mb-1">
-              Visual Correlation
-            </span>
+            <span class="ui-kicker opacity-70 leading-none mb-1">Comparison</span>
             <DialogTitle class="text-sm font-semibold flex items-center gap-2">
               <Layers class="w-4 h-4 text-primary" />
-              GHOST OVERLAY
+              Compare pages
             </DialogTitle>
           </div>
 
@@ -151,7 +167,7 @@ function handleZoom(delta: number) {
             >
               <span class="text-xs font-black text-primary">A</span>
               <span class="text-xs font-mono font-medium text-primary/80"
-                >PAGE {{ (props.pages[0].sourcePageIndex + 1).toString().padStart(2, '0') }}</span
+                >Page {{ (props.pages[0].sourcePageIndex + 1).toString().padStart(2, '0') }}</span
               >
             </div>
             <span class="text-xs font-bold text-muted-foreground/40 italic">VS</span>
@@ -160,7 +176,7 @@ function handleZoom(delta: number) {
             >
               <span class="text-xs font-black text-destructive">B</span>
               <span class="text-xs font-mono font-medium text-destructive/80"
-                >PAGE {{ (props.pages[1].sourcePageIndex + 1).toString().padStart(2, '0') }}</span
+                >Page {{ (props.pages[1].sourcePageIndex + 1).toString().padStart(2, '0') }}</span
               >
             </div>
           </div>
@@ -181,7 +197,7 @@ function handleZoom(delta: number) {
       <div class="flex-1 overflow-hidden relative flex items-center justify-center bg-dots p-8">
         <div v-if="isLoading" class="flex flex-col items-center gap-3">
           <Spinner class="w-8 h-8 text-primary" />
-          <span class="ui-kicker ui-mono opacity-70">Rendering...</span>
+          <span class="ui-kicker ui-mono opacity-70">Loading preview...</span>
         </div>
 
         <!-- IMAGE CONTAINER -->
@@ -247,7 +263,7 @@ function handleZoom(delta: number) {
           >
             <!-- Mode Toggle -->
             <div class="flex flex-col gap-1.5 px-1 font-sans">
-              <span class="ui-kicker opacity-70 pl-1">View Mode</span>
+              <span class="ui-kicker opacity-70 pl-1">View mode</span>
               <ToggleGroup
                 type="single"
                 :model-value="viewMode"
@@ -265,7 +281,7 @@ function handleZoom(delta: number) {
                   value="side-by-side"
                   class="px-3 py-1.5 h-8 gap-2 rounded-sm ui-label"
                 >
-                  <Columns class="w-3.5 h-3.5" /> Side-by-Side
+                  <Columns class="w-3.5 h-3.5" /> Side by side
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
@@ -278,7 +294,7 @@ function handleZoom(delta: number) {
               :class="{ 'opacity-30 pointer-events-none': viewMode === 'side-by-side' }"
             >
               <div class="flex items-center justify-between px-1">
-                <span class="ui-kicker opacity-70">Ghost Opacity</span>
+                <span class="ui-kicker opacity-70">Overlay opacity</span>
                 <span class="ui-mono text-xs font-semibold text-primary">{{ opacity[0] }}%</span>
               </div>
               <div class="flex items-center gap-3">
@@ -299,7 +315,7 @@ function handleZoom(delta: number) {
             <div class="flex items-center gap-3">
               <!-- Blink Mode -->
               <div class="flex flex-col items-center gap-1">
-                <span class="ui-kicker opacity-50">Blink</span>
+                <span class="ui-kicker opacity-50">Blink mode</span>
                 <Button
                   @click="toggleBlink"
                   variant="ghost"
@@ -310,7 +326,7 @@ function handleZoom(delta: number) {
                       ? 'bg-primary/15 text-primary'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                   "
-                  title="Toggle Blink Mode"
+                  title="Toggle blink mode"
                 >
                   <Zap class="w-4 h-4" :class="{ 'fill-current': isBlinking }" />
                 </Button>

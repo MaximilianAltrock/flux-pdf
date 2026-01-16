@@ -11,11 +11,12 @@ const emit = defineEmits<{
 const isDragging = ref(false)
 const dragType = ref<'files' | 'source' | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+let dragCounter = 0
 
 // Computed for dynamic messaging
 const dropMessage = computed(() => {
   if (dragType.value === 'source') return 'Drop to add pages'
-  return 'Drop your PDF here'
+  return 'Drop PDF or images here'
 })
 
 const dropIcon = computed(() => {
@@ -23,9 +24,22 @@ const dropIcon = computed(() => {
   return Upload
 })
 
+function handleDragEnter(event: DragEvent) {
+  event.preventDefault()
+  dragCounter += 1
+  if (dragCounter === 1) {
+    isDragging.value = true
+  }
+
+  if (event.dataTransfer?.types.includes('application/json')) {
+    dragType.value = 'source'
+  } else {
+    dragType.value = 'files'
+  }
+}
+
 function handleDragOver(event: DragEvent) {
   event.preventDefault()
-  isDragging.value = true
 
   // Detect drag type
   if (event.dataTransfer?.types.includes('application/json')) {
@@ -37,12 +51,16 @@ function handleDragOver(event: DragEvent) {
 
 function handleDragLeave(event: DragEvent) {
   event.preventDefault()
-  isDragging.value = false
-  dragType.value = null
+  dragCounter = Math.max(0, dragCounter - 1)
+  if (dragCounter === 0) {
+    isDragging.value = false
+    dragType.value = null
+  }
 }
 
 function handleDrop(event: DragEvent) {
   event.preventDefault()
+  dragCounter = 0
   isDragging.value = false
   dragType.value = null
 
@@ -89,6 +107,7 @@ function openFileDialog() {
         ? 'border-primary bg-primary/5 scale-[1.02]'
         : 'border-border hover:border-primary/50 hover:bg-muted/5'
     "
+    @dragenter="handleDragEnter"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
@@ -98,7 +117,7 @@ function openFileDialog() {
     <input
       ref="fileInput"
       type="file"
-      accept="application/pdf,.pdf"
+      accept="application/pdf,.pdf,image/jpeg,image/png"
       multiple
       class="hidden"
       @change="handleFileInputChange"
@@ -114,19 +133,19 @@ function openFileDialog() {
 
     <!-- Text -->
     <h3 class="text-sm font-semibold" :class="isDragging ? 'text-primary' : 'text-foreground'">
-      {{ isDragging ? dropMessage : 'Upload PDF files' }}
+      {{ isDragging ? dropMessage : 'Upload PDF or image files' }}
     </h3>
 
     <p class="ui-caption">
       {{
         isDragging && dragType === 'source'
           ? 'Release to add all pages from this source'
-          : 'Drag & drop PDF files here, or click to browse'
+          : 'Drag & drop PDF or image files here, or click to browse'
       }}
     </p>
 
     <!-- Supported formats hint -->
-    <p v-if="!isDragging" class="ui-caption opacity-70">Supports: .pdf files</p>
+    <p v-if="!isDragging" class="ui-caption opacity-70">Supports: .pdf, .jpg, .png</p>
 
     <!-- Drag overlay animation -->
     <div

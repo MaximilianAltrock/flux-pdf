@@ -51,8 +51,8 @@ const settings = ref<ExportSettings>({
   filename: '',
   pageRangeMode: 'all',
   customPageRange: '',
-  compress: true,
-  compressionQuality: 'ebook',
+  compress: false,
+  compressionQuality: 'none',
 })
 
 // Reset state when modal opens
@@ -64,8 +64,8 @@ watch(
         filename: getSuggestedFilename(),
         pageRangeMode: props.exportSelected && document.selectedCount > 0 ? 'selected' : 'all',
         customPageRange: '',
-        compress: true,
-        compressionQuality: 'ebook',
+        compress: false,
+        compressionQuality: 'none',
       }
 
       exportComplete.value = false
@@ -169,14 +169,8 @@ const displayPageCount = computed(() => {
         class="h-14 border-b border-border flex items-center justify-between px-6 bg-card shrink-0 space-y-0 flex-row z-50"
       >
         <div class="flex flex-col">
-          <span
-            class="ui-kicker opacity-70 leading-none mb-1"
-          >
-            Production Pipeline
-          </span>
           <DialogTitle class="text-sm font-semibold flex items-center gap-2">
-            <Download class="w-4 h-4 text-primary" />
-            EXPORT PDF
+            Export PDF
           </DialogTitle>
         </div>
 
@@ -223,25 +217,25 @@ const displayPageCount = computed(() => {
           :disabled="isExporting"
           @click="handleClose"
         >
-          Abort
+          Cancel
         </Button>
 
         <Button
           v-if="exportComplete"
-          class="h-9 px-6 ui-label shadow-sm"
+          class="h-9 px-6 text-xs font-semibold shadow-sm"
           @click="handleClose"
         >
-          Exit Process
+          Close
         </Button>
 
         <Button
           v-else-if="!exportError"
           :disabled="!isConfigValid || isExporting"
-          class="h-9 px-6 ui-label shadow-sm transition-transform active:scale-95"
+          class="h-9 px-6 text-xs font-semibold shadow-sm transition-transform active:scale-95"
           @click="handleExport"
         >
           <Download class="w-3.5 h-3.5 mr-2" />
-          Initialize
+          Export
           <span v-if="typeof displayPageCount === 'number'">({{ displayPageCount }})</span>
         </Button>
       </DialogFooter>

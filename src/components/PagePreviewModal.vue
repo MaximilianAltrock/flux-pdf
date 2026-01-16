@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-vue-next'
-import { useSwipe } from '@vueuse/core'
+import { useSwipe, useEventListener } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import type { PageReference } from '@/types'
 import { useMobile } from '@/composables/useMobile'
@@ -35,7 +35,6 @@ const previewUrl = ref<string | null>(null)
 const isLoading = ref(false)
 const zoom = ref(1)
 const containerRef = ref<HTMLElement | null>(null)
-const imageRef = ref<HTMLElement | null>(null)
 
 // --- Computed Helpers ---
 const contentPages = computed(() => props.state.document.contentPages)
@@ -54,31 +53,40 @@ const totalPages = computed(() => contentPages.value.length)
 // --- Watchers ---
 watch(
   () => [props.open, props.pageRef?.id, props.pageRef?.rotation],
-  async () => {
-    if (props.open && props.pageRef) {
-      await loadPreview()
+  async ([isOpen], _prev, onInvalidate) => {
+    let canceled = false
+    onInvalidate(() => {
+      canceled = true
+    })
+
+    if (!isOpen || !props.pageRef) {
+      previewUrl.value = null
+      isLoading.value = false
+      return
+    }
+
+    isLoading.value = true
+    previewUrl.value = null
+    zoom.value = 1
+
+    try {
+      const res = isMobile.value ? 600 : 1200
+      const url = await renderThumbnail(props.pageRef, res, 2)
+      if (!canceled) {
+        previewUrl.value = url
+      }
+    } catch (error) {
+      if (!canceled) {
+        console.error('Preview load error:', error)
+      }
+    } finally {
+      if (!canceled) {
+        isLoading.value = false
+      }
     }
   },
   { immediate: true },
 )
-
-// --- Logic ---
-async function loadPreview() {
-  if (!props.pageRef) return
-  isLoading.value = true
-  previewUrl.value = null
-  zoom.value = 1
-
-  try {
-    const res = isMobile.value ? 600 : 1200
-    const url = await renderThumbnail(props.pageRef, res, 2)
-    previewUrl.value = url
-  } catch (error) {
-    console.error('Preview load error:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
 
 function handleClose() {
   emit('update:open', false)
@@ -150,8 +158,7 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
+useEventListener('keydown', handleKeydown)
 
 onBackButton(
   computed(() => props.open),
@@ -177,14 +184,8 @@ onBackButton(
         <!-- Left Section: Meta / Page Counter -->
         <div class="flex items-center gap-6 min-w-[200px]">
           <div class="flex flex-col">
-            <span
-              class="ui-kicker opacity-70 leading-none mb-1"
-            >
-              Document Preview
-            </span>
-            <span
-              class="ui-mono text-sm font-medium text-foreground"
-            >
+            <span class="ui-kicker opacity-70 leading-none mb-1"> Page Preview </span>
+            <span class="ui-mono text-sm font-medium text-foreground">
               PAGE {{ pageNumber.toString().padStart(2, '0') }}
               <span class="opacity-40">/ {{ totalPages.toString().padStart(2, '0') }}</span>
             </span>
@@ -192,10 +193,7 @@ onBackButton(
         </div>
 
         <!-- Center Section: Zoom Controls (Desktop Only) -->
-        <div
-          v-if="!isMobile"
-          class="ui-panel-muted rounded-sm p-0.5 flex items-center"
-        >
+        <div v-if="!isMobile" class="ui-panel-muted rounded-sm p-0.5 flex items-center">
           <Button
             variant="ghost"
             size="icon"
@@ -254,7 +252,6 @@ onBackButton(
         <!-- Image -->
         <img
           v-else-if="previewUrl"
-          ref="imageRef"
           :src="previewUrl"
           class="max-w-full max-h-full object-contain transition-transform duration-200 shadow-lg bg-card select-none"
           :style="{ transform: `scale(${zoom})` }"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useEventListener } from '@vueuse/core'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useEventListener, useTimeoutFn } from '@vueuse/core'
 import { ArrowDown } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
@@ -35,9 +35,20 @@ const MIN_COLUMNS = 2
 const MAX_COLUMNS = 4
 
 // Long press for selection
-const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
-const longPressPageId = ref<string | null>(null)
 const LONG_PRESS_MS = 400
+const longPressPageId = ref<string | null>(null)
+const { start: startLongPress, stop: stopLongPress } = useTimeoutFn(
+  () => {
+    const pageId = longPressPageId.value
+    if (!pageId) return
+    haptic('medium')
+    props.actions.enterMobileSelectionMode()
+    props.actions.selectPage(pageId, false)
+    longPressPageId.value = null
+  },
+  LONG_PRESS_MS,
+  { immediate: false },
+)
 
 // Jump mode
 const jumpModeActive = ref(false)
@@ -69,28 +80,17 @@ function handleTouchStart(pageRef: PageReference) {
   // Only start long press in normal mode
   if (!props.selectionMode) {
     longPressPageId.value = pageRef.id
-    longPressTimer.value = setTimeout(() => {
-      haptic('medium')
-      props.actions.enterMobileSelectionMode()
-      props.actions.selectPage(pageRef.id, false)
-      longPressPageId.value = null
-    }, LONG_PRESS_MS)
+    startLongPress()
   }
 }
 
 function handleTouchMove() {
-  if (longPressTimer.value) {
-    clearTimeout(longPressTimer.value)
-    longPressTimer.value = null
-    longPressPageId.value = null
-  }
+  stopLongPress()
+  longPressPageId.value = null
 }
 
 function handleTouchEnd() {
-  if (longPressTimer.value) {
-    clearTimeout(longPressTimer.value)
-    longPressTimer.value = null
-  }
+  stopLongPress()
   longPressPageId.value = null
 }
 
@@ -249,16 +249,10 @@ onMounted(() => {
   useEventListener(document, 'touchend', handlePinchEnd)
 })
 
-onUnmounted(() => {
-  if (longPressTimer.value) {
-    clearTimeout(longPressTimer.value)
-  }
-})
 </script>
 
 <template>
   <div
-    ref="containerRef"
     class="h-full overflow-y-auto overflow-x-hidden bg-background grid-touch-area no-scrollbar"
     @contextmenu="preventContextMenu"
   >

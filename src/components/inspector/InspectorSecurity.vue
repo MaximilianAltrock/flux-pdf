@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -45,6 +45,12 @@ const allowCopying = computed({
 const allowModifying = computed({
   get: () => props.state.document.security.allowModifying,
   set: (value) => props.actions.setSecurity({ allowModifying: value }),
+})
+
+watch(securityEncrypted, (isEncrypted) => {
+  if (!isEncrypted) {
+    props.actions.setSecurity({ userPassword: '', ownerPassword: '' })
+  }
 })
 </script>
 

@@ -258,7 +258,7 @@ export async function generateRawPdf(
   await addBookmarks(finalPdf, exportBookmarks)
 
   return await finalPdf.save({
-    useObjectStreams: compress ?? true,
+    useObjectStreams: compress ?? false,
     addDefaultPage: false,
   })
 }

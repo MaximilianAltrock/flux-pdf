@@ -18,7 +18,7 @@ import {
   Layers,
 } from 'lucide-vue-next'
 import { UserAction } from '@/types/actions'
-import { useColorMode } from '@vueuse/core'
+import { useThemeToggle } from '@/composables/useThemeToggle'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
 
@@ -44,12 +44,8 @@ const emit = defineEmits<{
   action: [action: UserAction]
 }>()
 
-const mode = useColorMode()
-
+const { mode, toggleTheme } = useThemeToggle()
 const isDark = computed(() => mode.value === 'dark')
-const toggleTheme = () => {
-  mode.value = mode.value === 'dark' ? 'light' : 'dark'
-}
 
 interface CommandItemData {
   id: string
@@ -155,7 +151,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   },
   {
     id: 'diff-pages',
-    label: 'Diff selected pages (Ghost Overlay)',
+    label: 'Compare selected pages',
     shortcut: 'D',
     icon: Layers,
     action: () => emit('action', UserAction.DIFF),

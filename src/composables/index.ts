@@ -14,6 +14,7 @@ export { useKeyboardShortcuts } from './useKeyboardShortcuts'
 
 // Device & platform
 export { useMobile } from './useMobile'
+export { useThemeToggle } from './useThemeToggle'
 
 // Grid logic
 export { useGridLogic } from './useGridLogic'

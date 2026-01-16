@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { FilePlus, HelpCircle } from 'lucide-vue-next'
 import {
   DropdownMenu,
@@ -32,14 +32,13 @@ const displayTitle = computed({
   },
 })
 
-function startEditing() {
+async function startEditing() {
   isEditingTitle.value = true
-  setTimeout(() => {
-    const el =
-      titleInput.value?.$el?.querySelector?.('input') || titleInput.value?.$el || titleInput.value
-    el?.focus()
-    el?.select?.()
-  }, 0)
+  await nextTick()
+  const el =
+    titleInput.value?.$el?.querySelector?.('input') || titleInput.value?.$el || titleInput.value
+  el?.focus()
+  el?.select?.()
 }
 
 function finishEditing() {

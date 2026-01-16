@@ -46,9 +46,7 @@ watch(
         Session History
         <span class="w-1 h-1 rounded-full bg-primary/40"></span>
       </h2>
-      <Badge
-        variant="outline"
-        class="ui-mono text-[10px] h-4 opacity-60 px-1.5"
+      <Badge variant="outline" class="ui-mono text-[10px] h-4 opacity-60 px-1.5"
         >{{ historyList.length }} steps</Badge
       >
     </div>
@@ -73,7 +71,7 @@ watch(
                     ? 'text-primary'
                     : 'text-foreground/80 group-hover:text-foreground',
                   entry.isUndone
-                    ? 'text-muted-foreground/60 italic line-through decoration-muted-foreground/20'
+                    ? 'text-muted-foreground/40 italic line-through decoration-muted-foreground/20'
                     : '',
                 ]"
               >
@@ -90,10 +88,7 @@ watch(
           </TimelineItem>
         </Timeline>
 
-        <div
-          v-else
-          class="h-full flex flex-col items-center justify-center p-8 text-center"
-        >
+        <div v-else class="h-full flex flex-col items-center justify-center p-8 text-center">
           <div class="ui-panel-muted rounded-md p-3 mb-2">
             <History class="w-5 h-5" />
           </div>

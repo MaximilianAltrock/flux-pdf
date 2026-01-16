@@ -30,13 +30,14 @@ const emit = defineEmits<{
 const { renderThumbnail, cancelRender } = useThumbnailRenderer()
 
 const containerRef = ref<HTMLElement | null>(null)
+const lastPageRefId = ref(props.pageRef.id)
 
 // State
 const thumbnailUrl = ref<string | null>(null)
 const isLoading = ref(false)
 const hasError = ref(false)
-const isVisible = ref(false)
 const hasBeenVisible = ref(false)
+const renderRequestId = ref(0)
 
 const sourceColor = computed(() => props.sourceColor || 'gray')
 
@@ -46,8 +47,6 @@ const renderTargetWidth = computed(() => props.width ?? 300)
 const { stop: stopObserver } = useIntersectionObserver(
   containerRef,
   ([entry]) => {
-    isVisible.value = entry?.isIntersecting ?? false
-
     if (entry?.isIntersecting && !hasBeenVisible.value) {
       hasBeenVisible.value = true
       loadThumbnail()
@@ -60,21 +59,29 @@ const { stop: stopObserver } = useIntersectionObserver(
 )
 
 async function loadThumbnail() {
-  if (thumbnailUrl.value || isLoading.value) return
+  if (thumbnailUrl.value) return
 
+  const requestId = ++renderRequestId.value
+  const pageRef = props.pageRef
+  lastPageRefId.value = pageRef.id
+  cancelRender(pageRef.id)
   isLoading.value = true
   hasError.value = false
 
   try {
-    const url = await renderThumbnail(props.pageRef, renderTargetWidth.value)
+    const url = await renderThumbnail(pageRef, renderTargetWidth.value)
+    if (requestId !== renderRequestId.value) return
     thumbnailUrl.value = url
   } catch (error) {
+    if (requestId !== renderRequestId.value) return
     if ((error as Error).message !== 'Render aborted') {
       console.error('Thumbnail render error:', error)
       hasError.value = true
     }
   } finally {
-    isLoading.value = false
+    if (requestId === renderRequestId.value) {
+      isLoading.value = false
+    }
   }
 }
 
@@ -86,6 +93,8 @@ watch(
   ],
   () => {
     if (hasBeenVisible.value) {
+      cancelRender(lastPageRefId.value)
+      lastPageRefId.value = props.pageRef.id
       thumbnailUrl.value = null
       loadThumbnail()
     }

@@ -226,7 +226,7 @@ export function useAppActions(state: AppState) {
       }
 
       const filename = store.projectTitle || 'document'
-      const pdfResult = await generateRawPdf(pagesToExport, { compress: true })
+      const pdfResult = await generateRawPdf(pagesToExport, { compress: false })
       if (!pdfResult.ok) {
         throw new Error(pdfResult.error.message)
       }

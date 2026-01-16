@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -87,17 +88,9 @@ function handleWindowDragLeave(e: DragEvent) {
   }
 }
 
-onMounted(() => {
-  window.addEventListener('dragend', resetDragState)
-  window.addEventListener('drop', resetDragState)
-  window.addEventListener('dragleave', handleWindowDragLeave)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('dragend', resetDragState)
-  window.removeEventListener('drop', resetDragState)
-  window.removeEventListener('dragleave', handleWindowDragLeave)
-})
+useEventListener('dragend', resetDragState)
+useEventListener('drop', resetDragState)
+useEventListener('dragleave', handleWindowDragLeave)
 </script>
 
 <template>

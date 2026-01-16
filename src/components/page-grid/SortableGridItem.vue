@@ -39,11 +39,9 @@ onMounted(() => {
       }),
       onDragStart: () => {
         isDragging.value = true
-        console.log('SortableGridItem: Draggable Start')
       },
       onDrop: () => {
         isDragging.value = false
-        console.log('SortableGridItem: Draggable End')
       },
       onGenerateDragPreview: ({ nativeSetDragImage }) => {
         setCustomNativeDragPreview({
