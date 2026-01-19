@@ -69,10 +69,10 @@ function handleNewProject() {
   <Sheet :open="open" @update:open="(val: boolean) => emit('update:open', val)">
     <SheetContent
       side="left"
-      class="w-[85%] max-w-[320px] p-0 flex flex-col gap-0 border-r border-border bg-card"
+      class="w-[90vw] max-w-sm p-0 flex flex-col gap-0 border-r border-border bg-card min-h-0"
     >
       <SheetHeader
-        class="h-14 flex items-center justify-between px-4 border-b border-border space-y-0 flex-row"
+        class="h-14 shrink-0 flex items-center justify-between px-4 border-b border-border/70 space-y-0 flex-row"
       >
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
@@ -82,7 +82,7 @@ function handleNewProject() {
         </div>
       </SheetHeader>
 
-      <ScrollArea class="flex-1">
+      <ScrollArea class="flex-1 min-h-0">
         <div class="flex flex-col">
           <!-- Document Info -->
           <div class="px-4 py-4">
@@ -92,8 +92,8 @@ function handleNewProject() {
               <Info class="w-3.5 h-3.5" />
               <span>Document Info</span>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <Card class="rounded-md shadow-none">
+            <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+              <Card class="rounded-lg shadow-none bg-muted/10 border-border/60 py-0">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">
                     {{ props.state.document.pageCount }}
@@ -101,7 +101,7 @@ function handleNewProject() {
                   <div class="ui-kicker">Pages</div>
                 </CardContent>
               </Card>
-              <Card class="rounded-md shadow-none">
+              <Card class="rounded-lg shadow-none bg-muted/10 border-border/60 py-0">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">{{ sources.length }}</div>
                   <div class="ui-kicker">Files</div>
@@ -145,12 +145,12 @@ function handleNewProject() {
                 :key="source.id"
                 variant="outline"
                 size="sm"
-                class="group relative overflow-hidden pr-0"
+                class="group relative grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border-border/60 bg-card/60 px-3 py-2.5 hover:bg-muted/30"
               >
-                <ItemMedia variant="icon" class="ml-4 mr-0">
-                  <FileText class="w-5 h-5 text-primary" />
+                <ItemMedia variant="icon" class="rounded-md bg-muted/30 border-border/60">
+                  <FileText class="w-4 h-4 text-primary" />
                 </ItemMedia>
-                <ItemContent class="flex-1 py-3 px-4 min-w-0">
+                <ItemContent class="flex-1 min-w-0 py-0 px-0 overflow-hidden">
                   <ItemTitle class="text-sm font-semibold truncate">{{
                     source.filename
                   }}</ItemTitle>
@@ -161,8 +161,9 @@ function handleNewProject() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  class="h-12 w-12 text-muted-foreground active:text-destructive active:bg-destructive/10"
+                  class="h-10 w-10 justify-self-end text-muted-foreground active:text-destructive active:bg-destructive/10"
                   @click="handleRemoveSource(source.id)"
+                  aria-label="Remove source file"
                 >
                   <Trash2 class="w-4 h-4" />
                 </Button>
@@ -184,7 +185,7 @@ function handleNewProject() {
             </div>
 
             <Empty
-              v-if="historyList.length === 0"
+              v-if="historyList.length <= 1"
               class="py-8 border border-dashed rounded-md bg-muted/10 flex flex-col items-center justify-center text-muted-foreground"
             >
               <EmptyHeader>
@@ -195,26 +196,41 @@ function handleNewProject() {
               </EmptyHeader>
             </Empty>
 
-            <ItemGroup v-else class="space-y-1">
+            <ItemGroup v-else class="space-y-2">
               <Item
-                v-for="(cmd, idx) in historyList.slice().reverse()"
-                :key="idx"
+                v-for="cmd in historyList.slice().reverse()"
+                :key="cmd.pointer"
                 as-child
                 variant="outline"
                 size="sm"
-                class="w-full p-0"
+                :class="[
+                  'w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border-border/60 px-3 py-2.5 text-left',
+                  cmd.isCurrent ? 'border-primary/40 bg-primary/10' : 'hover:bg-muted/30',
+                  cmd.isUndone ? 'opacity-60' : '',
+                ]"
               >
                 <button
-                  @click="handleHistoryJump(historyList.length - 1 - idx)"
-                  class="flex items-center w-full"
+                  type="button"
+                  @click="handleHistoryJump(cmd.pointer)"
                 >
-                  <ItemMedia variant="icon" class="ml-3 mr-0 w-8 h-8 rounded-full bg-muted/30">
-                    <div class="text-xs font-mono opacity-50">
-                      {{ historyList.length - idx }}
+                  <ItemMedia variant="icon" class="rounded-full bg-muted/30 border-border/60">
+                    <div class="text-[10px] font-mono opacity-70">
+                      <span v-if="cmd.pointer < 0">Start</span>
+                      <span v-else>#{{ cmd.pointer + 1 }}</span>
                     </div>
                   </ItemMedia>
-                  <ItemContent class="flex-1 text-left min-w-0 py-2.5 px-3">
-                    <ItemTitle class="text-sm font-medium">{{ cmd.command.name }}</ItemTitle>
+                  <ItemContent class="flex-1 text-left min-w-0 py-0 px-0 overflow-hidden">
+                    <ItemTitle
+                      class="text-sm font-medium truncate"
+                      :class="[
+                        cmd.isCurrent ? 'text-primary' : 'text-foreground/90',
+                        cmd.isUndone
+                          ? 'line-through decoration-muted-foreground/40 text-muted-foreground/60'
+                          : '',
+                      ]"
+                    >
+                      {{ cmd.command.name }}
+                    </ItemTitle>
                     <ItemDescription
                       class="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"
                     >
@@ -222,7 +238,9 @@ function handleNewProject() {
                       {{ formatTime(cmd.timestamp) }}
                     </ItemDescription>
                   </ItemContent>
-                  <ChevronRight class="w-4 h-4 text-muted-foreground/30 mr-3 shrink-0" />
+                  <div class="h-10 w-10 flex items-center justify-end justify-self-end">
+                    <ChevronRight class="w-4 h-4 text-muted-foreground/40" />
+                  </div>
                 </button>
               </Item>
             </ItemGroup>
@@ -238,12 +256,14 @@ function handleNewProject() {
               @click="toggleTheme"
             >
               <div class="flex items-center gap-3">
-                <Sun
-                  class="w-5 h-5 text-muted-foreground rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
-                />
-                <Moon
-                  class="absolute w-5 h-5 text-muted-foreground rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-                />
+                <span class="relative flex h-5 w-5 items-center justify-center">
+                  <Sun
+                    class="absolute h-5 w-5 text-muted-foreground rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+                  />
+                  <Moon
+                    class="absolute h-5 w-5 text-muted-foreground rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+                  />
+                </span>
                 <span class="text-sm">Appearance</span>
               </div>
               <ChevronRight class="w-4 h-4 text-muted-foreground" />
