@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useMobile } from '@/composables/useMobile'
 import { useMobileActionRegistry } from '@/composables/useMobileActionRegistry'
 import {
   Drawer,
@@ -24,14 +23,12 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const { haptic } = useMobile()
 const { groupedSecondaryActions } = useMobileActionRegistry(props.actions)
 
 const selectedCount = computed(() => props.state.document.selectedCount)
 
 function handleActionTap(action: { execute: () => void; disabled?: boolean }) {
   if (action.disabled) return
-  haptic('medium')
   action.execute()
   emit('update:open', false)
 }
@@ -46,7 +43,7 @@ function handleClose() {
     <DrawerContent>
       <div class="mx-auto w-full max-w-sm">
         <DrawerHeader>
-          <DrawerTitle class="text-center text-sm font-medium text-muted-foreground">
+          <DrawerTitle class="text-center ui-caption">
             {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }} selected
           </DrawerTitle>
         </DrawerHeader>
@@ -56,19 +53,19 @@ function handleClose() {
           <div v-for="group in groupedSecondaryActions" :key="group.category">
             <!-- Category label -->
             <p
-              class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1"
+              class="ui-kicker mb-2 px-1"
             >
               {{ group.label }}
             </p>
 
             <!-- Actions in group -->
-            <div class="bg-muted/20 rounded-lg border border-border overflow-hidden">
+            <div class="ui-panel-muted rounded-lg overflow-hidden">
               <Button
                 v-for="(action, index) in group.actions"
                 :key="action.id"
                 variant="ghost"
                 :disabled="action.disabled"
-                class="w-full h-12 justify-start gap-3 rounded-none px-4 text-foreground active:bg-muted/40 transition-colors"
+                class="w-full h-12 justify-start gap-3 rounded-none px-4 text-foreground hover:bg-muted/20 active:bg-muted/30 transition-colors"
                 :class="{
                   'opacity-50': action.disabled,
                   'border-t border-border': index > 0,

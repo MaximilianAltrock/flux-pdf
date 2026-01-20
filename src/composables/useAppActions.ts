@@ -253,6 +253,9 @@ export function useAppActions(state: AppState) {
    * Handle export selected pages action
    */
   function handleExportSelected() {
+    if (isMobile.value) {
+      haptic('light')
+    }
     state.openExportModal(true)
   }
 
@@ -566,10 +569,17 @@ export function useAppActions(state: AppState) {
 
   function selectAllPages() {
     store.selectAll()
+    if (isMobile.value) {
+      haptic('light')
+    }
   }
 
   function clearSelection() {
     store.clearSelection()
+    if (isMobile.value) {
+      haptic('light')
+      state.exitMobileSelectionMode()
+    }
   }
 
   function enterMobileSelectionMode() {
@@ -617,6 +627,15 @@ export function useAppActions(state: AppState) {
       ...selectedPages,
       ...otherPages.slice(adjustedIndex),
     ]
+
+    const isSameOrder =
+      newOrder.length === allPages.length &&
+      newOrder.every((page, index) => page.id === allPages[index]?.id)
+
+    if (isSameOrder) {
+      state.exitMobileMoveMode()
+      return
+    }
 
     handleReorderPages([...allPages], newOrder)
     haptic('light')

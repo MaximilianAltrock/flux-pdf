@@ -83,7 +83,7 @@ function handleKeydown(event: KeyboardEvent) {
             v-model="editedTitle"
             type="text"
             placeholder="Enter project name"
-            class="h-10 text-sm"
+            class="h-11 text-sm"
             @keydown="handleKeydown"
           />
           <p class="mt-2 ui-caption px-1 text-center">
@@ -93,7 +93,7 @@ function handleKeydown(event: KeyboardEvent) {
 
         <!-- Actions -->
         <DrawerFooter class="pt-0">
-          <Button class="w-full h-10 text-sm font-semibold" @click="handleSave">Save</Button>
+          <Button class="w-full h-11 text-sm font-semibold" @click="handleSave">Save</Button>
           <!-- Safe Area -->
           <div style="height: env(safe-area-inset-bottom, 0px)" />
         </DrawerFooter>

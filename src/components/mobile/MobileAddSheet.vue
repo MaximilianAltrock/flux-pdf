@@ -55,12 +55,12 @@ function handleTakePhoto() {
         <div class="px-4 py-4 space-y-3">
           <!-- Browse Files -->
           <Button
-            variant="outline"
-            class="w-full flex items-center gap-4 p-3 h-auto rounded-md"
+            variant="ghost"
+            class="ui-panel w-full flex items-center gap-4 p-3 min-h-[56px] rounded-lg hover:bg-muted/20 active:bg-muted/30"
             @click="handleSelectFiles"
           >
             <div
-              class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center shrink-0"
+              class="w-10 h-10 rounded-md ui-panel-muted flex items-center justify-center shrink-0"
             >
               <FolderOpen class="w-6 h-6 text-primary" />
             </div>
@@ -72,12 +72,12 @@ function handleTakePhoto() {
 
           <!-- Camera (for scanning) -->
           <Button
-            variant="outline"
-            class="w-full flex items-center gap-4 p-3 h-auto rounded-md"
+            variant="ghost"
+            class="ui-panel w-full flex items-center gap-4 p-3 min-h-[56px] rounded-lg hover:bg-muted/20 active:bg-muted/30"
             @click="handleTakePhoto"
           >
             <div
-              class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center shrink-0"
+              class="w-10 h-10 rounded-md ui-panel-muted flex items-center justify-center shrink-0"
             >
               <Camera class="w-6 h-6 text-primary" />
             </div>
@@ -94,20 +94,20 @@ function handleTakePhoto() {
           <ToggleGroup
             type="single"
             v-model="insertAtEnd"
-            class="w-full flex ui-panel-muted p-1 rounded-sm"
+            class="w-full flex ui-panel-muted p-1 rounded-md"
             variant="outline"
             size="sm"
             :spacing="0"
           >
             <ToggleGroupItem
               value="true"
-              class="flex-1"
+              class="flex-1 h-11 text-sm"
             >
               At End
             </ToggleGroupItem>
             <ToggleGroupItem
               value="false"
-              class="flex-1"
+              class="flex-1 h-11 text-sm"
             >
               At Start
             </ToggleGroupItem>

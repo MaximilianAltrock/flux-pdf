@@ -40,7 +40,6 @@ function handleMore() {
 
 function handleActionTap(action: (typeof primaryActions.value)[0]) {
   if (action.disabled) return
-  haptic(action.isDestructive ? 'medium' : 'light')
   action.execute()
 }
 </script>
@@ -60,7 +59,7 @@ function handleActionTap(action: (typeof primaryActions.value)[0]) {
           :key="action.id"
           variant="ghost"
           :disabled="action.disabled"
-          class="flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] h-auto transition-colors"
+          class="flex flex-col items-center justify-center gap-0.5 px-2 min-w-[64px] h-12 rounded-lg transition-colors hover:bg-muted/20 active:bg-muted/30"
           :class="[
             action.isDestructive
               ? 'text-destructive active:text-destructive/80'
@@ -76,7 +75,7 @@ function handleActionTap(action: (typeof primaryActions.value)[0]) {
         <!-- More button -->
         <Button
           variant="ghost"
-          class="flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] h-auto text-foreground active:text-primary transition-colors"
+          class="flex flex-col items-center justify-center gap-0.5 px-2 min-w-[64px] h-12 rounded-lg text-foreground active:text-primary transition-colors hover:bg-muted/20 active:bg-muted/30"
           @click="handleMore"
         >
           <MoreHorizontal class="w-5 h-5" />

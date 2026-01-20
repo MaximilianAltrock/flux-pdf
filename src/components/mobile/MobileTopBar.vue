@@ -73,7 +73,7 @@ function handleRedo() {
     class="h-14 shrink-0 flex items-center justify-between px-4 border-b transition-colors duration-200"
     :class="{
       'bg-primary border-primary': isSelect,
-      'bg-destructive/90 border-destructive': isMove,
+      'bg-accent border-accent': isMove,
       'bg-card border-border': isBrowse,
     }"
   >
@@ -83,7 +83,7 @@ function handleRedo() {
       <Button
         v-if="isMove"
         variant="ghost"
-        class="h-10 px-3 gap-1.5 text-destructive-foreground active:opacity-70"
+        class="h-11 px-3 gap-1.5 text-accent-foreground active:opacity-70"
         @click="handleCancelMove"
       >
         <ArrowLeft class="w-4 h-4" />
@@ -94,7 +94,7 @@ function handleRedo() {
       <Button
         v-else-if="isSelect"
         variant="ghost"
-        class="h-10 px-3 gap-1.5 text-primary-foreground active:opacity-70"
+        class="h-11 px-3 gap-1.5 text-primary-foreground active:opacity-70"
         @click="handleExitSelect"
       >
         <X class="w-4 h-4" />
@@ -106,7 +106,7 @@ function handleRedo() {
         v-else
         variant="ghost"
         size="icon"
-        class="h-10 w-10 text-foreground active:opacity-70"
+        class="h-11 w-11 text-foreground active:opacity-70"
         @click="handleMenuTap"
       >
         <Menu class="w-5 h-5" />
@@ -116,7 +116,7 @@ function handleRedo() {
     <!-- Center: Title or Status -->
     <div class="flex-1 flex justify-center min-w-0 px-2">
       <!-- Move Mode: Moving X pages -->
-      <span v-if="isMove" class="text-destructive-foreground font-semibold text-sm">
+      <span v-if="isMove" class="text-accent-foreground font-semibold text-sm">
         Moving {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }}
       </span>
 
@@ -146,7 +146,7 @@ function handleRedo() {
       <Button
         v-else-if="isSelect"
         variant="ghost"
-        class="h-10 px-3 text-primary-foreground font-semibold active:opacity-70"
+        class="h-11 px-3 text-primary-foreground font-semibold active:opacity-70"
         @click="handleExitSelect"
       >
         Done
@@ -158,7 +158,7 @@ function handleRedo() {
           v-if="hasPages"
           variant="ghost"
           size="icon"
-          class="h-10 w-10 text-muted-foreground active:text-foreground"
+          class="h-11 w-11 text-muted-foreground active:text-foreground"
           @click="handleEnterSelect"
         >
           <CheckSquare class="w-5 h-5" />
@@ -166,7 +166,7 @@ function handleRedo() {
         <Button
           variant="ghost"
           size="icon"
-          class="h-10 w-10 text-muted-foreground"
+          class="h-11 w-11 text-muted-foreground"
           :class="props.actions.canUndo.value ? '' : 'opacity-40'"
           :disabled="!props.actions.canUndo.value"
           @click="handleUndo"
@@ -176,7 +176,7 @@ function handleRedo() {
         <Button
           variant="ghost"
           size="icon"
-          class="h-10 w-10 text-muted-foreground"
+          class="h-11 w-11 text-muted-foreground"
           :class="props.actions.canRedo.value ? '' : 'opacity-40'"
           :disabled="!props.actions.canRedo.value"
           @click="handleRedo"

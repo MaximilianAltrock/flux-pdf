@@ -2,6 +2,7 @@ import { computed, type Component, markRaw } from 'vue'
 import {
   ArrowRightLeft,
   RotateCw,
+  RotateCcw,
   Copy,
   Trash2,
   Download,
@@ -9,7 +10,7 @@ import {
   XSquare,
 } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
-import { type RotationDelta } from '@/constants'
+import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/constants'
 
 /**
  * Mobile action categories for grouping in the "More" action sheet
@@ -70,7 +71,7 @@ export function useMobileActionRegistry(actions: {
       label: 'Rotate',
       icon: markRaw(RotateCw),
       primary: true,
-      execute: () => actions.handleRotateSelected(90),
+      execute: () => actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT),
       isEnabled: () => store.selectedCount > 0,
     },
     {
@@ -92,6 +93,14 @@ export function useMobileActionRegistry(actions: {
     },
 
     // === Secondary Actions (More Sheet) ===
+    {
+      id: 'rotate-left',
+      label: 'Rotate Left',
+      icon: markRaw(RotateCcw),
+      category: 'arrange',
+      execute: () => actions.handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT),
+      isEnabled: () => store.selectedCount > 0,
+    },
     {
       id: 'export-selected',
       label: 'Export Selected',

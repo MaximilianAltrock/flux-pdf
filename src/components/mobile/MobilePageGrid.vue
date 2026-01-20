@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useEventListener, useTimeoutFn } from '@vueuse/core'
-import { ArrowDown, Check } from 'lucide-vue-next'
+import { ArrowDown } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
@@ -137,7 +137,6 @@ function handlePageTap(page: PageEntry, event: Event) {
 }
 
 function handleDropMarkerTap(index: number) {
-  haptic('medium')
   props.actions.handleMoveSelectedToPosition(index)
 }
 
@@ -191,14 +190,14 @@ useEventListener(document, 'touchend', handlePinchEnd)
 <template>
   <div
     class="h-full overflow-y-auto overflow-x-hidden grid-touch-area no-scrollbar"
-    :class="isMove ? 'bg-muted/30' : 'bg-background'"
+    :class="isMove ? 'bg-muted/20' : 'bg-background'"
     @contextmenu="preventContextMenu"
   >
     <!-- Move mode header -->
     <Transition name="slide-down">
       <div
         v-if="isMove"
-        class="sticky top-0 z-20 bg-destructive/90 px-4 py-3 flex items-center justify-center text-destructive-foreground"
+        class="sticky top-0 z-20 bg-accent px-4 py-3 flex items-center justify-center text-accent-foreground border-b border-accent/50 shadow-sm"
       >
         <span class="text-sm font-medium">
           Tap where to move {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }}
@@ -212,7 +211,7 @@ useEventListener(document, 'touchend', handlePinchEnd)
         <!-- Drop marker before this page (in Move mode) -->
         <button
           v-if="isMove && dropTargets.has(index) && !selectedIds.has(pageRef.id)"
-          class="col-span-full h-12 -my-1 border-2 border-dashed border-destructive/60 rounded-lg flex items-center justify-center gap-2 text-destructive text-sm font-medium bg-destructive/5 active:bg-destructive/15 transition-colors"
+          class="col-span-full h-12 -my-1 border-2 border-dashed border-primary/50 rounded-lg flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/10 transition-colors"
           @click="handleDropMarkerTap(index)"
         >
           <ArrowDown class="w-4 h-4" />
@@ -234,16 +233,6 @@ useEventListener(document, 'touchend', handlePinchEnd)
           @touchend="handleTouchEnd"
           @click="handlePageTap(pageRef, $event)"
         >
-          <!-- Selection badge -->
-          <Transition name="pop">
-            <div
-              v-if="isSelect && isSelected(pageRef.id)"
-              class="absolute -top-1 -right-1 z-10 w-6 h-6 bg-primary rounded-md flex items-center justify-center shadow-sm"
-            >
-              <Check class="w-4 h-4 text-primary-foreground" stroke-width="3" />
-            </div>
-          </Transition>
-
           <!-- Long press highlight -->
           <Transition name="fade">
             <div
@@ -270,7 +259,7 @@ useEventListener(document, 'touchend', handlePinchEnd)
       <!-- Drop marker at end (in Move mode) -->
       <button
         v-if="isMove && dropTargets.has(localPages.length)"
-        class="col-span-full h-12 border-2 border-dashed border-destructive/60 rounded-lg flex items-center justify-center gap-2 text-destructive text-sm font-medium bg-destructive/5 active:bg-destructive/15 transition-colors"
+        class="col-span-full h-12 border-2 border-dashed border-primary/50 rounded-lg flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/10 transition-colors"
         @click="handleDropMarkerTap(localPages.length)"
       >
         <ArrowDown class="w-4 h-4" />
@@ -281,10 +270,10 @@ useEventListener(document, 'touchend', handlePinchEnd)
     <!-- Helper text -->
     <p
       v-if="contentPages.length > 0 && !isMove"
-      class="text-center text-muted-foreground text-xs py-4 px-6"
+      class="text-center ui-caption py-4 px-6"
     >
       <template v-if="isSelect"> Tap pages to select </template>
-      <template v-else> Long-press to select · Tap to preview </template>
+      <template v-else> Long-press to select / Tap to preview </template>
     </p>
 
     <!-- Empty state -->
@@ -322,20 +311,6 @@ useEventListener(document, 'touchend', handlePinchEnd)
   opacity: 0;
 }
 
-.pop-enter-active {
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.pop-leave-active {
-  transition: all 0.15s ease-in;
-}
-
-.pop-enter-from,
-.pop-leave-to {
-  opacity: 0;
-  transform: scale(0);
-}
-
 .grid-touch-area {
   touch-action: pan-y;
   overscroll-behavior: contain;
@@ -350,3 +325,4 @@ useEventListener(document, 'touchend', handlePinchEnd)
   display: none;
 }
 </style>
+

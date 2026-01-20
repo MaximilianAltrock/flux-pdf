@@ -93,7 +93,7 @@ function handleNewProject() {
               <span>Document Info</span>
             </div>
             <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
-              <Card class="rounded-lg shadow-none bg-muted/10 border-border/60 py-0">
+              <Card class="rounded-lg shadow-none ui-panel-muted py-0">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">
                     {{ props.state.document.pageCount }}
@@ -101,7 +101,7 @@ function handleNewProject() {
                   <div class="ui-kicker">Pages</div>
                 </CardContent>
               </Card>
-              <Card class="rounded-lg shadow-none bg-muted/10 border-border/60 py-0">
+              <Card class="rounded-lg shadow-none ui-panel-muted py-0">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">{{ sources.length }}</div>
                   <div class="ui-kicker">Files</div>
@@ -129,7 +129,7 @@ function handleNewProject() {
 
             <Empty
               v-if="sources.length === 0"
-              class="py-10 border border-dashed rounded-md bg-muted/10"
+              class="py-10 ui-panel-muted border-dashed rounded-md"
             >
               <EmptyHeader>
                 <EmptyMedia variant="icon" class="mx-auto mb-2 opacity-20">
@@ -186,7 +186,7 @@ function handleNewProject() {
 
             <Empty
               v-if="historyList.length <= 1"
-              class="py-8 border border-dashed rounded-md bg-muted/10 flex flex-col items-center justify-center text-muted-foreground"
+              class="py-8 ui-panel-muted border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground"
             >
               <EmptyHeader>
                 <EmptyMedia variant="icon" class="mx-auto mb-2 opacity-20">
@@ -296,5 +296,4 @@ function handleNewProject() {
     </SheetContent>
   </Sheet>
 </template>
-
 
