@@ -1,63 +1,53 @@
 <script setup lang="ts">
-import { Plus, Wrench } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { Plus } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
 const props = defineProps<{
-  selectionMode: boolean
-  selectedCount: number
+  state: FacadeState
 }>()
 
 const emit = defineEmits<{
   add: []
-  actions: []
 }>()
 
 const { haptic } = useMobile()
 
+// FAB is only visible in Browse mode
+const isVisible = computed(() => props.state.mobileMode.value === 'browse')
+
 function handleTap() {
   haptic('medium')
-
-  if (props.selectionMode && props.selectedCount > 0) {
-    // Selection mode: open quick actions
-    emit('actions')
-  } else {
-    // Normal mode: add files
-    emit('add')
-  }
+  emit('add')
 }
 </script>
 
 <template>
-  <button
-    class="fixed z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-90 bg-primary right-4 bottom-24"
-    style="margin-bottom: env(safe-area-inset-bottom, 0px)"
-    @click="handleTap"
-  >
-    <!-- Transform icon based on state -->
-    <Transition name="fab-icon" mode="out-in">
-      <Wrench
-        v-if="selectionMode && selectedCount > 0"
-        key="wrench"
-        class="w-6 h-6 text-primary-foreground"
-      />
-      <Plus v-else key="plus" class="w-6 h-6 text-primary-foreground" />
-    </Transition>
-  </button>
+  <Transition name="fab-pop">
+    <button
+      v-if="isVisible"
+      class="fixed z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform duration-200 active:scale-90 bg-primary text-primary-foreground right-4 bottom-24"
+      style="margin-bottom: env(safe-area-inset-bottom, 0px)"
+      @click="handleTap"
+    >
+      <Plus class="w-6 h-6" />
+    </button>
+  </Transition>
 </template>
 
 <style scoped>
-.fab-icon-enter-active,
-.fab-icon-leave-active {
-  transition: all 0.15s ease;
+.fab-pop-enter-active {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.fab-icon-enter-from {
-  opacity: 0;
-  transform: scale(0.5) rotate(-90deg);
+.fab-pop-leave-active {
+  transition: all 0.15s ease-in;
 }
 
-.fab-icon-leave-to {
+.fab-pop-enter-from,
+.fab-pop-leave-to {
   opacity: 0;
-  transform: scale(0.5) rotate(90deg);
+  transform: scale(0.5);
 }
 </style>

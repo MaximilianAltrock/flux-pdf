@@ -38,10 +38,18 @@ export function useAppState() {
   // Mobile State
   // ============================================
   const mobileSelectionMode = ref(false)
+  const mobileMoveMode = ref(false)
   const showMenuDrawer = ref(false)
   const showTitleSheet = ref(false)
   const showAddSheet = ref(false)
   const showActionSheet = ref(false)
+
+  // Mobile mode computed (Browse | Select | Move)
+  const mobileMode = computed(() => {
+    if (mobileMoveMode.value) return 'move' as const
+    if (mobileSelectionMode.value) return 'select' as const
+    return 'browse' as const
+  })
 
   // ============================================
   // Shared Modal State
@@ -54,11 +62,12 @@ export function useAppState() {
   const diffPages = ref<[PageReference, PageReference] | null>(null)
 
   // Track if any modal is open (for blocking global shortcuts)
-  const hasOpenModal = computed(() =>
-    showExportModal.value ||
-    showPreviewModal.value ||
-    showDiffModal.value ||
-    showCommandPalette.value
+  const hasOpenModal = computed(
+    () =>
+      showExportModal.value ||
+      showPreviewModal.value ||
+      showDiffModal.value ||
+      showCommandPalette.value,
   )
 
   // ============================================
@@ -141,7 +150,18 @@ export function useAppState() {
   }
 
   function exitMobileSelectionMode() {
+    mobileMoveMode.value = false // Clear move mode when exiting selection
     mobileSelectionMode.value = false
+  }
+
+  function enterMobileMoveMode() {
+    if (mobileSelectionMode.value) {
+      mobileMoveMode.value = true
+    }
+  }
+
+  function exitMobileMoveMode() {
+    mobileMoveMode.value = false
   }
 
   function openMenuDrawer() {
@@ -205,6 +225,8 @@ export function useAppState() {
 
     // Mobile State
     mobileSelectionMode,
+    mobileMoveMode,
+    mobileMode,
     showMenuDrawer,
     showTitleSheet,
     showAddSheet,
@@ -244,6 +266,8 @@ export function useAppState() {
     // Mobile Actions
     enterMobileSelectionMode,
     exitMobileSelectionMode,
+    enterMobileMoveMode,
+    exitMobileMoveMode,
     openMenuDrawer,
     closeMenuDrawer,
     openTitleSheet,

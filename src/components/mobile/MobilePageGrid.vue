@@ -1,33 +1,37 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useEventListener, useTimeoutFn } from '@vueuse/core'
-import { ArrowDown } from 'lucide-vue-next'
+import { ArrowDown, Check } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
 import PageDivider from '@/components/page-grid/PageDivider.vue'
-import type { PageEntry, PageReference } from '@/types'
+import { type PageReference, type PageEntry, isDividerEntry } from '@/types'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
 
 const props = defineProps<{
-  selectionMode: boolean
   state: FacadeState
   actions: AppActions
 }>()
 
-// FIX: defineEmits cannot use computed keys. Use string literal.
 const emit = defineEmits<{
   preview: [pageRef: PageReference]
 }>()
 
 const { haptic } = useMobile()
-const { localPages, isDragging, isSelected, contentPages, getContentPageNumber } = useGridLogic(
+const { localPages, isSelected, contentPages, getContentPageNumber } = useGridLogic(
   props.state.document,
 )
 
-// Local state for drag tracking
-const dragStartOrder = ref<PageEntry[]>([])
+// Mode helpers
+const mode = computed(() => props.state.mobileMode.value)
+const isBrowse = computed(() => mode.value === 'browse')
+const isSelect = computed(() => mode.value === 'select')
+const isMove = computed(() => mode.value === 'move')
+
+const selectedCount = computed(() => props.state.document.selectedCount)
+const selectedIds = computed(() => props.state.document.selectedIds)
 
 // Mobile-specific state
 const columnCount = ref(2)
@@ -50,36 +54,55 @@ const { start: startLongPress, stop: stopLongPress } = useTimeoutFn(
   { immediate: false },
 )
 
-// Jump mode
-const jumpModeActive = ref(false)
-
 // Pinch zoom tracking
 const pinchStartDist = ref(0)
 const isPinching = ref(false)
-
-// Exit jump mode when exiting selection mode
-watch(
-  () => props.selectionMode,
-  (active) => {
-    if (!active) {
-      jumpModeActive.value = false
-    }
-  },
-)
 
 // Dynamic grid style
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
 }))
 
+// === Drop Targets for Move Mode ===
+const dropTargets = computed(() => {
+  if (!isMove.value) return new Set<number>()
+
+  const targets = new Set<number>()
+  const pages = localPages.value
+
+  for (let i = 0; i <= pages.length; i++) {
+    // Check if we can insert at this position
+    // Skip positions that are between selected pages
+    const prevPage = i > 0 ? pages[i - 1] : undefined
+    const nextPage = i < pages.length ? pages[i] : undefined
+
+    const prevSelected = prevPage && !isDividerEntry(prevPage) && selectedIds.value.has(prevPage.id)
+    const nextSelected = nextPage && !isDividerEntry(nextPage) && selectedIds.value.has(nextPage.id)
+
+    // Show drop target if not between selected pages
+    if (!prevSelected && !nextSelected) {
+      targets.add(i)
+    }
+    // Also show at the boundary of selected block
+    if (prevSelected && !nextSelected) {
+      targets.add(i)
+    }
+    if (!prevSelected && nextSelected) {
+      targets.add(i)
+    }
+  }
+
+  return targets
+})
+
 // === Touch Handlers ===
 
-function handleTouchStart(pageRef: PageReference) {
-  if (isDragging.value || pageRef.isDivider) return
+function handleTouchStart(page: PageEntry) {
+  if (isDividerEntry(page)) return
+  if (isMove.value) return // No long-press in move mode
 
-  // Only start long press in normal mode
-  if (!props.selectionMode) {
-    longPressPageId.value = pageRef.id
+  if (isBrowse.value) {
+    longPressPageId.value = page.id
     startLongPress()
   }
 }
@@ -94,89 +117,28 @@ function handleTouchEnd() {
   longPressPageId.value = null
 }
 
-function handlePageTap(pageRef: PageReference, event: Event) {
-  if (isDragging.value || pageRef.isDivider) return
+function handlePageTap(page: PageEntry, event: Event) {
+  if (isDividerEntry(page)) return
   event.preventDefault()
 
-  if (props.selectionMode) {
+  if (isMove.value) {
+    // In move mode, taps on pages are ignored
+    return
+  }
+
+  if (isSelect.value) {
     // Toggle selection
     haptic('light')
-    props.actions.togglePageSelection(pageRef.id)
-
-    // Exit selection mode if nothing selected
-    if (props.state.document.selectedCount === 0) {
-      jumpModeActive.value = false
-      props.actions.exitMobileSelectionMode()
-    }
+    props.actions.togglePageSelection(page.id)
   } else {
-    // Open preview (Focus View)
-    emit('preview', pageRef)
+    // Browse mode: open preview
+    emit('preview', page)
   }
 }
 
-// === Jump Feature ===
-
-function activateJumpMode() {
-  if (props.state.document.selectedCount === 0) return
-  jumpModeActive.value = true
-  haptic('light')
-}
-
-function handleJumpToPosition(targetIndex: number) {
-  if (!jumpModeActive.value || props.state.document.selectedCount === 0) return
-
+function handleDropMarkerTap(index: number) {
   haptic('medium')
-
-  const previousOrder = [...localPages.value]
-  const selectedIds = new Set(props.state.document.selectedIds)
-  const selectedPages = localPages.value.filter((p) => selectedIds.has(p.id))
-  const otherPages = localPages.value.filter((p) => !selectedIds.has(p.id))
-
-  // Calculate adjusted index (account for removed selected items)
-  let adjustedIndex = targetIndex
-  for (let i = 0; i < targetIndex && i < localPages.value.length; i++) {
-    const page = localPages.value[i]
-    if (page && selectedIds.has(page.id)) {
-      adjustedIndex--
-    }
-  }
-
-  // Build new order
-  const newOrder = [
-    ...otherPages.slice(0, adjustedIndex),
-    ...selectedPages,
-    ...otherPages.slice(adjustedIndex),
-  ]
-
-  props.actions.handleReorderPages(previousOrder, newOrder)
-  jumpModeActive.value = false
-}
-
-function cancelJumpMode() {
-  jumpModeActive.value = false
-}
-
-// === Drag Handlers ===
-
-function handleDragStart() {
-  isDragging.value = true
-  dragStartOrder.value = [...localPages.value]
-  haptic('medium')
-}
-
-function handleDragEnd() {
-  isDragging.value = false
-
-  const orderChanged = localPages.value.some(
-    (page, index) => page.id !== dragStartOrder.value[index]?.id,
-  )
-
-  if (orderChanged) {
-    props.actions.handleReorderPages(dragStartOrder.value, [...localPages.value])
-    haptic('light')
-  }
-
-  dragStartOrder.value = []
+  props.actions.handleMoveSelectedToPosition(index)
 }
 
 // === Pinch Zoom ===
@@ -202,11 +164,9 @@ function handlePinchMove(event: TouchEvent) {
 
   if (Math.abs(delta) > 80) {
     if (delta > 0 && columnCount.value > MIN_COLUMNS) {
-      // Pinch out = fewer columns = larger thumbnails
       columnCount.value--
       haptic('light')
     } else if (delta < 0 && columnCount.value < MAX_COLUMNS) {
-      // Pinch in = more columns = smaller thumbnails (bird's eye)
       columnCount.value++
       haptic('light')
     }
@@ -218,125 +178,84 @@ function handlePinchEnd() {
   isPinching.value = false
 }
 
-// === Helpers ===
-
-function shouldShowJumpTarget(index: number): boolean {
-  if (!jumpModeActive.value) return false
-
-  const page = localPages.value[index]
-  if (!page || page.isDivider) return false
-
-  if (isSelected(page.id)) return false
-
-  for (let i = index - 1; i >= 0; i--) {
-    const prev = localPages.value[i]
-    if (!prev || prev.isDivider) continue
-    return !isSelected(prev.id)
-  }
-
-  return true
-}
-
 function preventContextMenu(e: Event) {
   e.preventDefault()
 }
 
 // === Lifecycle ===
-
-onMounted(() => {
-  useEventListener(document, 'touchstart', handlePinchStart, { passive: false })
-  useEventListener(document, 'touchmove', handlePinchMove, { passive: false })
-  useEventListener(document, 'touchend', handlePinchEnd)
-})
-
+useEventListener(document, 'touchstart', handlePinchStart, { passive: false })
+useEventListener(document, 'touchmove', handlePinchMove, { passive: false })
+useEventListener(document, 'touchend', handlePinchEnd)
 </script>
 
 <template>
   <div
-    class="h-full overflow-y-auto overflow-x-hidden bg-background grid-touch-area no-scrollbar"
+    class="h-full overflow-y-auto overflow-x-hidden grid-touch-area no-scrollbar"
+    :class="isMove ? 'bg-muted/30' : 'bg-background'"
     @contextmenu="preventContextMenu"
   >
+    <!-- Move mode header -->
     <Transition name="slide-down">
       <div
-        v-if="jumpModeActive"
-        class="sticky top-0 z-20 bg-primary px-4 py-3 flex items-center justify-between text-primary-foreground shadow-sm"
+        v-if="isMove"
+        class="sticky top-0 z-20 bg-destructive/90 px-4 py-3 flex items-center justify-center text-destructive-foreground"
       >
-        <span class="text-sm font-semibold">
-          Tap where to move {{ props.state.document.selectedCount }} page{{
-            props.state.document.selectedCount > 1 ? 's' : ''
-          }}
+        <span class="text-sm font-medium">
+          Tap where to move {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }}
         </span>
-        <button class="text-xs font-semibold opacity-80 active:opacity-100" @click="cancelJumpMode">
-          Cancel
-        </button>
       </div>
     </Transition>
 
-    <VueDraggable
-      v-model="localPages"
-      :animation="200"
-      :delay="props.selectionMode ? 150 : 0"
-      :delay-on-touch-only="true"
-      :touch-start-threshold="10"
-      :disabled="!props.selectionMode || jumpModeActive"
-      ghost-class="ide-sortable-ghost"
-      drag-class="ide-sortable-drag"
-      chosen-class="mobile-chosen"
-      class="grid gap-3 p-4 min-h-[50vh]"
-      :style="gridStyle"
-      @start="handleDragStart"
-      @end="handleDragEnd"
-    >
+    <!-- Page Grid -->
+    <div class="grid gap-3 p-4 min-h-[50vh]" :style="gridStyle">
       <template v-for="(pageRef, index) in localPages" :key="pageRef.id">
+        <!-- Drop marker before this page (in Move mode) -->
         <button
-          v-if="shouldShowJumpTarget(index)"
-          class="col-span-full h-12 -my-1 border border-dashed border-primary/60 rounded-md flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
-          @click="handleJumpToPosition(index)"
+          v-if="isMove && dropTargets.has(index) && !selectedIds.has(pageRef.id)"
+          class="col-span-full h-12 -my-1 border-2 border-dashed border-destructive/60 rounded-lg flex items-center justify-center gap-2 text-destructive text-sm font-medium bg-destructive/5 active:bg-destructive/15 transition-colors"
+          @click="handleDropMarkerTap(index)"
         >
           <ArrowDown class="w-4 h-4" />
-          <span>Move here</span>
+          <span>Insert here</span>
         </button>
 
-        <!-- High-Fidelity Section Divider (Mobile) -->
-        <PageDivider v-if="pageRef.isDivider" variant="mobile" />
+        <!-- Section Divider -->
+        <PageDivider v-if="pageRef.isDivider" variant="mobile" class="col-span-full" />
 
+        <!-- Page Thumbnail -->
         <div
           v-else
-          class="relative"
-          :class="{ 'opacity-40': jumpModeActive && isSelected(pageRef.id) }"
+          class="relative transition-opacity duration-200"
+          :class="{
+            'opacity-40': isMove && selectedIds.has(pageRef.id),
+          }"
           @touchstart="handleTouchStart(pageRef)"
           @touchmove="handleTouchMove"
           @touchend="handleTouchEnd"
           @click="handlePageTap(pageRef, $event)"
         >
+          <!-- Selection badge -->
           <Transition name="pop">
             <div
-              v-if="props.selectionMode && isSelected(pageRef.id)"
-              class="absolute -top-1 -right-1 z-10 w-6 h-6 bg-primary rounded-sm flex items-center justify-center shadow-sm"
+              v-if="isSelect && isSelected(pageRef.id)"
+              class="absolute -top-1 -right-1 z-10 w-6 h-6 bg-primary rounded-md flex items-center justify-center shadow-sm"
             >
-              <svg
-                class="w-4 h-4 text-primary-foreground"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="3"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              <Check class="w-4 h-4 text-primary-foreground" stroke-width="3" />
             </div>
           </Transition>
 
+          <!-- Long press highlight -->
           <Transition name="fade">
             <div
               v-if="longPressPageId === pageRef.id"
-              class="absolute inset-0 bg-primary/20 rounded-md z-10 pointer-events-none"
+              class="absolute inset-0 bg-primary/20 rounded-lg z-10 pointer-events-none"
             />
           </Transition>
 
           <PdfThumbnail
             :page-ref="pageRef"
             :page-number="getContentPageNumber(pageRef.id)"
-            :selected="props.selectionMode && isSelected(pageRef.id)"
+            :selected="isSelect && isSelected(pageRef.id)"
             :fixed-size="false"
             :width="300"
             :source-color="props.state.document.getSourceColor(pageRef.sourceFileId)"
@@ -348,53 +267,34 @@ onMounted(() => {
         </div>
       </template>
 
+      <!-- Drop marker at end (in Move mode) -->
       <button
-        v-if="jumpModeActive"
-        class="col-span-full h-12 border border-dashed border-primary/60 rounded-md flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/15 transition-colors"
-        @click="handleJumpToPosition(localPages.length)"
+        v-if="isMove && dropTargets.has(localPages.length)"
+        class="col-span-full h-12 border-2 border-dashed border-destructive/60 rounded-lg flex items-center justify-center gap-2 text-destructive text-sm font-medium bg-destructive/5 active:bg-destructive/15 transition-colors"
+        @click="handleDropMarkerTap(localPages.length)"
       >
         <ArrowDown class="w-4 h-4" />
         <span>Move to end</span>
       </button>
-    </VueDraggable>
+    </div>
 
-    <Transition name="fade">
-      <div
-        v-if="
-          props.selectionMode &&
-          props.state.document.selectedCount > 0 &&
-          !jumpModeActive &&
-          !isDragging
-        "
-        class="sticky bottom-4 flex justify-center pointer-events-none"
-      >
-        <button
-          class="pointer-events-auto px-4 py-2 ui-panel rounded-md text-sm font-medium text-foreground active:scale-95 transition-transform"
-          @click="activateJumpMode"
-        >
-          Tap to move selection
-        </button>
-      </div>
-    </Transition>
-
+    <!-- Helper text -->
     <p
-      v-if="contentPages.length > 0 && !jumpModeActive"
-      class="text-center ui-caption py-4 px-6"
+      v-if="contentPages.length > 0 && !isMove"
+      class="text-center text-muted-foreground text-xs py-4 px-6"
     >
-      {{
-        props.selectionMode
-          ? 'Drag to reorder / Tap to select'
-          : 'Long-press to select / Tap to preview'
-      }}
+      <template v-if="isSelect"> Tap pages to select </template>
+      <template v-else> Long-press to select · Tap to preview </template>
     </p>
 
+    <!-- Empty state -->
     <div
       v-if="contentPages.length === 0"
       class="absolute inset-0 flex items-center justify-center p-8"
     >
       <div class="text-center text-muted-foreground">
         <p class="text-sm font-semibold mb-2">No pages yet</p>
-        <p class="ui-caption">Tap + to add a PDF</p>
+        <p class="text-xs">Tap + to add a PDF</p>
       </div>
     </div>
   </div>
@@ -434,21 +334,6 @@ onMounted(() => {
 .pop-leave-to {
   opacity: 0;
   transform: scale(0);
-}
-
-.mobile-ghost {
-  opacity: 0.4;
-}
-
-.mobile-drag {
-  opacity: 1 !important;
-  transform: scale(1.05);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  z-index: 100;
-}
-
-.mobile-chosen {
-  opacity: 0.8;
 }
 
 .grid-touch-area {

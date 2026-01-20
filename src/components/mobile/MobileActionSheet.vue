@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { RotateCw, RotateCcw, Copy, Trash2, Download } from 'lucide-vue-next'
+import { computed } from 'vue'
 import { useMobile } from '@/composables/useMobile'
+import { useMobileActionRegistry } from '@/composables/useMobileActionRegistry'
 import {
   Drawer,
   DrawerContent,
@@ -9,44 +10,33 @@ import {
   DrawerFooter,
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import type { AppActions } from '@/composables/useAppActions'
+import type { FacadeState } from '@/composables/useDocumentFacade'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
-  selectedCount: number
+  state: FacadeState
+  actions: AppActions
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  rotateLeft: []
-  rotateRight: []
-  duplicate: []
-  delete: []
-  exportSelected: []
 }>()
 
 const { haptic } = useMobile()
+const { groupedSecondaryActions } = useMobileActionRegistry(props.actions)
 
-function handleAction(
-  action: 'rotateLeft' | 'rotateRight' | 'duplicate' | 'delete' | 'exportSelected',
-) {
+const selectedCount = computed(() => props.state.document.selectedCount)
+
+function handleActionTap(action: { execute: () => void; disabled?: boolean }) {
+  if (action.disabled) return
   haptic('medium')
-  switch (action) {
-    case 'rotateLeft':
-      emit('rotateLeft')
-      break
-    case 'rotateRight':
-      emit('rotateRight')
-      break
-    case 'duplicate':
-      emit('duplicate')
-      break
-    case 'delete':
-      emit('delete')
-      break
-    case 'exportSelected':
-      emit('exportSelected')
-      break
-  }
+  action.execute()
+  emit('update:open', false)
+}
+
+function handleClose() {
   emit('update:open', false)
 }
 </script>
@@ -56,67 +46,48 @@ function handleAction(
     <DrawerContent>
       <div class="mx-auto w-full max-w-sm">
         <DrawerHeader>
-          <DrawerTitle class="text-center">
+          <DrawerTitle class="text-center text-sm font-medium text-muted-foreground">
             {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }} selected
           </DrawerTitle>
         </DrawerHeader>
 
-        <!-- Actions Grid -->
-        <div class="grid grid-cols-4 gap-2 px-4 py-4">
-          <Button
-            variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
-            @click="handleAction('rotateLeft')"
-          >
-            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
-              <RotateCcw class="w-5 h-5 text-primary" />
-            </div>
-            <span class="text-xs font-medium">Left</span>
-          </Button>
+        <!-- Grouped Actions -->
+        <div class="px-4 pb-4 space-y-4">
+          <div v-for="group in groupedSecondaryActions" :key="group.category">
+            <!-- Category label -->
+            <p
+              class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1"
+            >
+              {{ group.label }}
+            </p>
 
-          <Button
-            variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
-            @click="handleAction('rotateRight')"
-          >
-            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
-              <RotateCw class="w-5 h-5 text-primary" />
+            <!-- Actions in group -->
+            <div class="bg-muted/20 rounded-lg border border-border overflow-hidden">
+              <Button
+                v-for="(action, index) in group.actions"
+                :key="action.id"
+                variant="ghost"
+                :disabled="action.disabled"
+                class="w-full h-12 justify-start gap-3 rounded-none px-4 text-foreground active:bg-muted/40 transition-colors"
+                :class="{
+                  'opacity-50': action.disabled,
+                  'border-t border-border': index > 0,
+                }"
+                @click="handleActionTap(action)"
+              >
+                <component :is="action.icon" class="w-5 h-5 text-muted-foreground" />
+                <span class="text-sm font-medium">{{ action.label }}</span>
+              </Button>
             </div>
-            <span class="text-xs font-medium">Right</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
-            @click="handleAction('duplicate')"
-          >
-            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
-              <Copy class="w-5 h-5 text-primary" />
-            </div>
-            <span class="text-xs font-medium">Copy</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            class="flex flex-col items-center gap-2 p-3 h-auto rounded-md hover:bg-muted/20 active:bg-muted/30 transition-colors"
-            @click="handleAction('exportSelected')"
-          >
-            <div class="w-10 h-10 rounded-md bg-muted/20 border border-border flex items-center justify-center">
-              <Download class="w-5 h-5 text-primary" />
-            </div>
-            <span class="text-xs font-medium">Export</span>
-          </Button>
+          </div>
         </div>
 
-        <!-- Delete (separate, danger) -->
-        <div class="px-4 pb-4">
-          <Button
-            variant="destructive"
-            class="w-full h-12 flex items-center justify-center gap-2 py-3 text-sm font-semibold shadow-none"
-            @click="handleAction('delete')"
-          >
-            <Trash2 class="w-5 h-5" />
-            <span>Delete {{ selectedCount > 1 ? 'Pages' : 'Page' }}</span>
+        <Separator />
+
+        <!-- Cancel button -->
+        <div class="px-4 py-4">
+          <Button variant="outline" class="w-full h-12 font-semibold" @click="handleClose">
+            Cancel
           </Button>
         </div>
 

@@ -66,14 +66,13 @@ watch(
     }
 
     isLoading.value = true
-    previewUrl.value = null
-    zoom.value = 1
 
     try {
       const res = isMobile.value ? 600 : 1200
       const url = await renderThumbnail(props.pageRef, res, 2)
       if (!canceled) {
         previewUrl.value = url
+        zoom.value = 1
       }
     } catch (error) {
       if (!canceled) {
@@ -176,13 +175,11 @@ onBackButton(
         <DialogTitle>Page Preview - Page {{ pageNumber }}</DialogTitle>
       </DialogHeader>
 
-      <!-- Header / Controls -->
       <header
-        class="flex items-center justify-between px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased bg-card border-b border-border"
-        :class="[isSwiping ? 'opacity-0' : 'opacity-100']"
+        class="flex items-center justify-between px-4 sm:px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased bg-card border-b border-border"
       >
         <!-- Left Section: Meta / Page Counter -->
-        <div class="flex items-center gap-6 min-w-[200px]">
+        <div class="flex items-center gap-6 min-w-0 sm:min-w-[200px]">
           <div class="flex flex-col">
             <span class="ui-kicker opacity-70 leading-none mb-1"> Page Preview </span>
             <span class="ui-mono text-sm font-medium text-foreground">
@@ -226,7 +223,7 @@ onBackButton(
         <div v-else class="flex-1"></div>
 
         <!-- Right Section: Close -->
-        <div class="flex items-center justify-end min-w-[200px]">
+        <div class="flex items-center justify-end min-w-0 sm:min-w-[200px]">
           <DialogClose as-child>
             <Button
               variant="ghost"
@@ -245,7 +242,7 @@ onBackButton(
         class="flex-1 overflow-hidden flex items-center justify-center p-4 relative"
       >
         <!-- Skeleton for Loading -->
-        <div v-if="isLoading" class="w-full h-full flex items-center justify-center">
+        <div v-if="isLoading && !previewUrl" class="w-full h-full flex items-center justify-center">
           <Skeleton class="w-[300px] h-[400px] rounded-lg shadow-lg" />
         </div>
 
@@ -262,9 +259,9 @@ onBackButton(
           v-if="isMobile && !isLoading && zoom === 1"
           class="absolute inset-0 flex justify-between pointer-events-none px-2 items-center opacity-30"
         >
-          <ChevronLeft v-if="hasPrevious" class="w-8 h-8 text-muted-foreground/60" />
+          <ChevronLeft v-if="hasPrevious" class="w-8 h-8 text-muted-foreground" />
           <div v-else class="w-8"></div>
-          <ChevronRight v-if="hasNext" class="w-8 h-8 text-muted-foreground/60" />
+          <ChevronRight v-if="hasNext" class="w-8 h-8 text-muted-foreground" />
         </div>
       </div>
 

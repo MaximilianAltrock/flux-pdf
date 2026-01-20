@@ -554,6 +554,10 @@ export function useAppActions(state: AppState) {
 
   function togglePageSelection(pageId: string) {
     store.togglePageSelection(pageId)
+    // Auto-exit selection mode when no pages selected
+    if (isMobile.value && store.selectedCount === 0) {
+      state.exitMobileSelectionMode()
+    }
   }
 
   function selectRange(fromId: string, toId: string) {
@@ -575,6 +579,48 @@ export function useAppActions(state: AppState) {
   function exitMobileSelectionMode() {
     state.exitMobileSelectionMode()
     store.clearSelection()
+  }
+
+  function enterMobileMoveMode() {
+    if (store.selectedCount === 0) return
+    state.enterMobileMoveMode()
+    haptic('medium')
+  }
+
+  function exitMobileMoveMode() {
+    state.exitMobileMoveMode()
+  }
+
+  /**
+   * Handle moving selected pages to a new position (mobile Move mode)
+   */
+  function handleMoveSelectedToPosition(targetIndex: number) {
+    if (store.selectedCount === 0) return
+
+    const selectedIds = new Set(store.selection.selectedIds)
+    const allPages = store.pages
+    const selectedPages = allPages.filter((p) => selectedIds.has(p.id))
+    const otherPages = allPages.filter((p) => !selectedIds.has(p.id))
+
+    // Calculate adjusted index accounting for removed selected items
+    let adjustedIndex = targetIndex
+    for (let i = 0; i < targetIndex && i < allPages.length; i++) {
+      const page = allPages[i]
+      if (page && selectedIds.has(page.id)) {
+        adjustedIndex--
+      }
+    }
+
+    // Build new order
+    const newOrder = [
+      ...otherPages.slice(0, adjustedIndex),
+      ...selectedPages,
+      ...otherPages.slice(adjustedIndex),
+    ]
+
+    handleReorderPages([...allPages], newOrder)
+    haptic('light')
+    state.exitMobileMoveMode()
   }
 
   // ============================================
@@ -695,6 +741,9 @@ export function useAppActions(state: AppState) {
     clearSelection,
     enterMobileSelectionMode,
     exitMobileSelectionMode,
+    enterMobileMoveMode,
+    exitMobileMoveMode,
+    handleMoveSelectedToPosition,
 
     // Project / Metadata / Security
     setProjectTitleDraft,

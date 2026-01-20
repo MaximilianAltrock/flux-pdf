@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ROTATION_DELTA_DEGREES } from '@/constants'
 
 // Mobile Components
 import MobileTopBar from '@/components/mobile/MobileTopBar.vue'
@@ -25,9 +24,10 @@ const props = defineProps<{
 
 // Local computed for template readability
 const hasPages = computed(() => props.state.document.pageCount > 0)
-const selectedCount = computed(() => props.state.document.selectedCount)
 const isLoading = computed(() => props.state.isLoading.value)
 const loadingMessage = computed(() => props.state.loadingMessage.value)
+const mode = computed(() => props.state.mobileMode.value)
+const isBrowse = computed(() => mode.value === 'browse')
 
 // Event handlers
 function onPreview(pageRef: PageReference) {
@@ -44,8 +44,6 @@ function onRemoveSource(sourceId: string) {
     <!-- Safe Area Top -->
     <div class="pt-[env(safe-area-inset-top)]">
       <MobileTopBar
-        :selection-mode="props.state.mobileSelectionMode.value"
-        :selected-count="selectedCount"
         :state="props.state"
         :actions="props.actions"
         @menu="props.state.openMenuDrawer"
@@ -55,8 +53,11 @@ function onRemoveSource(sourceId: string) {
 
     <!-- Main Content -->
     <main class="flex-1 overflow-hidden relative">
-      <!-- Empty State -->
-      <div v-if="!hasPages" class="h-full flex flex-col items-center justify-center p-8">
+      <!-- Empty State (only in Browse mode) -->
+      <div
+        v-if="!hasPages && isBrowse"
+        class="h-full flex flex-col items-center justify-center p-8"
+      >
         <div class="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
           <svg class="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -74,13 +75,7 @@ function onRemoveSource(sourceId: string) {
       </div>
 
       <!-- Page Grid -->
-      <MobilePageGrid
-        v-else
-        :selection-mode="props.state.mobileSelectionMode.value"
-        :state="props.state"
-        :actions="props.actions"
-        @preview="onPreview"
-      />
+      <MobilePageGrid v-else :state="props.state" :actions="props.actions" @preview="onPreview" />
 
       <!-- Loading Overlay -->
       <Transition name="fade">
@@ -97,24 +92,15 @@ function onRemoveSource(sourceId: string) {
     <!-- Safe Area Bottom -->
     <div class="pb-[env(safe-area-inset-bottom)]">
       <MobileBottomBar
-        :selection-mode="props.state.mobileSelectionMode.value"
-        :selected-count="selectedCount"
-        :has-pages="hasPages"
-        @rotate-left="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT)"
-        @rotate-right="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)"
-        @delete="props.actions.handleDeleteSelected"
-        @duplicate="props.actions.handleDuplicateSelected"
+        :state="props.state"
+        :actions="props.actions"
         @export="props.actions.handleExport"
+        @more="props.state.openActionSheet"
       />
     </div>
 
-    <!-- Floating Action Button -->
-    <MobileFAB
-      :selection-mode="props.state.mobileSelectionMode.value"
-      :selected-count="selectedCount"
-      @add="props.state.openAddSheet"
-      @actions="props.state.openActionSheet"
-    />
+    <!-- Floating Action Button (Add-only, visible in Browse mode) -->
+    <MobileFAB :state="props.state" @add="props.state.openAddSheet" />
 
     <!-- Mobile Sheets & Drawers -->
     <MobileMenuDrawer
@@ -143,13 +129,9 @@ function onRemoveSource(sourceId: string) {
 
     <MobileActionSheet
       :open="props.state.showActionSheet.value"
-      :selected-count="selectedCount"
+      :state="props.state"
+      :actions="props.actions"
       @update:open="(val) => !val && props.state.closeActionSheet()"
-      @rotate-left="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT)"
-      @rotate-right="props.actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT)"
-      @duplicate="props.actions.handleDuplicateSelected"
-      @delete="props.actions.handleDeleteSelected"
-      @export-selected="props.actions.handleExportSelected"
     />
   </div>
 </template>
