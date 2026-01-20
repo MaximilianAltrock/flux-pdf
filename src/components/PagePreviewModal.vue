@@ -124,7 +124,7 @@ function resetZoom() {
 }
 
 // --- Mobile Gestures (Swipe) ---
-const { isSwiping } = useSwipe(containerRef, {
+useSwipe(containerRef, {
   threshold: 50,
   onSwipeEnd(e, direction) {
     if (zoom.value > 1) return
