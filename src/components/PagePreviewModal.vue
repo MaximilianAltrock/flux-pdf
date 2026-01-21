@@ -49,14 +49,6 @@ const hasPrevious = computed(() => prevContentIndex.value !== -1)
 const hasNext = computed(() => nextContentIndex.value !== -1)
 const pageNumber = computed(() => currentIndex.value + 1)
 const totalPages = computed(() => contentPages.value.length)
-const headerStyle = computed(() => {
-  if (!isMobile.value) return undefined
-  return {
-    paddingTop: `calc(env(safe-area-inset-top, 0px) + 0.75rem)`,
-    paddingLeft: `calc(env(safe-area-inset-left, 0px) + 1rem)`,
-    paddingRight: `calc(env(safe-area-inset-right, 0px) + 1rem)`,
-  }
-})
 
 // --- Watchers ---
 watch(
@@ -177,15 +169,14 @@ onBackButton(
   <Dialog :open="open" @update:open="(val) => emit('update:open', val)">
     <DialogContent
       :show-close-button="false"
-      class="max-w-none w-screen h-screen p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none bg-background"
+      class="fixed top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 max-w-none w-screen h-screen h-[100dvh] min-h-[100svh] p-0 m-0 border-none flex flex-col gap-0 select-none overflow-hidden outline-none sm:max-w-none rounded-none bg-background"
     >
       <DialogHeader class="sr-only">
         <DialogTitle>Page Preview - Page {{ pageNumber }}</DialogTitle>
       </DialogHeader>
 
       <header
-        class="flex items-center justify-between px-4 sm:px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased bg-card border-b border-border"
-        :style="headerStyle"
+        class="flex items-center justify-between px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 shrink-0 z-40 transition-opacity duration-300 antialiased bg-card border-b border-border"
       >
         <!-- Left Section: Meta / Page Counter -->
         <div class="flex items-center gap-6 min-w-0 sm:min-w-[200px]">
