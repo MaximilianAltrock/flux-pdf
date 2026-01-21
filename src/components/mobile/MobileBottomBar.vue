@@ -22,6 +22,7 @@ const { primaryActions } = useMobileActionRegistry(props.actions)
 
 // Mode helpers
 const mode = computed(() => props.state.mobileMode.value)
+const isSplit = computed(() => props.state.currentTool.value === 'razor')
 const isBrowse = computed(() => mode.value === 'browse')
 const isSelect = computed(() => mode.value === 'select')
 const isMove = computed(() => mode.value === 'move')
@@ -45,10 +46,10 @@ function handleActionTap(action: (typeof primaryActions.value)[0]) {
 </script>
 
 <template>
-  <!-- Hidden in Move mode -->
+  <!-- Hidden in Move/Split mode -->
   <Transition name="slide-up">
     <footer
-      v-if="!isMove"
+      v-if="!isMove && !isSplit"
       class="shrink-0 bg-card border-t border-border"
       style="padding-bottom: env(safe-area-inset-bottom, 0px)"
     >

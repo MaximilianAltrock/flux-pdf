@@ -195,6 +195,9 @@ export function useAppActions(state: AppState) {
    * Handle section split (undoable).
    */
   function handleSplitGroup(index: number) {
+    if (isMobile.value) {
+      haptic('medium')
+    }
     execute(new SplitGroupCommand(index))
   }
 

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Menu, X, Undo2, Redo2, ArrowLeft, CheckSquare } from 'lucide-vue-next'
+import { Menu, X, Undo2, Redo2, ArrowLeft, CheckSquare, Scissors } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { Button } from '@/components/ui/button'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
+import { isDividerEntry } from '@/types'
 
 const props = defineProps<{
   state: FacadeState
@@ -20,13 +21,25 @@ const { haptic } = useMobile()
 
 // Mode helpers
 const mode = computed(() => props.state.mobileMode.value)
-const isBrowse = computed(() => mode.value === 'browse')
+const isSplit = computed(() => props.state.currentTool.value === 'razor')
+const isBrowse = computed(() => mode.value === 'browse' && !isSplit.value)
 const isSelect = computed(() => mode.value === 'select')
 const isMove = computed(() => mode.value === 'move')
 
 const selectedCount = computed(() => props.state.document.selectedCount)
 const displayTitle = computed(() => props.state.document.projectTitle || 'Untitled')
 const hasPages = computed(() => props.state.document.pageCount > 0)
+const canSplit = computed(() => {
+  const pages = props.state.document.pages
+  if (pages.length < 2) return false
+  for (let i = 1; i < pages.length; i++) {
+    const prev = pages[i - 1]
+    const next = pages[i]
+    if (!prev || !next) continue
+    if (!isDividerEntry(prev) && !isDividerEntry(next)) return true
+  }
+  return false
+})
 
 // === Handlers ===
 
@@ -55,6 +68,17 @@ function handleCancelMove() {
   props.actions.exitMobileMoveMode()
 }
 
+function handleEnterSplit() {
+  haptic('medium')
+  props.actions.exitMobileSelectionMode()
+  props.actions.setCurrentTool('razor')
+}
+
+function handleExitSplit() {
+  haptic('light')
+  props.actions.setCurrentTool('select')
+}
+
 function handleUndo() {
   if (!props.actions.canUndo.value) return
   haptic('light')
@@ -73,15 +97,26 @@ function handleRedo() {
     class="h-14 shrink-0 flex items-center justify-between px-4 border-b transition-colors duration-200"
     :class="{
       'bg-primary border-primary': isSelect,
-      'bg-accent border-accent': isMove,
+      'bg-accent border-accent': isMove || isSplit,
       'bg-card border-border': isBrowse,
     }"
   >
     <!-- Left: Context-aware navigation -->
     <div class="flex items-center -ml-2 min-w-[72px]">
+      <!-- Split Mode: Cancel -->
+      <Button
+        v-if="isSplit"
+        variant="ghost"
+        class="h-11 px-3 gap-1.5 text-accent-foreground active:opacity-70"
+        @click="handleExitSplit"
+      >
+        <ArrowLeft class="w-4 h-4" />
+        <span class="text-sm font-medium">Done</span>
+      </Button>
+
       <!-- Move Mode: Back/Cancel -->
       <Button
-        v-if="isMove"
+        v-else-if="isMove"
         variant="ghost"
         class="h-11 px-3 gap-1.5 text-accent-foreground active:opacity-70"
         @click="handleCancelMove"
@@ -115,8 +150,13 @@ function handleRedo() {
 
     <!-- Center: Title or Status -->
     <div class="flex-1 flex justify-center min-w-0 px-2">
+      <!-- Split Mode -->
+      <span v-if="isSplit" class="text-accent-foreground font-semibold text-sm">
+        Split mode
+      </span>
+
       <!-- Move Mode: Moving X pages -->
-      <span v-if="isMove" class="text-accent-foreground font-semibold text-sm">
+      <span v-else-if="isMove" class="text-accent-foreground font-semibold text-sm">
         Moving {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }}
       </span>
 
@@ -140,7 +180,7 @@ function handleRedo() {
     <div class="flex items-center -mr-2 min-w-[72px] justify-end">
       <!-- Move Mode: Done (just exit, move is completed by tap) -->
       <!-- No button needed, just shows status -->
-      <template v-if="isMove" />
+      <template v-if="isMove || isSplit" />
 
       <!-- Select Mode: Done -->
       <Button
@@ -162,6 +202,16 @@ function handleRedo() {
           @click="handleEnterSelect"
         >
           <CheckSquare class="w-5 h-5" />
+        </Button>
+        <Button
+          v-if="canSplit"
+          variant="ghost"
+          size="icon"
+          class="h-11 w-11 text-muted-foreground active:text-foreground"
+          title="Split"
+          @click="handleEnterSplit"
+        >
+          <Scissors class="w-5 h-5" />
         </Button>
         <Button
           variant="ghost"

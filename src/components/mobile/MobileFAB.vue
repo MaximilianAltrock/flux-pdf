@@ -14,8 +14,10 @@ const emit = defineEmits<{
 
 const { haptic } = useMobile()
 
-// FAB is only visible in Browse mode
-const isVisible = computed(() => props.state.mobileMode.value === 'browse')
+// FAB is only visible in Browse mode and not in Split mode
+const isVisible = computed(
+  () => props.state.mobileMode.value === 'browse' && props.state.currentTool.value !== 'razor',
+)
 
 function handleTap() {
   haptic('medium')

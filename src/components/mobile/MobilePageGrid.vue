@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useEventListener, useTimeoutFn } from '@vueuse/core'
-import { ArrowDown } from 'lucide-vue-next'
+import { ArrowDown, Scissors } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useGridLogic } from '@/composables/useGridLogic'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
@@ -26,7 +26,8 @@ const { localPages, isSelected, contentPages, getContentPageNumber } = useGridLo
 
 // Mode helpers
 const mode = computed(() => props.state.mobileMode.value)
-const isBrowse = computed(() => mode.value === 'browse')
+const isSplit = computed(() => props.state.currentTool.value === 'razor')
+const isBrowse = computed(() => mode.value === 'browse' && !isSplit.value)
 const isSelect = computed(() => mode.value === 'select')
 const isMove = computed(() => mode.value === 'move')
 
@@ -62,6 +63,24 @@ const isPinching = ref(false)
 const gridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${columnCount.value}, 1fr)`,
 }))
+
+// === Split Targets ===
+const splitTargets = computed(() => {
+  if (!isSplit.value) return new Set<number>()
+
+  const targets = new Set<number>()
+  const pages = localPages.value
+
+  for (let i = 1; i < pages.length; i++) {
+    const prev = pages[i - 1]
+    const next = pages[i]
+    if (!prev || !next) continue
+    if (isDividerEntry(prev) || isDividerEntry(next)) continue
+    targets.add(i)
+  }
+
+  return targets
+})
 
 // === Drop Targets for Move Mode ===
 const dropTargets = computed(() => {
@@ -99,7 +118,7 @@ const dropTargets = computed(() => {
 
 function handleTouchStart(page: PageEntry) {
   if (isDividerEntry(page)) return
-  if (isMove.value) return // No long-press in move mode
+  if (isMove.value || isSplit.value) return // No long-press in move/split mode
 
   if (isBrowse.value) {
     longPressPageId.value = page.id
@@ -121,8 +140,8 @@ function handlePageTap(page: PageEntry, event: Event) {
   if (isDividerEntry(page)) return
   event.preventDefault()
 
-  if (isMove.value) {
-    // In move mode, taps on pages are ignored
+  if (isMove.value || isSplit.value) {
+    // In move/split mode, taps on pages are ignored
     return
   }
 
@@ -138,6 +157,10 @@ function handlePageTap(page: PageEntry, event: Event) {
 
 function handleDropMarkerTap(index: number) {
   props.actions.handleMoveSelectedToPosition(index)
+}
+
+function handleSplitMarkerTap(index: number) {
+  props.actions.handleSplitGroup(index)
 }
 
 // === Pinch Zoom ===
@@ -190,9 +213,19 @@ useEventListener(document, 'touchend', handlePinchEnd)
 <template>
   <div
     class="h-full overflow-y-auto overflow-x-hidden grid-touch-area no-scrollbar"
-    :class="isMove ? 'bg-muted/20' : 'bg-background'"
+    :class="isMove || isSplit ? 'bg-muted/20' : 'bg-background'"
     @contextmenu="preventContextMenu"
   >
+    <!-- Split mode header -->
+    <Transition name="slide-down">
+      <div
+        v-if="isSplit"
+        class="sticky top-0 z-20 bg-accent px-4 py-3 flex items-center justify-center text-accent-foreground border-b border-accent/50 shadow-sm"
+      >
+        <span class="text-sm font-medium">Tap between pages to split</span>
+      </div>
+    </Transition>
+
     <!-- Move mode header -->
     <Transition name="slide-down">
       <div
@@ -208,6 +241,16 @@ useEventListener(document, 'touchend', handlePinchEnd)
     <!-- Page Grid -->
     <div class="grid gap-3 p-4 min-h-[50vh]" :style="gridStyle">
       <template v-for="(pageRef, index) in localPages" :key="pageRef.id">
+        <!-- Split marker before this page (in Split mode) -->
+        <button
+          v-if="isSplit && splitTargets.has(index)"
+          class="col-span-full h-12 -my-1 border-2 border-dashed border-primary/50 rounded-lg flex items-center justify-center gap-2 text-primary text-sm font-medium bg-primary/5 active:bg-primary/10 transition-colors"
+          @click="handleSplitMarkerTap(index)"
+        >
+          <Scissors class="w-4 h-4" />
+          <span>Split here</span>
+        </button>
+
         <!-- Drop marker before this page (in Move mode) -->
         <button
           v-if="isMove && dropTargets.has(index) && !selectedIds.has(pageRef.id)"
@@ -268,10 +311,7 @@ useEventListener(document, 'touchend', handlePinchEnd)
     </div>
 
     <!-- Helper text -->
-    <p
-      v-if="contentPages.length > 0 && !isMove"
-      class="text-center ui-caption py-4 px-6"
-    >
+    <p v-if="contentPages.length > 0 && !isMove && !isSplit" class="text-center ui-caption py-4 px-6">
       <template v-if="isSelect"> Tap pages to select </template>
       <template v-else> Long-press to select / Tap to preview </template>
     </p>
