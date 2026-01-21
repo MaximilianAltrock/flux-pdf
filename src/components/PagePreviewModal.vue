@@ -49,6 +49,14 @@ const hasPrevious = computed(() => prevContentIndex.value !== -1)
 const hasNext = computed(() => nextContentIndex.value !== -1)
 const pageNumber = computed(() => currentIndex.value + 1)
 const totalPages = computed(() => contentPages.value.length)
+const headerStyle = computed(() => {
+  if (!isMobile.value) return undefined
+  return {
+    paddingTop: `calc(env(safe-area-inset-top, 0px) + 0.75rem)`,
+    paddingLeft: `calc(env(safe-area-inset-left, 0px) + 1rem)`,
+    paddingRight: `calc(env(safe-area-inset-right, 0px) + 1rem)`,
+  }
+})
 
 // --- Watchers ---
 watch(
@@ -177,6 +185,7 @@ onBackButton(
 
       <header
         class="flex items-center justify-between px-4 sm:px-6 py-3 shrink-0 z-40 transition-opacity duration-300 antialiased bg-card border-b border-border"
+        :style="headerStyle"
       >
         <!-- Left Section: Meta / Page Counter -->
         <div class="flex items-center gap-6 min-w-0 sm:min-w-[200px]">
