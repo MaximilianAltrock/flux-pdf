@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -173,6 +174,9 @@ onBackButton(
     >
       <DialogHeader class="sr-only">
         <DialogTitle>Page Preview - Page {{ pageNumber }}</DialogTitle>
+        <DialogDescription>
+          Preview the current page and swipe left or right to navigate between pages.
+        </DialogDescription>
       </DialogHeader>
 
       <header

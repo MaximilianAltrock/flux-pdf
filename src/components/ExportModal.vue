@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogScrollContent,
 } from '@/components/ui/dialog'
 import { useMobile } from '@/composables'
@@ -172,6 +173,9 @@ const displayPageCount = computed(() => {
           <DialogTitle class="text-sm font-semibold flex items-center gap-2">
             Export PDF
           </DialogTitle>
+          <DialogDescription class="sr-only">
+            Configure export settings and generate the PDF.
+          </DialogDescription>
         </div>
 
         <Button

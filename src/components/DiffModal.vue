@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog'
 import { Slider } from '@/components/ui/slider'
@@ -157,6 +158,9 @@ function handleZoom(delta: number) {
               <Layers class="w-4 h-4 text-primary" />
               Compare pages
             </DialogTitle>
+            <DialogDescription class="sr-only">
+              Compare two pages using overlay or side-by-side views.
+            </DialogDescription>
           </div>
 
           <div class="h-8 w-px bg-border/40 mx-2"></div>
