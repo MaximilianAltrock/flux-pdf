@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useEventListener } from '@vueuse/core'
-import { GripVertical, FileUp, X } from 'lucide-vue-next'
+import { ChevronRight, GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { ResizablePanel } from '@/components/ui/resizable'
+import SourcePageGrid from '@/components/SourcePageGrid.vue'
 import { formatBytes } from '@/utils/format'
 import type { AppActions } from '@/composables/useAppActions'
 import type { FacadeState } from '@/composables/useDocumentFacade'
@@ -17,15 +18,25 @@ const props = defineProps<{
 }>()
 
 const files = computed(() => props.state.document.sourceFileList)
+const expandedSources = ref<Record<string, boolean>>({})
 
 function handleDragStart(event: DragEvent, sourceId: string) {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData('application/x-flux-source-file', sourceId)
     event.dataTransfer.setData(
       'application/json',
       JSON.stringify({ type: 'source-file', sourceId }),
     )
   }
+}
+
+function toggleSource(sourceId: string) {
+  expandedSources.value[sourceId] = !expandedSources.value[sourceId]
+}
+
+function isSourceExpanded(sourceId: string) {
+  return Boolean(expandedSources.value[sourceId])
 }
 
 const emit = defineEmits<{
@@ -34,6 +45,9 @@ const emit = defineEmits<{
 
 function handleRemove(fileId: string, event: Event) {
   event.stopPropagation()
+  if (expandedSources.value[fileId]) {
+    delete expandedSources.value[fileId]
+  }
   emit('removeSource', fileId)
 }
 
@@ -127,15 +141,12 @@ useEventListener('dragleave', handleWindowDragLeave)
       <!-- Content -->
       <ScrollArea class="flex-1 bg-sidebar">
         <div class="p-3 space-y-3">
-          <div
-            v-for="file in files"
-            :key="file.id"
-            class="group relative cursor-grab active:cursor-grabbing select-none"
-            draggable="true"
-            @dragstart="handleDragStart($event, file.id)"
-          >
+          <div v-for="file in files" :key="file.id" class="group relative select-none">
             <div
-              class="ui-panel flex items-stretch min-h-14 rounded-md overflow-hidden bg-card/80 border-border/70 shadow-sm transition-all duration-200 group-hover:border-primary/30 group-hover:bg-card group-hover:shadow-md"
+              class="ui-panel flex items-stretch min-h-14 rounded-md overflow-hidden bg-card/80 border-border/70 shadow-sm transition-all duration-200 group-hover:border-primary/30 group-hover:bg-card group-hover:shadow-md cursor-grab active:cursor-grabbing"
+              draggable="true"
+              @dragstart="handleDragStart($event, file.id)"
+              @click="toggleSource(file.id)"
             >
               <!-- Color Indicator -->
               <div
@@ -146,9 +157,21 @@ useEventListener('dragleave', handleWindowDragLeave)
               <div class="flex-1 flex flex-col min-w-0 p-2.5 justify-center">
                 <div class="flex flex-col gap-1.5">
                   <div class="flex items-center justify-between gap-2">
-                    <span class="ui-label truncate leading-tight flex-1">
-                      {{ file.filename }}
-                    </span>
+                    <button
+                      type="button"
+                      class="flex items-center gap-2 min-w-0 text-left group/button"
+                      :aria-expanded="isSourceExpanded(file.id)"
+                      :aria-controls="`source-pages-${file.id}`"
+                      @click.stop="toggleSource(file.id)"
+                    >
+                      <ChevronRight
+                        class="w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200 group-hover/button:text-foreground"
+                        :class="isSourceExpanded(file.id) ? 'rotate-90' : ''"
+                      />
+                      <span class="ui-label truncate leading-tight flex-1">
+                        {{ file.filename }}
+                      </span>
+                    </button>
 
                     <div
                       class="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
@@ -175,8 +198,7 @@ useEventListener('dragleave', handleWindowDragLeave)
                     <div
                       class="flex items-center gap-1 px-1.5 py-0.5 bg-muted/30 rounded-sm border border-border/70"
                     >
-                      <span
-                        class="ui-mono ui-2xs font-semibold text-muted-foreground uppercase"
+                      <span class="ui-mono ui-2xs font-semibold text-muted-foreground uppercase"
                         >PDF</span
                       >
                       <span class="text-xs text-muted-foreground/50">/</span>
@@ -190,6 +212,28 @@ useEventListener('dragleave', handleWindowDragLeave)
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div
+              v-if="isSourceExpanded(file.id)"
+              :id="`source-pages-${file.id}`"
+              class="mt-2 ml-1 mr-1 pl-3 border-l border-border/50 space-y-2"
+            >
+              <div class="flex items-center justify-between">
+                <span class="ui-caption text-muted-foreground/70">Pages</span>
+                <span class="ui-mono text-xs text-muted-foreground/70">
+                  {{ file.pageCount }} total
+                </span>
+              </div>
+              <div class="ui-caption text-muted-foreground/60">
+                Select pages (Ctrl/Cmd for multi, Shift for range) and drag to append.
+              </div>
+              <SourcePageGrid
+                :source-id="file.id"
+                :page-count="file.pageCount"
+                :source-color="props.state.document.getSourceColor(file.id)"
+                :tile-width="84"
+              />
             </div>
           </div>
 

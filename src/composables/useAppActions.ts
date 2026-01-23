@@ -174,6 +174,62 @@ export function useAppActions(state: AppState) {
     execute(new AddPagesCommand(sourceFile, newPages, false))
   }
 
+  /**
+   * Handle single source page dropped from SourceRail onto grid
+   */
+  function handleSourcePageDropped(sourceId: string, pageIndex: number) {
+    const sourceFile = store.sources.get(sourceId)
+    if (!sourceFile) return
+    if (pageIndex < 0 || pageIndex >= sourceFile.pageCount) return
+
+    const pageRef: PageReference = {
+      id: crypto.randomUUID(),
+      sourceFileId: sourceFile.id,
+      sourcePageIndex: pageIndex,
+      rotation: ROTATION_DEFAULT_DEGREES,
+      groupId: crypto.randomUUID(),
+    }
+
+    execute(new AddPagesCommand(sourceFile, [pageRef], false))
+  }
+
+  /**
+   * Handle multiple source pages dropped from SourceRail onto grid
+   */
+  function handleSourcePagesDropped(pages: { sourceId: string; pageIndex: number }[]) {
+    if (!pages || pages.length === 0) return
+
+    const grouped = new Map<string, Set<number>>()
+    for (const page of pages) {
+      if (!page || !page.sourceId || !Number.isInteger(page.pageIndex)) continue
+      const sourceFile = store.sources.get(page.sourceId)
+      if (!sourceFile) continue
+      if (page.pageIndex < 0 || page.pageIndex >= sourceFile.pageCount) continue
+
+      if (!grouped.has(page.sourceId)) grouped.set(page.sourceId, new Set())
+      grouped.get(page.sourceId)!.add(page.pageIndex)
+    }
+
+    for (const [sourceId, pageSet] of grouped) {
+      const sourceFile = store.sources.get(sourceId)
+      if (!sourceFile) continue
+
+      const sorted = Array.from(pageSet).sort((a, b) => a - b)
+      if (sorted.length === 0) continue
+
+      const groupId = crypto.randomUUID()
+      const newPages: PageReference[] = sorted.map((pageIndex) => ({
+        id: crypto.randomUUID(),
+        sourceFileId: sourceFile.id,
+        sourcePageIndex: pageIndex,
+        rotation: ROTATION_DEFAULT_DEGREES,
+        groupId,
+      }))
+
+      execute(new AddPagesCommand(sourceFile, newPages, false))
+    }
+  }
+
   function downloadFile(data: Uint8Array, filename: string, mimeType: string): void {
     const arrayBuffer =
       data.buffer instanceof ArrayBuffer
@@ -739,6 +795,8 @@ export function useAppActions(state: AppState) {
     handleFilesSelected,
     handleSourcesSelected,
     handleSourceDropped,
+    handleSourcePageDropped,
+    handleSourcePagesDropped,
 
     // Export
     handleExport,

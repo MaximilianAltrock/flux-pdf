@@ -16,6 +16,8 @@ import type { FacadeState } from '@/composables/useDocumentFacade'
 const emit = defineEmits<{
   filesDropped: [files: FileList]
   sourceDropped: [sourceId: string]
+  sourcePageDropped: [sourceId: string, pageIndex: number]
+  sourcePagesDropped: [pages: { sourceId: string; pageIndex: number }[]]
   preview: [pageRef: PageReference]
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
@@ -240,6 +242,27 @@ async function handleFileDrop(event: DragEvent) {
       const data = JSON.parse(jsonData)
       if (data.type === 'source-file' && data.sourceId) {
         emit('sourceDropped', data.sourceId)
+        return
+      }
+      if (
+        data.type === 'source-pages' &&
+        data.sourceId &&
+        Array.isArray(data.pages)
+      ) {
+        const pages = data.pages
+          .filter((pageIndex: unknown) => Number.isInteger(pageIndex))
+          .map((pageIndex: number) => ({ sourceId: data.sourceId, pageIndex }))
+        if (pages.length > 0) {
+          emit('sourcePagesDropped', pages)
+          return
+        }
+      }
+      if (
+        data.type === 'source-page' &&
+        data.sourceId &&
+        Number.isInteger(data.pageIndex)
+      ) {
+        emit('sourcePageDropped', data.sourceId, data.pageIndex)
         return
       }
     } catch {

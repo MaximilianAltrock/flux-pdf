@@ -106,7 +106,7 @@ function addCustomBookmark() {
         </Tree>
       </div>
 
-      <div class="mx-4 mb-4 mt-2 p-3 rounded-md ui-panel-muted text-center">
+      <div class="mx-4 mb-4 mt-2 p-3 rounded-md text-center">
         <Button
           variant="secondary"
           size="sm"

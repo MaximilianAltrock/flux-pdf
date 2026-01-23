@@ -1,25 +1,31 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Upload, Layers } from 'lucide-vue-next'
+import { FileText, Layers, Upload } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 
 const emit = defineEmits<{
   filesSelected: [files: FileList]
   sourceDropped: [sourceId: string]
+  sourcePageDropped: [sourceId: string, pageIndex: number]
+  sourcePagesDropped: [pages: { sourceId: string; pageIndex: number }[]]
 }>()
 
 const isDragging = ref(false)
-const dragType = ref<'files' | 'source' | null>(null)
+const dragType = ref<'files' | 'source' | 'page' | 'pages' | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 let dragCounter = 0
 
 // Computed for dynamic messaging
 const dropMessage = computed(() => {
+  if (dragType.value === 'pages') return 'Drop to add selected pages'
+  if (dragType.value === 'page') return 'Drop to add page'
   if (dragType.value === 'source') return 'Drop to add pages'
   return 'Drop PDF or images here'
 })
 
 const dropIcon = computed(() => {
+  if (dragType.value === 'pages') return Layers
+  if (dragType.value === 'page') return FileText
   if (dragType.value === 'source') return Layers
   return Upload
 })
@@ -31,7 +37,12 @@ function handleDragEnter(event: DragEvent) {
     isDragging.value = true
   }
 
-  if (event.dataTransfer?.types.includes('application/json')) {
+  const types = event.dataTransfer?.types ?? []
+  if (types.includes('application/x-flux-source-pages')) {
+    dragType.value = 'pages'
+  } else if (types.includes('application/x-flux-source-page')) {
+    dragType.value = 'page'
+  } else if (types.includes('application/x-flux-source-file') || types.includes('application/json')) {
     dragType.value = 'source'
   } else {
     dragType.value = 'files'
@@ -42,7 +53,12 @@ function handleDragOver(event: DragEvent) {
   event.preventDefault()
 
   // Detect drag type
-  if (event.dataTransfer?.types.includes('application/json')) {
+  const types = event.dataTransfer?.types ?? []
+  if (types.includes('application/x-flux-source-pages')) {
+    dragType.value = 'pages'
+  } else if (types.includes('application/x-flux-source-page')) {
+    dragType.value = 'page'
+  } else if (types.includes('application/x-flux-source-file') || types.includes('application/json')) {
     dragType.value = 'source'
   } else {
     dragType.value = 'files'
@@ -71,6 +87,27 @@ function handleDrop(event: DragEvent) {
       const data = JSON.parse(jsonData)
       if (data.type === 'source-file' && data.sourceId) {
         emit('sourceDropped', data.sourceId)
+        return
+      }
+      if (
+        data.type === 'source-pages' &&
+        data.sourceId &&
+        Array.isArray(data.pages)
+      ) {
+        const pages = data.pages
+          .filter((pageIndex: unknown) => Number.isInteger(pageIndex))
+          .map((pageIndex: number) => ({ sourceId: data.sourceId, pageIndex }))
+        if (pages.length > 0) {
+          emit('sourcePagesDropped', pages)
+          return
+        }
+      }
+      if (
+        data.type === 'source-page' &&
+        data.sourceId &&
+        Number.isInteger(data.pageIndex)
+      ) {
+        emit('sourcePageDropped', data.sourceId, data.pageIndex)
         return
       }
     } catch {
@@ -145,7 +182,11 @@ function openFileDialog() {
       {{
         isDragging && dragType === 'source'
           ? 'Release to add all pages from this source'
-          : 'Drag & drop PDF or image files here, or click to browse'
+          : isDragging && dragType === 'pages'
+            ? 'Release to add selected pages to the stage'
+            : isDragging && dragType === 'page'
+              ? 'Release to add this page to the stage'
+              : 'Drag & drop PDF or image files here, or click to browse'
       }}
     </p>
 

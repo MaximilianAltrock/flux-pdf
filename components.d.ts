@@ -210,6 +210,8 @@ declare module 'vue' {
     Slider: typeof import('./src/components/ui/slider/Slider.vue')['default']
     Sonner: typeof import('./src/components/ui/sonner/Sonner.vue')['default']
     SortableGridItem: typeof import('./src/components/page-grid/SortableGridItem.vue')['default']
+    SourcePageGrid: typeof import('./src/components/SourcePageGrid.vue')['default']
+    SourcePageThumbnail: typeof import('./src/components/SourcePageThumbnail.vue')['default']
     SourceRail: typeof import('./src/components/SourceRail.vue')['default']
     Spinner: typeof import('./src/components/ui/spinner/Spinner.vue')['default']
     Switch: typeof import('./src/components/ui/switch/Switch.vue')['default']

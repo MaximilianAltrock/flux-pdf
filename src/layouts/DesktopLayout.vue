@@ -36,6 +36,14 @@ function onSourceDropped(sourceId: string) {
   props.actions.handleSourceDropped(sourceId)
 }
 
+function onSourcePageDropped(sourceId: string, pageIndex: number) {
+  props.actions.handleSourcePageDropped(sourceId, pageIndex)
+}
+
+function onSourcePagesDropped(pages: { sourceId: string; pageIndex: number }[]) {
+  props.actions.handleSourcePagesDropped(pages)
+}
+
 function onPreview(pageRef: PageReference) {
   props.actions.handlePagePreview(pageRef)
 }
@@ -76,7 +84,12 @@ function onCommandAction(action: UserAction) {
           <!-- Empty State -->
           <div v-if="!hasPages" class="h-full flex items-center justify-center p-8">
             <div class="max-w-lg w-full">
-              <FileDropzone @files-selected="onFilesDropped" @source-dropped="onSourceDropped" />
+              <FileDropzone
+                @files-selected="onFilesDropped"
+                @source-dropped="onSourceDropped"
+                @source-page-dropped="onSourcePageDropped"
+                @source-pages-dropped="onSourcePagesDropped"
+              />
               <div class="mt-8 text-center text-muted-foreground">
                 <p class="mb-4 text-sm font-medium">
                   Or drag files from your desktop or sources panel
@@ -97,6 +110,8 @@ function onCommandAction(action: UserAction) {
             :actions="props.actions"
             @files-dropped="onFilesDropped"
             @source-dropped="onSourceDropped"
+            @source-page-dropped="onSourcePageDropped"
+            @source-pages-dropped="onSourcePagesDropped"
             @preview="onPreview"
             @context-action="onContextAction"
           />
