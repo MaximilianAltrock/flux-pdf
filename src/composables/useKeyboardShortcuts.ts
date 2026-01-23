@@ -18,6 +18,50 @@ export function useKeyboardShortcuts(
 ) {
   const store = useDocumentStore()
   const { undo, redo } = useCommandManager()
+  let rangeAnchorId: string | null = null
+
+  function resetRangeAnchor() {
+    rangeAnchorId = null
+  }
+
+  function resolveRangeAnchor(
+    contentPages: Array<{ id: string }>,
+    currentId: string | null,
+  ): string | null {
+    const selectedIds = store.selection.selectedIds
+    if (selectedIds.size === 0) return null
+
+    let minIndex = -1
+    let maxIndex = -1
+    let selectedCount = 0
+    let currentIndex = -1
+
+    for (let i = 0; i < contentPages.length; i++) {
+      const page = contentPages[i]
+      if (!page) continue
+      if (page.id === currentId) currentIndex = i
+      if (selectedIds.has(page.id)) {
+        if (minIndex === -1) minIndex = i
+        maxIndex = i
+        selectedCount += 1
+      }
+    }
+
+    if (selectedCount === 0) return null
+
+    const isContiguous = maxIndex - minIndex + 1 === selectedCount
+    if (isContiguous && currentIndex !== -1 && minIndex !== maxIndex) {
+      if (currentIndex === minIndex) {
+        return contentPages[maxIndex]?.id ?? null
+      }
+      if (currentIndex === maxIndex) {
+        return contentPages[minIndex]?.id ?? null
+      }
+    }
+
+    if (currentId && selectedIds.has(currentId)) return currentId
+    return contentPages[minIndex]?.id ?? null
+  }
 
   function handleKeydown(e: KeyboardEvent) {
     // Ignore if typing in an input
@@ -35,6 +79,9 @@ export function useKeyboardShortcuts(
 
     const isCmd = e.metaKey || e.ctrlKey
     const isShift = e.shiftKey
+    if (store.selectedCount === 0) {
+      resetRangeAnchor()
+    }
 
     // Command Palette: Cmd+K or /
     if ((isCmd && e.key === 'k') || e.key === '/') {
@@ -71,6 +118,7 @@ export function useKeyboardShortcuts(
     // Deselect (Escape)
     if (e.key === 'Escape') {
       actions.clearSelection()
+      resetRangeAnchor()
       return
     }
 
@@ -143,6 +191,7 @@ export function useKeyboardShortcuts(
       const targetPage = e.key === 'Home' ? contentPages[0] : contentPages[contentPages.length - 1]
       if (targetPage) {
         actions.selectPage(targetPage.id, false)
+        rangeAnchorId = targetPage.id
         requestAnimationFrame(() => {
           const thumbnail = document.querySelector(`[data-page-id="${targetPage.id}"]`)
           thumbnail?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -170,6 +219,7 @@ export function useKeyboardShortcuts(
       // If nothing is selected, start from the first page
       if (currentIndex === -1) {
         actions.selectPage(contentPages[0]!.id, false)
+        rangeAnchorId = contentPages[0]!.id
         return
       }
 
@@ -214,9 +264,19 @@ export function useKeyboardShortcuts(
       const newPage = contentPages[newIndex]
       if (newPage && newIndex !== currentIndex) {
         if (isShift) {
-          actions.selectRange(currentId!, newPage.id)
+          if (!rangeAnchorId || !store.selection.selectedIds.has(rangeAnchorId)) {
+            rangeAnchorId = resolveRangeAnchor(contentPages, currentId)
+          }
+          const anchorId = rangeAnchorId ?? currentId ?? newPage.id
+          if (anchorId) {
+            actions.clearSelectionKeepMode()
+            actions.selectRange(anchorId, newPage.id)
+          } else {
+            actions.selectPage(newPage.id, false)
+          }
         } else {
           actions.selectPage(newPage.id, false)
+          rangeAnchorId = newPage.id
         }
 
         // Scroll the selected page into view
