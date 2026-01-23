@@ -101,17 +101,22 @@ function openFileDialog() {
 
 <template>
   <Card
-    class="relative border border-dashed rounded-md p-10 text-center transition-colors duration-200 cursor-pointer shadow-none gap-4"
+    class="relative border border-dashed rounded-md p-10 text-center transition-colors duration-200 cursor-pointer shadow-none gap-4 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
     :class="
       isDragging
         ? 'border-primary bg-primary/5 scale-[1.02]'
         : 'border-border hover:border-primary/50 hover:bg-muted/5'
     "
+    role="button"
+    tabindex="0"
+    aria-label="Upload PDF or image files"
     @dragenter="handleDragEnter"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
     @click="openFileDialog"
+    @keydown.enter.prevent="openFileDialog"
+    @keydown.space.prevent="openFileDialog"
   >
     <!-- Hidden file input -->
     <input
@@ -150,13 +155,16 @@ function openFileDialog() {
     <!-- Drag overlay animation -->
     <div
       v-if="isDragging"
-      class="absolute inset-4 border border-primary/50 rounded-md pointer-events-none"
-      style="animation: dropzone-pulse 1s ease-in-out infinite"
+      class="absolute inset-4 border border-primary/50 rounded-md pointer-events-none dropzone-pulse"
     />
   </Card>
 </template>
 
 <style scoped>
+.dropzone-pulse {
+  animation: dropzone-pulse 1s ease-in-out infinite;
+}
+
 @keyframes dropzone-pulse {
   0%,
   100% {
@@ -164,6 +172,12 @@ function openFileDialog() {
   }
   50% {
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropzone-pulse {
+    animation: none;
   }
 }
 </style>

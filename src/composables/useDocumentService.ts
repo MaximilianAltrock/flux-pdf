@@ -4,7 +4,7 @@ import { EXPORT_PROGRESS, HISTORY, PROGRESS, TIMEOUTS_MS, ZOOM } from '@/constan
 import type { StoredFile } from '@/db/db'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
-import { AddPagesCommand, BatchCommand } from '@/commands'
+import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
 import type { Command } from '@/commands/types'
 import type {
   BookmarkNode,
@@ -84,6 +84,10 @@ export interface ImportSummary {
   successes: FileUploadResult[]
   errors: FileUploadResult[]
   totalPages: number
+}
+
+export interface ImportOptions {
+  addPages?: boolean
 }
 
 export function useDocumentService(
@@ -219,7 +223,10 @@ export function useDocumentService(
     }
   }
 
-  async function importFiles(files: FileList | File[]): Promise<Result<ImportSummary>> {
+  async function importFiles(
+    files: FileList | File[],
+    options: ImportOptions = {},
+  ): Promise<Result<ImportSummary>> {
     const fileList = Array.from(files)
     if (fileList.length === 0) {
       return { ok: true, value: { results: [], successes: [], errors: [], totalPages: 0 } }
@@ -247,18 +254,23 @@ export function useDocumentService(
 
       if (successes.length > 0) {
         const commandsToRun: Command[] = []
+        const addPages = options.addPages !== false
 
         for (const result of successes) {
-          if (result.sourceFile && result.pageRefs) {
-            const cmd = new AddPagesCommand(result.sourceFile, result.pageRefs, true)
-            commandsToRun.push(cmd)
+          if (!result.sourceFile) continue
+          if (addPages && result.pageRefs) {
+            commandsToRun.push(new AddPagesCommand(result.sourceFile, result.pageRefs, true))
+          } else if (!addPages) {
+            commandsToRun.push(new AddSourceCommand(result.sourceFile))
           }
         }
 
         if (commandsToRun.length === 1) {
           execute(commandsToRun[0]!)
         } else if (commandsToRun.length > 1) {
-          const batchName = `Import ${commandsToRun.length} files`
+          const batchName = addPages
+            ? `Import ${commandsToRun.length} files`
+            : `Register ${commandsToRun.length} sources`
           const batchCmd = new BatchCommand(commandsToRun, batchName)
           execute(batchCmd)
         }

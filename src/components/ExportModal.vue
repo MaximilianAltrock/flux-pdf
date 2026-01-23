@@ -184,6 +184,7 @@ const displayPageCount = computed(() => {
           class="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 hover:rotate-90"
           :disabled="isExporting"
           @click="handleClose"
+          aria-label="Close export dialog"
         >
           <X class="w-4 h-4" />
         </Button>

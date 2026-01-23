@@ -7,6 +7,7 @@ import { migrateSerializedCommand, type SerializedCommandRecord } from './migrat
  */
 export const CommandType = {
   ADD: 'AddPages',
+  ADD_SOURCE: 'AddSource',
   DELETE: 'DeletePages',
   DUPLICATE: 'DuplicatePages',
   REORDER: 'ReorderPages',

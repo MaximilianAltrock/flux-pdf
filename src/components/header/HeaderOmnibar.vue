@@ -15,7 +15,7 @@ defineEmits<{
 
 <template>
   <div class="flex-1 flex justify-center">
-    <div class="relative w-[400px]">
+    <div class="relative w-96 max-w-full">
       <!-- Progress Bar (Subtle Scanline) -->
       <div
         v-if="state.isLoading.value"
@@ -58,7 +58,7 @@ defineEmits<{
           class="ml-auto shrink-0 flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity"
         >
           <Kbd
-            class="hidden sm:inline-flex ui-mono text-[10px]"
+            class="hidden sm:inline-flex ui-mono ui-2xs"
           >
             Cmd+K
           </Kbd>

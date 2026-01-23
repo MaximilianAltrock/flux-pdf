@@ -81,7 +81,7 @@ function removeKeyword(k: string) {
           <Button
             variant="secondary"
             size="sm"
-            class="h-7 px-2.5 text-[10px] uppercase tracking-[0.16em]"
+            class="h-7 px-2.5 ui-2xs uppercase tracking-[0.16em]"
             :disabled="metadataSources.length === 0"
           >
             <FileDown class="w-3 h-3 mr-1.5" />
@@ -191,6 +191,7 @@ function removeKeyword(k: string) {
                 size="icon"
                 class="h-5 w-5 hover:bg-destructive/10 hover:text-destructive transition-colors"
                 @click="removeKeyword(k)"
+                :aria-label="`Remove keyword ${k}`"
               >
                 <X class="w-3 h-3" />
               </Button>

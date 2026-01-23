@@ -141,6 +141,7 @@ function handleRedo() {
         size="icon"
         class="h-11 w-11 text-foreground active:opacity-70"
         @click="handleMenuTap"
+        aria-label="Open menu"
       >
         <Menu class="w-5 h-5" />
       </Button>

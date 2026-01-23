@@ -101,6 +101,8 @@ watch(securityEncrypted, (isEncrypted) => {
               size="icon-sm"
               class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors"
               @click="showUserPassword = !showUserPassword"
+              :aria-label="showUserPassword ? 'Hide open password' : 'Show open password'"
+              :aria-pressed="showUserPassword"
             >
               <Eye v-if="!showUserPassword" class="w-3 h-3" />
               <EyeOff v-else class="w-3 h-3" />
@@ -131,6 +133,8 @@ watch(securityEncrypted, (isEncrypted) => {
               size="icon-sm"
               class="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors"
               @click="showOwnerPassword = !showOwnerPassword"
+              :aria-label="showOwnerPassword ? 'Hide admin password' : 'Show admin password'"
+              :aria-pressed="showOwnerPassword"
             >
               <Eye v-if="!showOwnerPassword" class="w-3 h-3" />
               <EyeOff v-else class="w-3 h-3" />

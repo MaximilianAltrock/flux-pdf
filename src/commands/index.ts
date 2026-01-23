@@ -46,6 +46,7 @@ export { CommandType, type CommandTypeValue, commandRegistry, registerCommand } 
 
 // Commands (importing registers them with the registry)
 export { AddPagesCommand } from './AddPagesCommand'
+export { AddSourceCommand } from './AddSourceCommand'
 export { DeletePagesCommand } from './DeletePagesCommand'
 export { DuplicatePagesCommand } from './DuplicatePagesCommand'
 export { ReorderPagesCommand } from './ReorderPagesCommand'

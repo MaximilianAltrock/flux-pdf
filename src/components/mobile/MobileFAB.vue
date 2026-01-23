@@ -32,6 +32,7 @@ function handleTap() {
       class="fixed z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform duration-200 active:scale-90 bg-primary text-primary-foreground right-4 bottom-24"
       style="margin-bottom: env(safe-area-inset-bottom, 0px)"
       @click="handleTap"
+      aria-label="Add files"
     >
       <Plus class="w-6 h-6" />
     </button>
@@ -51,5 +52,18 @@ function handleTap() {
 .fab-pop-leave-to {
   opacity: 0;
   transform: scale(0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab-pop-enter-active,
+  .fab-pop-leave-active {
+    transition: none;
+  }
+
+  .fab-pop-enter-from,
+  .fab-pop-leave-to {
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

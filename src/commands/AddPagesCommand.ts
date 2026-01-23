@@ -55,7 +55,9 @@ export class AddPagesCommand extends BaseCommand {
     this.pages = BaseCommand.clonePages(pages)
     this.shouldAddSource = shouldAddSource
 
-    this.name = `Add "${sourceFile.filename}"`
+    this.name = shouldAddSource
+      ? `Import "${sourceFile.filename}"`
+      : `Add pages from "${sourceFile.filename}"`
   }
 
   execute(): void {

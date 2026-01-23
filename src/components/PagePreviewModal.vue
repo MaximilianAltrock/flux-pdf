@@ -215,6 +215,7 @@ onBackButton(
             class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/40"
             title="Zoom Out"
             @click="zoomOut"
+            aria-label="Zoom out"
           >
             <ZoomOut class="w-4 h-4" />
           </Button>
@@ -234,6 +235,7 @@ onBackButton(
             class="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/40"
             title="Zoom In"
             @click="zoomIn"
+            aria-label="Zoom in"
           >
             <ZoomIn class="w-4 h-4" />
           </Button>
@@ -247,6 +249,7 @@ onBackButton(
               variant="ghost"
               size="icon"
               class="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-transform duration-200 hover:rotate-90"
+              aria-label="Close preview"
             >
               <X class="w-5 h-5" />
             </Button>
@@ -270,6 +273,7 @@ onBackButton(
           :src="previewUrl"
           class="max-w-full max-h-full object-contain transition-transform duration-200 shadow-lg bg-card select-none"
           :style="{ transform: `scale(${zoom})` }"
+          :alt="`Preview of page ${pageNumber}`"
         />
 
         <!-- Mobile Swipe Hints -->
@@ -297,7 +301,7 @@ onBackButton(
             @click="handlePreviewAction(UserAction.ROTATE_RIGHT)"
           >
             <RotateCw class="w-5 h-5" />
-            <span class="text-[10px] font-semibold">Rotate</span>
+            <span class="ui-2xs font-semibold">Rotate</span>
           </Button>
           <Button
             variant="ghost"
@@ -306,7 +310,7 @@ onBackButton(
             @click="handlePreviewAction(UserAction.DUPLICATE)"
           >
             <Copy class="w-5 h-5" />
-            <span class="text-[10px] font-semibold">Duplicate</span>
+            <span class="ui-2xs font-semibold">Duplicate</span>
           </Button>
           <Button
             variant="ghost"
@@ -315,7 +319,7 @@ onBackButton(
             @click="handleDelete"
           >
             <Trash2 class="w-5 h-5" />
-            <span class="text-[10px] font-semibold">Delete</span>
+            <span class="ui-2xs font-semibold">Delete</span>
           </Button>
         </div>
       </footer>
@@ -331,6 +335,7 @@ onBackButton(
           size="icon"
           class="pointer-events-auto h-11 w-11 rounded-md shadow-sm transition-colors group"
           @click="goToPrevious"
+          aria-label="Previous page"
         >
           <ChevronLeft
             class="w-8 h-8 text-muted-foreground group-hover:text-foreground transition-colors"
@@ -344,6 +349,7 @@ onBackButton(
           size="icon"
           class="pointer-events-auto h-11 w-11 rounded-md shadow-sm transition-colors group"
           @click="goToNext"
+          aria-label="Next page"
         >
           <ChevronRight
             class="w-8 h-8 text-muted-foreground group-hover:text-foreground transition-colors"

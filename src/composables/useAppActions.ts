@@ -88,7 +88,7 @@ export function useAppActions(state: AppState) {
   function handleFileInputChange(event: Event) {
     const input = event.target as HTMLInputElement
     if (input.files && input.files.length > 0) {
-      handleImport(input.files)
+      handleImport(input.files, { addPages: true })
       state.clearFileInput()
     }
   }
@@ -97,11 +97,21 @@ export function useAppActions(state: AppState) {
    * Handle files dropped or selected
    */
   async function handleFilesSelected(files: FileList) {
-    await handleImport(files)
+    await handleImport(files, { addPages: true })
   }
 
-  async function handleImport(files: FileList | File[]) {
-    const result = await importFiles(files)
+  /**
+   * Handle files added to the source registry (without inserting pages)
+   */
+  async function handleSourcesSelected(files: FileList) {
+    await handleImport(files, { addPages: false })
+  }
+
+  async function handleImport(
+    files: FileList | File[],
+    options: { addPages: boolean },
+  ) {
+    const result = await importFiles(files, { addPages: options.addPages })
     if (!result.ok) {
       toast.error('Failed to load files', result.error.message)
       return
@@ -110,10 +120,17 @@ export function useAppActions(state: AppState) {
     const { successes, errors, totalPages } = result.value
 
     if (successes.length > 0) {
-      toast.success(
-        `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
-        `${totalPages} page${totalPages > 1 ? 's' : ''} added`,
-      )
+      if (options.addPages) {
+        toast.success(
+          `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
+          `${totalPages} page${totalPages > 1 ? 's' : ''} added`,
+        )
+      } else {
+        toast.success(
+          `Registered ${successes.length} source file${successes.length > 1 ? 's' : ''}`,
+          `${totalPages} page${totalPages > 1 ? 's' : ''} ready to add`,
+        )
+      }
     }
 
     if (errors.length > 0) {
@@ -533,7 +550,7 @@ export function useAppActions(state: AppState) {
     input.capture = 'environment'
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files
-      if (files) handleImport(files)
+      if (files) handleImport(files, { addPages: true })
     }
     input.click()
   }
@@ -720,6 +737,7 @@ export function useAppActions(state: AppState) {
     // File Handling
     handleFileInputChange,
     handleFilesSelected,
+    handleSourcesSelected,
     handleSourceDropped,
 
     // Export

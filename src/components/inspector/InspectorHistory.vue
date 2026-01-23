@@ -46,7 +46,7 @@ watch(
         Session History
         <span class="w-1 h-1 rounded-full bg-primary/40"></span>
       </h2>
-      <Badge variant="outline" class="ui-mono text-[10px] h-4 opacity-60 px-1.5"
+      <Badge variant="outline" class="ui-mono ui-2xs h-4 opacity-60 px-1.5"
         >{{ historyList.length }} steps</Badge
       >
     </div>
@@ -56,12 +56,17 @@ watch(
         <Timeline v-if="historyList.length > 0" size="sm" variant="history" class="w-full">
           <TimelineItem
             v-for="(entry, index) in historyList"
-            :key="index"
+            :key="entry.pointer"
             :status="entry.isCurrent ? 'in-progress' : entry.isUndone ? 'pending' : 'completed'"
             :show-connector="index !== historyList.length - 1"
             icon-size="lg"
-            class="cursor-pointer group relative mb-6 last:mb-0"
+            class="cursor-pointer group relative mb-6 last:mb-0 rounded-sm focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:outline-none"
             @click="jumpTo(entry.pointer)"
+            @keydown.enter.prevent="jumpTo(entry.pointer)"
+            @keydown.space.prevent="jumpTo(entry.pointer)"
+            role="button"
+            tabindex="0"
+            :aria-label="`Jump to ${entry.command.name}`"
           >
             <template #title>
               <TimelineTitle

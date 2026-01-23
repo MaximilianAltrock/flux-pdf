@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  click: [event: MouseEvent]
+  click: [event: MouseEvent | KeyboardEvent]
   preview: []
   rotate: []
   delete: []
@@ -106,11 +106,11 @@ onUnmounted(() => {
   cancelRender(props.pageRef.id)
 })
 
-function handleClick(event: MouseEvent) {
+function handleClick(event: MouseEvent | KeyboardEvent) {
   emit('click', event)
 }
 
-function handleDoubleClick(event: MouseEvent) {
+function handleDoubleClick(event: Event) {
   event.stopPropagation()
   emit('preview')
 }
@@ -125,15 +125,21 @@ function handleRetry() {
   <div
     ref="containerRef"
     :data-page-id="pageRef.id"
-    class="flex flex-col items-center gap-2 p-2 cursor-pointer select-none relative group/thumbnail h-fit transition-colors duration-200 rounded-md"
+    class="flex flex-col items-center gap-2 p-2 cursor-pointer select-none relative group/thumbnail h-fit transition-colors duration-200 rounded-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
     :class="{
       'w-full': !fixedSize,
       'bg-primary/5 ring-1 ring-primary/20': selected,
       'hover:bg-muted/20': !selected,
       'opacity-60': isRazorActive && !canSplit,
     }"
+    role="button"
+    tabindex="0"
+    :aria-label="`Page ${pageNumber}`"
+    :aria-pressed="selected ? 'true' : 'false'"
     @click="handleClick"
     @dblclick="handleDoubleClick"
+    @keydown.enter.prevent="handleDoubleClick"
+    @keydown.space.prevent="handleClick"
   >
     <!-- Thumbnail paper -->
     <div class="relative" :style="{ width: cssWidth }">
@@ -201,6 +207,7 @@ function handleRetry() {
                 size="icon-sm"
                 class="h-6 w-6 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 @click.stop="emit('rotate')"
+                aria-label="Rotate page 90 degrees"
               >
                 <RotateCw class="w-3.5 h-3.5" />
               </Button>
@@ -217,6 +224,7 @@ function handleRetry() {
                 size="icon-sm"
                 class="h-6 w-6 rounded-sm text-destructive/80 hover:text-destructive hover:bg-destructive/10"
                 @click.stop="emit('delete')"
+                aria-label="Remove page"
               >
                 <Trash2 class="w-3.5 h-3.5" />
               </Button>
@@ -237,7 +245,7 @@ function handleRetry() {
             class="flex items-center gap-1 px-2 py-0.5 rounded-sm bg-destructive/10 border border-destructive/30 shadow-sm"
           >
             <Scissors class="w-3 h-3 text-destructive" />
-            <span class="ui-mono text-[9px] tracking-[0.24em] uppercase text-destructive/90"
+            <span class="ui-mono ui-2xs tracking-[0.24em] uppercase text-destructive/90"
               >Cut</span
             >
           </div>

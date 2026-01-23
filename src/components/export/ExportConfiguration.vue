@@ -156,7 +156,7 @@ onMounted(() => {
         <div class="flex items-center justify-between mb-0.5">
           <span class="ui-kicker">Export summary</span>
           <span
-            class="ui-mono text-[10px] font-semibold text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/30 rounded-sm"
+            class="ui-mono ui-2xs font-semibold text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/30 rounded-sm"
             >{{ pageCount }} PAGES</span
           >
         </div>
@@ -188,7 +188,7 @@ onMounted(() => {
           class="ui-mono text-sm"
         />
         <InputGroupAddon align="inline-end">
-          <InputGroupText class="ui-mono text-[10px] opacity-60">.pdf</InputGroupText>
+          <InputGroupText class="ui-mono ui-2xs opacity-60">.pdf</InputGroupText>
         </InputGroupAddon>
       </InputGroup>
     </div>
@@ -207,7 +207,7 @@ onMounted(() => {
             class="flex items-center justify-between px-3 h-10 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
           >
             <span class="ui-label">All pages</span>
-            <span class="ui-mono text-[10px] text-muted-foreground"
+            <span class="ui-mono ui-2xs text-muted-foreground"
               >{{ document.pageCount }} pages</span>
           </Label>
         </div>
@@ -229,7 +229,7 @@ onMounted(() => {
             "
           >
             <span class="ui-label">Selected pages</span>
-            <span class="ui-mono text-[10px] text-muted-foreground"
+            <span class="ui-mono ui-2xs text-muted-foreground"
               >{{ document.selectedCount }} items</span>
           </Label>
         </div>
@@ -241,7 +241,7 @@ onMounted(() => {
             class="flex items-center justify-between px-3 h-10 rounded-sm border border-border cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted/20"
           >
             <span class="ui-label">Custom range</span>
-            <span class="ui-mono text-[10px] text-muted-foreground">Custom</span>
+            <span class="ui-mono ui-2xs text-muted-foreground">Custom</span>
           </Label>
         </div>
       </RadioGroup>

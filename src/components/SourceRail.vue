@@ -78,7 +78,7 @@ async function handleDrop(e: DragEvent) {
 
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
-    await props.actions.handleFilesSelected(droppedFiles)
+    await props.actions.handleSourcesSelected(droppedFiles)
   }
 }
 
@@ -135,7 +135,7 @@ useEventListener('dragleave', handleWindowDragLeave)
             @dragstart="handleDragStart($event, file.id)"
           >
             <div
-              class="ui-panel flex items-stretch min-h-[58px] rounded-md overflow-hidden bg-card/80 border-border/70 shadow-sm transition-all duration-200 group-hover:border-primary/30 group-hover:bg-card group-hover:shadow-md"
+              class="ui-panel flex items-stretch min-h-14 rounded-md overflow-hidden bg-card/80 border-border/70 shadow-sm transition-all duration-200 group-hover:border-primary/30 group-hover:bg-card group-hover:shadow-md"
             >
               <!-- Color Indicator -->
               <div
@@ -160,6 +160,7 @@ useEventListener('dragleave', handleWindowDragLeave)
                             size="icon"
                             class="h-6 w-6 text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive"
                             @click="handleRemove(file.id, $event)"
+                            aria-label="Remove source file"
                           >
                             <X class="w-3.5" />
                           </Button>
@@ -175,7 +176,7 @@ useEventListener('dragleave', handleWindowDragLeave)
                       class="flex items-center gap-1 px-1.5 py-0.5 bg-muted/30 rounded-sm border border-border/70"
                     >
                       <span
-                        class="ui-mono text-[10px] font-semibold text-muted-foreground uppercase"
+                        class="ui-mono ui-2xs font-semibold text-muted-foreground uppercase"
                         >PDF</span
                       >
                       <span class="text-xs text-muted-foreground/50">/</span>

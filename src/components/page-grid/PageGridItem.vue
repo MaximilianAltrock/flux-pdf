@@ -30,7 +30,7 @@ const emit = defineEmits<{
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
 
-function handlePageClick(event: MouseEvent) {
+function handlePageClick(event: MouseEvent | KeyboardEvent) {
   if (props.state.currentTool.value === 'razor') {
     const pages = props.state.document.pages
     const index = pages.findIndex((p) => p.id === props.page.id)

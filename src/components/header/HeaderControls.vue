@@ -69,7 +69,13 @@ const canExport = computed(() => props.state.document.pageCount > 0)
 
     <!-- Zoom Area -->
     <div class="ui-panel-muted h-8 px-1 rounded-sm flex items-center gap-0.5">
-      <Button variant="ghost" size="icon-sm" class="rounded-sm" @click="$emit('zoom-out')">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="rounded-sm"
+        @click="$emit('zoom-out')"
+        aria-label="Zoom out"
+      >
         <Minus class="w-3 h-3" />
       </Button>
 
@@ -77,7 +83,13 @@ const canExport = computed(() => props.state.document.pageCount > 0)
         {{ Math.round(state.zoomPercentage.value) }}%
       </span>
 
-      <Button variant="ghost" size="icon-sm" class="rounded-sm" @click="$emit('zoom-in')">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="rounded-sm"
+        @click="$emit('zoom-in')"
+        aria-label="Zoom in"
+      >
         <Plus class="w-3 h-3" />
       </Button>
     </div>

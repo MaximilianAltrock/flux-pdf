@@ -80,7 +80,7 @@ const emit = defineEmits<{
             <span class="font-medium">New Project</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem @click="emit('show-help')" class="gap-2">
+          <DropdownMenuItem @select="emit('show-help')" class="gap-2">
             <HelpCircle class="w-4 h-4" />
             <span class="font-medium">Help / Shortcuts</span>
           </DropdownMenuItem>
@@ -102,9 +102,16 @@ const emit = defineEmits<{
         <div
           v-else
           @click="startEditing"
-          class="ui-label text-foreground/80 px-2 py-1 rounded-sm cursor-text truncate transition-colors border border-transparent hover:bg-muted/40 hover:text-foreground inline-flex items-center gap-2"
+          @keydown.enter.prevent="startEditing"
+          @keydown.space.prevent="startEditing"
+          class="ui-label text-foreground/80 px-2 py-1 rounded-sm cursor-text truncate transition-colors border border-transparent hover:bg-muted/40 hover:text-foreground inline-flex items-center gap-2 focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:outline-none"
           :class="{ 'opacity-50 pointer-events-none': state.document.isTitleLocked }"
           :title="state.document.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
+          :aria-label="
+            state.document.isTitleLocked ? 'Title locked by import' : 'Edit project title'
+          "
+          :tabindex="state.document.isTitleLocked ? -1 : 0"
+          role="button"
         >
           {{ displayTitle }}
         </div>

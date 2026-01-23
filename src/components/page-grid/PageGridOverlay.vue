@@ -64,4 +64,19 @@ defineProps<{
   transform: scale(0.9) translateY(20px);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .fade-backdrop-enter-active,
+  .fade-backdrop-leave-active,
+  .scale-in-enter-active {
+    transition: none !important;
+  }
+
+  .fade-backdrop-enter-from,
+  .fade-backdrop-leave-to,
+  .scale-in-enter-from {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 </style>

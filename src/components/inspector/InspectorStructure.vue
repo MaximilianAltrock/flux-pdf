@@ -46,11 +46,7 @@ function addCustomBookmark() {
       <div class="px-4 py-3 border-b border-border bg-sidebar">
         <p class="ui-kicker flex items-center gap-2">
           Document Structure
-          <Badge
-            variant="outline"
-            class="ui-mono text-[10px] h-4 px-1.5"
-            >Auto</Badge
-          >
+          <Badge variant="outline" class="ui-mono ui-2xs h-4 px-1.5">Auto</Badge>
         </p>
         <p class="ui-caption mt-1.5 leading-relaxed">
           Drag & drop to reorder entries. Nest items to create hierarchies.
@@ -80,6 +76,7 @@ function addCustomBookmark() {
                 size="icon-sm"
                 class="mr-1 h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-foreground"
                 :style="{ visibility: item.hasChildren ? 'visible' : 'hidden' }"
+                aria-label="Toggle section"
               >
                 <ChevronRight
                   class="w-3 h-3 transition-transform duration-200"
@@ -89,9 +86,7 @@ function addCustomBookmark() {
 
               <!-- Title Container -->
               <div class="flex items-center min-w-0 max-w-full">
-                <span
-                  class="text-xs truncate font-semibold leading-none py-1 pr-2"
-                >
+                <span class="text-xs truncate font-semibold leading-none py-1 pr-2">
                   {{ (item.value as BookmarkNode).title }}
                 </span>
 
@@ -99,8 +94,8 @@ function addCustomBookmark() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  class="opacity-0 group-hover:opacity-100 h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-primary ml-auto"
-                  title="Jump to section"
+                  class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-primary ml-auto"
+                  aria-label="Jump to section"
                   @click.stop="scrollGridToPage((item.value as BookmarkNode).pageId)"
                 >
                   <Crosshair class="w-3 h-3" />

@@ -236,7 +236,7 @@ function handleSettings() {
                   @click="handleHistoryJump(cmd.pointer)"
                 >
                   <ItemMedia variant="icon" class="rounded-full bg-muted/30 border-border/60">
-                    <div class="text-[10px] font-mono opacity-70">
+                    <div class="ui-2xs font-mono opacity-70">
                       <span v-if="cmd.pointer < 0">Start</span>
                       <span v-else>#{{ cmd.pointer + 1 }}</span>
                     </div>
