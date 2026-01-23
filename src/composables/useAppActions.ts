@@ -585,6 +585,13 @@ export function useAppActions(state: AppState) {
     }
   }
 
+  function clearSelectionKeepMode() {
+    store.clearSelection()
+    if (isMobile.value) {
+      haptic('light')
+    }
+  }
+
   function enterMobileSelectionMode() {
     state.enterMobileSelectionMode()
   }
@@ -602,6 +609,18 @@ export function useAppActions(state: AppState) {
 
   function exitMobileMoveMode() {
     state.exitMobileMoveMode()
+  }
+
+  function enterMobileSplitMode() {
+    if (isMobile.value) {
+      haptic('medium')
+    }
+    exitMobileSelectionMode()
+    state.setCurrentTool('razor')
+  }
+
+  function exitMobileSplitMode() {
+    state.setCurrentTool('select')
   }
 
   /**
@@ -761,10 +780,13 @@ export function useAppActions(state: AppState) {
     selectRange,
     selectAllPages,
     clearSelection,
+    clearSelectionKeepMode,
     enterMobileSelectionMode,
     exitMobileSelectionMode,
     enterMobileMoveMode,
     exitMobileMoveMode,
+    enterMobileSplitMode,
+    exitMobileSplitMode,
     handleMoveSelectedToPosition,
 
     // Project / Metadata / Security

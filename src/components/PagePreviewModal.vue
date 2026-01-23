@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-vue-next'
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Copy, Trash2 } from 'lucide-vue-next'
 import { useSwipe, useEventListener } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import type { PageReference } from '@/types'
 import { useMobile } from '@/composables/useMobile'
 import type { FacadeState } from '@/composables/useDocumentFacade'
+import type { AppActions } from '@/composables/useAppActions'
+import { UserAction } from '@/types/actions'
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,7 @@ const props = defineProps<{
   open: boolean
   pageRef: PageReference | null
   state: FacadeState
+  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -50,6 +53,7 @@ const hasPrevious = computed(() => prevContentIndex.value !== -1)
 const hasNext = computed(() => nextContentIndex.value !== -1)
 const pageNumber = computed(() => currentIndex.value + 1)
 const totalPages = computed(() => contentPages.value.length)
+const hasPreviewPage = computed(() => !!props.pageRef)
 
 // --- Watchers ---
 watch(
@@ -90,6 +94,16 @@ watch(
 
 function handleClose() {
   emit('update:open', false)
+}
+
+function handlePreviewAction(action: UserAction) {
+  if (!props.pageRef) return
+  props.actions.handleContextAction(action, props.pageRef)
+}
+
+function handleDelete() {
+  handlePreviewAction(UserAction.DELETE)
+  handleClose()
 }
 
 function findNextContentPage(startIndex: number, direction: 'next' | 'prev'): number {
@@ -268,6 +282,43 @@ onBackButton(
           <ChevronRight v-if="hasNext" class="w-8 h-8 text-muted-foreground" />
         </div>
       </div>
+
+      <!-- Mobile Quick Actions -->
+      <footer
+        v-if="isMobile"
+        class="shrink-0 border-t border-border bg-card px-4 py-3"
+        style="padding-bottom: env(safe-area-inset-bottom, 0px)"
+      >
+        <div class="flex items-center justify-around gap-2">
+          <Button
+            variant="ghost"
+            class="flex-1 h-12 flex flex-col items-center justify-center gap-1 text-muted-foreground"
+            :disabled="!hasPreviewPage"
+            @click="handlePreviewAction(UserAction.ROTATE_RIGHT)"
+          >
+            <RotateCw class="w-5 h-5" />
+            <span class="text-[10px] font-semibold">Rotate</span>
+          </Button>
+          <Button
+            variant="ghost"
+            class="flex-1 h-12 flex flex-col items-center justify-center gap-1 text-muted-foreground"
+            :disabled="!hasPreviewPage"
+            @click="handlePreviewAction(UserAction.DUPLICATE)"
+          >
+            <Copy class="w-5 h-5" />
+            <span class="text-[10px] font-semibold">Duplicate</span>
+          </Button>
+          <Button
+            variant="ghost"
+            class="flex-1 h-12 flex flex-col items-center justify-center gap-1 text-destructive"
+            :disabled="!hasPreviewPage"
+            @click="handleDelete"
+          >
+            <Trash2 class="w-5 h-5" />
+            <span class="text-[10px] font-semibold">Delete</span>
+          </Button>
+        </div>
+      </footer>
 
       <!-- Desktop Navigation Arrows -->
       <div

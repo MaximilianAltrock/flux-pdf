@@ -7,6 +7,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerDescription,
   DrawerFooter,
 } from '@/components/ui/drawer'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -49,6 +50,9 @@ function handleTakePhoto() {
       <div class="mx-auto w-full max-w-sm">
         <DrawerHeader>
           <DrawerTitle class="text-center">Add Pages</DrawerTitle>
+          <DrawerDescription class="sr-only">
+            Add pages from files or the camera.
+          </DrawerDescription>
         </DrawerHeader>
 
         <!-- Options -->

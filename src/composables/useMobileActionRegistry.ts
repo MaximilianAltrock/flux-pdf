@@ -6,11 +6,11 @@ import {
   Copy,
   Trash2,
   Download,
-  CheckSquare,
-  XSquare,
+  Scissors,
 } from 'lucide-vue-next'
 import { useDocumentStore } from '@/stores/document'
 import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/constants'
+import { isDividerEntry } from '@/types'
 
 /**
  * Mobile action categories for grouping in the "More" action sheet
@@ -46,14 +46,24 @@ export interface MobileAction {
  */
 export function useMobileActionRegistry(actions: {
   enterMobileMoveMode: () => void
+  enterMobileSplitMode: () => void
   handleRotateSelected: (degrees: RotationDelta) => void
   handleDuplicateSelected: () => void
   handleDeleteSelected: () => void
   handleExportSelected: () => void
-  selectAllPages: () => void
-  clearSelection: () => void
 }) {
   const store = useDocumentStore()
+  const canSplit = computed(() => {
+    const pages = store.pages
+    if (pages.length < 2) return false
+    for (let i = 1; i < pages.length; i++) {
+      const prev = pages[i - 1]
+      const next = pages[i]
+      if (!prev || !next) continue
+      if (!isDividerEntry(prev) && !isDividerEntry(next)) return true
+    }
+    return false
+  })
 
   // Define all mobile selection actions
   const allActions: MobileAction[] = [
@@ -94,6 +104,15 @@ export function useMobileActionRegistry(actions: {
 
     // === Secondary Actions (More Sheet) ===
     {
+      id: 'split',
+      label: 'Split',
+      icon: markRaw(Scissors),
+      category: 'arrange',
+      execute: () => actions.enterMobileSplitMode(),
+      isEnabled: () => canSplit.value,
+      isVisible: () => canSplit.value,
+    },
+    {
       id: 'rotate-left',
       label: 'Rotate Left',
       icon: markRaw(RotateCcw),
@@ -108,22 +127,6 @@ export function useMobileActionRegistry(actions: {
       category: 'export',
       execute: () => actions.handleExportSelected(),
       isEnabled: () => store.selectedCount > 0,
-    },
-    {
-      id: 'select-all',
-      label: 'Select All',
-      icon: markRaw(CheckSquare),
-      category: 'utilities',
-      execute: () => actions.selectAllPages(),
-      isVisible: () => store.pageCount > store.selectedCount,
-    },
-    {
-      id: 'deselect-all',
-      label: 'Deselect All',
-      icon: markRaw(XSquare),
-      category: 'utilities',
-      execute: () => actions.clearSelection(),
-      isVisible: () => store.selectedCount > 0,
     },
   ]
 

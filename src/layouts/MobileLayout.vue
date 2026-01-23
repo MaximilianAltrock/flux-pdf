@@ -5,10 +5,10 @@ import { computed } from 'vue'
 import MobileTopBar from '@/components/mobile/MobileTopBar.vue'
 import MobilePageGrid from '@/components/mobile/MobilePageGrid.vue'
 import MobileBottomBar from '@/components/mobile/MobileBottomBar.vue'
-import MobileFAB from '@/components/mobile/MobileFAB.vue'
 import MobileMenuDrawer from '@/components/mobile/MobileMenuDrawer.vue'
 import MobileTitleSheet from '@/components/mobile/MobileTitleSheet.vue'
 import MobileAddSheet from '@/components/mobile/MobileAddSheet.vue'
+import MobileSettingsSheet from '@/components/mobile/MobileSettingsSheet.vue'
 import MobileActionSheet from '@/components/mobile/MobileActionSheet.vue'
 import { Spinner } from '@/components/ui/spinner'
 
@@ -70,7 +70,7 @@ function onRemoveSource(sourceId: string) {
         </div>
         <h2 class="text-lg font-semibold text-foreground mb-2">No PDFs yet</h2>
         <p class="text-sm text-muted-foreground text-center mb-6">
-          Tap the + button to add your first PDF
+          Tap Add to add your first PDF
         </p>
       </div>
 
@@ -91,16 +91,15 @@ function onRemoveSource(sourceId: string) {
 
     <!-- Safe Area Bottom -->
     <div class="pb-[env(safe-area-inset-bottom)]">
-      <MobileBottomBar
-        :state="props.state"
-        :actions="props.actions"
-        @export="props.actions.handleExport"
-        @more="props.state.openActionSheet"
-      />
-    </div>
-
-    <!-- Floating Action Button (Add-only, visible in Browse mode) -->
-    <MobileFAB :state="props.state" @add="props.state.openAddSheet" />
+    <MobileBottomBar
+      :state="props.state"
+      :actions="props.actions"
+      @add="props.state.openAddSheet"
+      @export="props.actions.handleExport"
+      @export-options="props.state.openExportModal(false)"
+      @more="props.state.openActionSheet"
+    />
+  </div>
 
     <!-- Mobile Sheets & Drawers -->
     <MobileMenuDrawer
@@ -110,6 +109,7 @@ function onRemoveSource(sourceId: string) {
       @update:open="(val) => !val && props.state.closeMenuDrawer()"
       @removeSource="onRemoveSource"
       @new-project="props.actions.handleNewProject"
+      @settings="props.state.openSettingsSheet"
     />
 
     <MobileTitleSheet
@@ -125,6 +125,13 @@ function onRemoveSource(sourceId: string) {
       @update:open="(val) => !val && props.state.closeAddSheet()"
       @select-files="props.actions.handleMobileAddFiles"
       @take-photo="props.actions.handleMobileTakePhoto"
+    />
+
+    <MobileSettingsSheet
+      :open="props.state.showSettingsSheet.value"
+      :state="props.state"
+      :actions="props.actions"
+      @update:open="(val) => !val && props.state.closeSettingsSheet()"
     />
 
     <MobileActionSheet

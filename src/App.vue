@@ -25,6 +25,7 @@ import MobileLayout from '@/layouts/MobileLayout.vue'
 
 // Shared Overlays (used by both layouts)
 import ExportModal from '@/components/ExportModal.vue'
+import MobileExportSheet from '@/components/mobile/MobileExportSheet.vue'
 import DiffModal from '@/components/DiffModal.vue'
 import PagePreviewModal from '@/components/PagePreviewModal.vue'
 import Toaster from '@/components/ui/sonner/Sonner.vue'
@@ -76,8 +77,18 @@ onMounted(async () => {
            Shared Overlays (render above both layouts)
            ============================================ -->
 
-      <!-- Export Modal -->
+      <!-- Export Modal / Sheet -->
+      <MobileExportSheet
+        v-if="state.isMobile.value"
+        :open="state.showExportModal.value"
+        :export-selected="state.exportSelectedOnly.value"
+        :state="state"
+        :actions="actions"
+        @close="state.closeExportModal"
+        @success="actions.handleExportSuccess"
+      />
       <ExportModal
+        v-else
         :open="state.showExportModal.value"
         :export-selected="state.exportSelectedOnly.value"
         :state="state"
@@ -92,6 +103,7 @@ onMounted(async () => {
         @update:open="(val: boolean) => !val && actions.handleClosePreview()"
         :page-ref="state.previewPageRef.value"
         :state="state"
+        :actions="actions"
         @navigate="state.navigatePreview"
       />
 

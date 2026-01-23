@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { MoreHorizontal, Download, Share2 } from 'lucide-vue-next'
+import { MoreHorizontal, Download, Share2, Plus, SlidersHorizontal } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useMobileActionRegistry } from '@/composables/useMobileActionRegistry'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   export: []
+  exportOptions: []
+  add: []
   more: []
 }>()
 
@@ -34,9 +36,19 @@ function handleExport() {
   emit('export')
 }
 
+function handleExportOptions() {
+  haptic('light')
+  emit('exportOptions')
+}
+
 function handleMore() {
   haptic('light')
   emit('more')
+}
+
+function handleAdd() {
+  haptic('medium')
+  emit('add')
 }
 
 function handleActionTap(action: (typeof primaryActions.value)[0]) {
@@ -84,19 +96,36 @@ function handleActionTap(action: (typeof primaryActions.value)[0]) {
         </Button>
       </div>
 
-      <!-- Browse Mode: Export Button -->
-      <div v-else-if="isBrowse" class="h-16 flex items-center px-4">
+      <!-- Browse Mode: Add + Export -->
+      <div v-else-if="isBrowse" class="h-16 flex items-center px-4 gap-3">
         <Button
-          v-if="hasPages"
           class="flex-1 h-12 flex items-center justify-center gap-2 font-semibold text-sm"
-          @click="handleExport"
+          @click="handleAdd"
         >
-          <component :is="canShareFiles ? Share2 : Download" class="w-5 h-5" />
-          <span>{{ canShareFiles ? 'Export & Share' : 'Export PDF' }}</span>
+          <Plus class="w-5 h-5" />
+          <span>Add</span>
         </Button>
-
-        <div v-else class="flex-1 text-center text-muted-foreground text-sm py-4">
-          Add a PDF to get started
+        <div class="flex-1 flex h-12 rounded-lg overflow-hidden border border-border ui-panel-muted">
+          <Button
+            variant="ghost"
+            class="flex-1 h-full flex items-center justify-center gap-2 font-semibold text-sm rounded-none"
+            :disabled="!hasPages"
+            @click="handleExport"
+          >
+            <component :is="canShareFiles ? Share2 : Download" class="w-5 h-5" />
+            <span>Export</span>
+          </Button>
+          <div class="w-px bg-border/60"></div>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-full w-12 rounded-none text-muted-foreground"
+            :disabled="!hasPages"
+            @click="handleExportOptions"
+            aria-label="Export options"
+          >
+            <SlidersHorizontal class="w-5 h-5" />
+          </Button>
         </div>
       </div>
     </footer>

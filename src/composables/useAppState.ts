@@ -42,6 +42,7 @@ export function useAppState() {
   const showMenuDrawer = ref(false)
   const showTitleSheet = ref(false)
   const showAddSheet = ref(false)
+  const showSettingsSheet = ref(false)
   const showActionSheet = ref(false)
 
   // Mobile mode computed (Browse | Select | Move)
@@ -67,7 +68,8 @@ export function useAppState() {
       showExportModal.value ||
       showPreviewModal.value ||
       showDiffModal.value ||
-      showCommandPalette.value,
+      showCommandPalette.value ||
+      showSettingsSheet.value,
   )
 
   // ============================================
@@ -93,6 +95,12 @@ export function useAppState() {
   function setCurrentTool(tool: 'select' | 'razor') {
     currentTool.value = tool
   }
+
+  function blurActiveElement() {
+    if (typeof document === 'undefined') return
+    const el = document.activeElement as HTMLElement | null
+    el?.blur?.()
+  }
   function openCommandPalette() {
     if (!isMobile.value) {
       showCommandPalette.value = true
@@ -110,6 +118,7 @@ export function useAppState() {
   }
 
   function openExportModal(selectedOnly = false) {
+    blurActiveElement()
     exportSelectedOnly.value = selectedOnly
     showExportModal.value = true
   }
@@ -188,6 +197,14 @@ export function useAppState() {
     showAddSheet.value = false
   }
 
+  function openSettingsSheet() {
+    showSettingsSheet.value = true
+  }
+
+  function closeSettingsSheet() {
+    showSettingsSheet.value = false
+  }
+
   function openActionSheet() {
     showActionSheet.value = true
   }
@@ -230,6 +247,7 @@ export function useAppState() {
     showMenuDrawer,
     showTitleSheet,
     showAddSheet,
+    showSettingsSheet,
     showActionSheet,
 
     // Shared Modal State
@@ -274,6 +292,8 @@ export function useAppState() {
     closeTitleSheet,
     openAddSheet,
     closeAddSheet,
+    openSettingsSheet,
+    closeSettingsSheet,
     openActionSheet,
     closeActionSheet,
 

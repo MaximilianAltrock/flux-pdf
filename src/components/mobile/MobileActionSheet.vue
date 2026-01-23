@@ -6,6 +6,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerDescription,
   DrawerFooter,
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,9 @@ function handleClose() {
           <DrawerTitle class="text-center ui-caption">
             {{ selectedCount }} page{{ selectedCount > 1 ? 's' : '' }} selected
           </DrawerTitle>
+          <DrawerDescription class="sr-only">
+            Choose actions to apply to the selected pages.
+          </DrawerDescription>
         </DrawerHeader>
 
         <!-- Grouped Actions -->

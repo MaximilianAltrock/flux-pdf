@@ -7,6 +7,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerDescription,
   DrawerFooter,
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,9 @@ function handleKeydown(event: KeyboardEvent) {
       <div class="mx-auto w-full max-w-sm">
         <DrawerHeader>
           <DrawerTitle class="text-center">Rename Project</DrawerTitle>
+          <DrawerDescription class="sr-only">
+            Update the project title used for exports.
+          </DrawerDescription>
         </DrawerHeader>
 
         <!-- Content -->

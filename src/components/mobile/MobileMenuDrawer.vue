@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FileText, Clock, Sun, Moon, Trash2, ChevronRight, Info, FilePlus } from 'lucide-vue-next'
+import {
+  FileText,
+  Clock,
+  Sun,
+  Moon,
+  Trash2,
+  ChevronRight,
+  Info,
+  FilePlus,
+  SlidersHorizontal,
+} from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { useThemeToggle } from '@/composables/useThemeToggle'
 import { formatFileSize, formatTime } from '@/utils/format'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +42,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   removeSource: [sourceId: string]
   newProject: []
+  settings: []
 }>()
 
 const { historyList, jumpTo } = props.actions
@@ -63,6 +74,12 @@ function handleNewProject() {
   emit('newProject')
   emit('update:open', false)
 }
+
+function handleSettings() {
+  haptic('light')
+  emit('settings')
+  emit('update:open', false)
+}
 </script>
 
 <template>
@@ -78,7 +95,12 @@ function handleNewProject() {
           <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
             <div class="w-4 h-4 bg-primary rounded-sm" />
           </div>
-          <SheetTitle class="font-bold text-foreground text-base">FluxPDF</SheetTitle>
+          <div class="flex flex-col">
+            <SheetTitle class="font-bold text-foreground text-base">FluxPDF</SheetTitle>
+            <SheetDescription class="sr-only">
+              Document menu with sources, history, and settings.
+            </SheetDescription>
+          </div>
         </div>
       </SheetHeader>
 
@@ -248,6 +270,23 @@ function handleNewProject() {
 
           <Separator />
 
+          <!-- Document Settings -->
+          <div class="px-4 py-4">
+            <Button
+              variant="outline"
+              class="w-full justify-between h-12 px-4"
+              @click="handleSettings"
+            >
+              <div class="flex items-center gap-3">
+                <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
+                <span class="text-sm">Document Settings</span>
+              </div>
+              <ChevronRight class="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </div>
+
+          <Separator />
+
           <!-- Theme Toggle -->
           <div class="px-4 py-4">
             <Button
@@ -296,4 +335,3 @@ function handleNewProject() {
     </SheetContent>
   </Sheet>
 </template>
-
