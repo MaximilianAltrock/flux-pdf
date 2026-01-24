@@ -5,7 +5,7 @@ import { PDFDocument } from 'pdf-lib'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { db } from '@/db/db'
-import { HISTORY, ROTATION_DEFAULT_DEGREES, SCHEMA_VERSION, ZOOM } from '@/constants'
+import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import type { FileUploadResult, PageEntry, PageReference, SourceFile } from '@/types'
 import { createPdfBytes } from '../helpers/pdf-fixtures'
 import type { DocumentAdaptersOverrides } from '@/domain/document/ports'
@@ -13,8 +13,6 @@ import { useDocumentService } from '@/composables/useDocumentService'
 
 const mockLoadPdfFiles = vi.fn()
 const mockClearPdfCache = vi.fn()
-const mockLoadSession = vi.fn()
-const mockPersistSession = vi.fn()
 const mockGetPdfBlob = vi.fn()
 const mockCompressPdf = vi.fn()
 
@@ -25,10 +23,6 @@ function createAdapters(): DocumentAdaptersOverrides {
       getPdfDocument: vi.fn(),
       getPdfBlob: mockGetPdfBlob,
       clearPdfCache: mockClearPdfCache,
-    },
-    session: {
-      persistSession: mockPersistSession,
-      loadSession: mockLoadSession,
     },
     compression: {
       compressPdf: mockCompressPdf,
@@ -63,14 +57,12 @@ beforeEach(async () => {
   setActivePinia(createPinia())
   useCommandManager().clearHistory()
   mockLoadPdfFiles.mockReset()
-  mockLoadSession.mockReset()
-  mockPersistSession.mockReset()
   mockClearPdfCache.mockReset()
   mockGetPdfBlob.mockReset()
   mockCompressPdf.mockReset()
-  mockLoadSession.mockResolvedValue(undefined)
   await db.files.clear()
-  await db.session.clear()
+  await db.projects.clear()
+  await db.states.clear()
 })
 
 describe('importFiles', () => {
@@ -153,47 +145,6 @@ describe('getEstimatedSize', () => {
     ]
 
     expect(service.getEstimatedSize(pages)).toBe(3000)
-  })
-})
-
-describe('clearWorkspace', () => {
-  it('clears IndexedDB and resets the store', async () => {
-    const service = useDocumentService(createAdapters())
-    const store = useDocumentStore()
-
-    await db.files.add({
-      id: 's1',
-      data: new Uint8Array([1]).buffer,
-      filename: 'one.pdf',
-      fileSize: 1,
-      pageCount: 1,
-      addedAt: Date.now(),
-      color: '#111111',
-    })
-
-    await db.session.put({
-      id: 'current-session',
-      schemaVersion: SCHEMA_VERSION.SESSION,
-      projectTitle: 'Test',
-      activeSourceIds: ['s1'],
-      pageMap: [],
-      history: [],
-      historyPointer: HISTORY.POINTER_START,
-      zoom: ZOOM.PERCENT_BASE,
-      updatedAt: Date.now(),
-    })
-
-    store.addSourceFile(makeSource('s1', 'one.pdf', 1, 1))
-    store.addPages(makePages('s1', 1))
-
-    const result = await service.clearWorkspace()
-
-    expect(result.ok).toBe(true)
-    expect(store.sources.size).toBe(0)
-    expect(store.pages).toHaveLength(0)
-    expect(await db.files.count()).toBe(0)
-    expect(await db.session.count()).toBe(0)
-    expect(mockClearPdfCache).toHaveBeenCalledTimes(1)
   })
 })
 

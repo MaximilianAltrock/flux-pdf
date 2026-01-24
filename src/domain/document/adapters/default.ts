@@ -1,13 +1,12 @@
 import { db } from '@/db/db'
 import { usePdfCompression } from '@/composables/usePdfCompression'
 import { loadPdfFiles, getPdfDocument, getPdfBlob, clearPdfCache, evictPdfCache } from '../import'
-import { loadSession, persistSession } from '../session'
 import type {
   DocumentAdapters,
   DocumentAdaptersOverrides,
   DocumentCompressionAdapter,
   DocumentImportAdapter,
-  DocumentSessionAdapter,
+  DocumentProjectAdapter,
   DocumentStorageAdapter,
 } from '../ports'
 
@@ -19,9 +18,26 @@ const defaultImportAdapter: DocumentImportAdapter = {
   evictPdfCache,
 }
 
-const defaultSessionAdapter: DocumentSessionAdapter = {
-  persistSession,
-  loadSession,
+const defaultProjectAdapter: DocumentProjectAdapter = {
+  loadProjectMeta: (id) => db.projects.get(id),
+  loadProjectState: (id) => db.states.get(id),
+  listProjectMeta: async (options) => {
+    if (options?.limit) {
+      return db.projects.orderBy('updatedAt').reverse().limit(options.limit).toArray()
+    }
+    return db.projects.orderBy('updatedAt').reverse().toArray()
+  },
+  listProjectStates: () => db.states.toArray(),
+  persistProjectMeta: (meta) => db.projects.put(meta),
+  persistProjectState: (state) => db.states.put(state),
+  deleteProject: async (id) => {
+    await db.projects.delete(id)
+    await db.states.delete(id)
+  },
+  clearProjects: async () => {
+    await db.projects.clear()
+    await db.states.clear()
+  },
 }
 
 const defaultStorageAdapter: DocumentStorageAdapter = {
@@ -36,7 +52,6 @@ const defaultStorageAdapter: DocumentStorageAdapter = {
     return db.files.where('id').anyOf(ids).delete()
   },
   clearFiles: () => db.files.clear(),
-  clearSession: () => db.session.clear(),
 }
 
 const defaultCompressionAdapter: DocumentCompressionAdapter = {
@@ -51,7 +66,7 @@ export function createDocumentAdapters(
 ): DocumentAdapters {
   return {
     import: { ...defaultImportAdapter, ...overrides.import },
-    session: { ...defaultSessionAdapter, ...overrides.session },
+    project: { ...defaultProjectAdapter, ...overrides.project },
     storage: { ...defaultStorageAdapter, ...overrides.storage },
     compression: { ...defaultCompressionAdapter, ...overrides.compression },
   }

@@ -1,4 +1,5 @@
 import { useDocumentStore } from '@/stores/document'
+import { useRouter } from 'vue-router'
 import {
   DIFF_REQUIRED_SELECTION,
   ROTATION_DEFAULT_DEGREES,
@@ -11,6 +12,7 @@ import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useMobile } from '@/composables/useMobile'
 import { useDocumentService, type ExportOptions } from '@/composables/useDocumentService'
+import { useProjectManager } from '@/composables/useProjectManager'
 import { getImportErrorMessage } from '@/domain/document/errors'
 import {
   RotatePagesCommand,
@@ -30,7 +32,6 @@ import type {
   SecurityMetadata,
 } from '@/types'
 import type { AppState } from './useAppState'
-import { useThumbnailRenderer } from './useThumbnailRenderer'
 
 /**
  * Centralized action handlers for the application
@@ -40,7 +41,6 @@ export function useAppActions(state: AppState) {
   const store = useDocumentStore()
   const {
     execute,
-    clearHistory,
     undo,
     redo,
     canUndo,
@@ -50,13 +50,12 @@ export function useAppActions(state: AppState) {
     historyList,
     jumpTo,
   } = useCommandManager()
-  const { clearCache } = useThumbnailRenderer()
   const toast = useToast()
-  const { confirmDelete, confirmClearWorkspace } = useConfirm()
+  const { confirmDelete, confirm } = useConfirm()
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
+  const router = useRouter()
   const {
     importFiles,
-    clearWorkspace,
     generateRawPdf,
     exportDocument: exportDocumentService,
     exportJob,
@@ -65,8 +64,12 @@ export function useAppActions(state: AppState) {
     clearExportError,
     parsePageRange,
     validatePageRange,
-    restoreSession,
   } = useDocumentService(undefined, {
+    zoom: state.zoom,
+    setZoom: state.setZoom,
+    setLoading: state.setLoading,
+  })
+  const projectManager = useProjectManager(undefined, {
     zoom: state.zoom,
     setZoom: state.setZoom,
     setLoading: state.setLoading,
@@ -478,19 +481,16 @@ export function useAppActions(state: AppState) {
    * Handle new project action (clears workspace)
    */
   async function handleNewProject() {
-    const confirmed = await confirmClearWorkspace()
+    const confirmed = await confirm({
+      title: 'Start a new project?',
+      message: 'Your current project will be saved automatically before switching.',
+      confirmText: 'Create Project',
+      variant: 'info',
+    })
     if (!confirmed) return
-    // A. Wipe the Database and Store
-    const result = await clearWorkspace()
-    if (!result.ok) {
-      toast.error('Failed to clear workspace', result.error.message)
-      return
-    }
-    // B. Wipe the Undo Stack
-    clearHistory()
-    // C. Wipe the Visual Cache
-    clearCache()
-    toast.info('Workspace Cleared')
+    const project = await projectManager.createProject({ title: 'Untitled Project' })
+    toast.success('New project created')
+    await router.push(`/project/${project.id}`)
   }
 
   // ============================================
@@ -755,10 +755,6 @@ export function useAppActions(state: AppState) {
     state.setCurrentTool(tool)
   }
 
-  async function handleRestoreSession() {
-    return restoreSession()
-  }
-
   function setMetadata(next: Partial<DocumentMetadata>) {
     store.setMetadata(next)
   }
@@ -869,7 +865,6 @@ export function useAppActions(state: AppState) {
     setProjectTitleDraft,
     commitProjectTitle,
     setCurrentTool,
-    handleRestoreSession,
     setMetadata,
     applyMetadataFromSource,
     addKeyword,

@@ -1,11 +1,10 @@
 import { SCHEMA_VERSION } from '@/constants'
-import { db, type SessionState } from '@/db/db'
 import type { PageEntry, DocumentMetadata, SecurityMetadata } from '@/types'
 import type { SerializedCommand } from '@/commands'
 import { migrateSerializedCommands, type SerializedCommandRecord } from '@/commands/migrations'
+import type { ProjectState, SessionState } from '@/db/db'
 
-export interface SessionSnapshot {
-  projectTitle: string
+export interface ProjectSnapshot {
   activeSourceIds: string[]
   pageMap: PageEntry[]
   history: SerializedCommand[]
@@ -18,9 +17,14 @@ export interface SessionSnapshot {
   metadataDirty?: boolean
 }
 
-export const SESSION_SCHEMA_VERSION = SCHEMA_VERSION.SESSION
+export const PROJECT_SCHEMA_VERSION = SCHEMA_VERSION.PROJECT
 
-export type SessionStateRecord = Omit<SessionState, 'schemaVersion' | 'history'> & {
+export type ProjectStateRecord = Omit<ProjectState, 'schemaVersion' | 'history'> & {
+  schemaVersion?: number
+  history: SerializedCommandRecord[]
+}
+
+export type LegacySessionStateRecord = Omit<SessionState, 'schemaVersion' | 'history'> & {
   schemaVersion?: number
   history: SerializedCommandRecord[]
 }
@@ -29,11 +33,10 @@ function toPlain<T>(value: T): T {
   return JSON.parse(JSON.stringify(value))
 }
 
-export function buildSessionState(snapshot: SessionSnapshot): SessionState {
+export function buildProjectState(id: string, snapshot: ProjectSnapshot): ProjectState {
   return {
-    id: 'current-session',
-    schemaVersion: SESSION_SCHEMA_VERSION,
-    projectTitle: String(snapshot.projectTitle ?? ''),
+    id,
+    schemaVersion: PROJECT_SCHEMA_VERSION,
     activeSourceIds: snapshot.activeSourceIds,
     pageMap: toPlain(snapshot.pageMap),
     history: toPlain(snapshot.history),
@@ -48,14 +51,14 @@ export function buildSessionState(snapshot: SessionSnapshot): SessionState {
   }
 }
 
-export function migrateSessionState(record: SessionStateRecord): SessionState {
+export function migrateProjectState(record: ProjectStateRecord): ProjectState {
   const schemaVersion =
-    typeof record.schemaVersion === 'number' ? record.schemaVersion : SESSION_SCHEMA_VERSION
+    typeof record.schemaVersion === 'number' ? record.schemaVersion : PROJECT_SCHEMA_VERSION
 
   const history = migrateSerializedCommands(record.history ?? [])
 
   switch (schemaVersion) {
-    case SESSION_SCHEMA_VERSION:
+    case PROJECT_SCHEMA_VERSION:
       return {
         ...record,
         schemaVersion,
@@ -74,18 +77,28 @@ export function migrateSessionState(record: SessionStateRecord): SessionState {
   }
 }
 
-export async function persistSession(snapshot: SessionSnapshot): Promise<void> {
-  const sessionData = buildSessionState(snapshot)
-  await db.session.put(sessionData)
-}
+export function migrateLegacySessionState(record: LegacySessionStateRecord): SessionState {
+  const schemaVersion =
+    typeof record.schemaVersion === 'number' ? record.schemaVersion : SCHEMA_VERSION.SESSION
 
-export async function loadSession(): Promise<SessionState | undefined> {
-  const record = (await db.session.get('current-session')) as SessionStateRecord | undefined
-  if (!record) return undefined
+  const history = migrateSerializedCommands(record.history ?? [])
 
-  const migrated = migrateSessionState(record)
-  if (record.schemaVersion !== migrated.schemaVersion) {
-    await db.session.put(migrated)
+  switch (schemaVersion) {
+    case SCHEMA_VERSION.SESSION:
+      return {
+        ...record,
+        schemaVersion,
+        history,
+        bookmarksDirty: Boolean(record.bookmarksDirty),
+        metadataDirty: Boolean(record.metadataDirty),
+      }
+    default:
+      return {
+        ...record,
+        schemaVersion,
+        history,
+        bookmarksDirty: Boolean(record.bookmarksDirty),
+        metadataDirty: Boolean(record.metadataDirty),
+      }
   }
-  return migrated
 }

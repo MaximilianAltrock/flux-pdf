@@ -30,15 +30,15 @@ function collectSourceIdsFromValue(value: unknown, ids: Set<string>): void {
   }
 }
 
-export function collectReachableSourceIds(options: {
-  sources: ReadonlyArray<SourceFile>
+export function collectReachableSourceIdsFromState(options: {
+  activeSourceIds?: ReadonlyArray<string>
   pages: ReadonlyArray<PageEntry>
   history: ReadonlyArray<SerializedCommand>
 }): Set<string> {
   const ids = new Set<string>()
 
-  for (const source of options.sources) {
-    if (source?.id) ids.add(source.id)
+  for (const sourceId of options.activeSourceIds ?? []) {
+    if (sourceId) ids.add(sourceId)
   }
 
   for (const page of options.pages) {
@@ -52,4 +52,16 @@ export function collectReachableSourceIds(options: {
   }
 
   return ids
+}
+
+export function collectReachableSourceIds(options: {
+  sources: ReadonlyArray<SourceFile>
+  pages: ReadonlyArray<PageEntry>
+  history: ReadonlyArray<SerializedCommand>
+}): Set<string> {
+  return collectReachableSourceIdsFromState({
+    activeSourceIds: options.sources.map((source) => source.id),
+    pages: options.pages,
+    history: options.history,
+  })
 }

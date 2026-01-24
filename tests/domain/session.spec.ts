@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { COMMAND_SCHEMA_VERSION } from '@/commands'
-import { HISTORY, ZOOM } from '@/constants'
-import { migrateSessionState, SESSION_SCHEMA_VERSION } from '@/domain/document/session'
-import type { SessionStateRecord } from '@/domain/document/session'
+import { HISTORY, SCHEMA_VERSION, ZOOM } from '@/constants'
+import { migrateLegacySessionState, type LegacySessionStateRecord } from '@/domain/document/project'
 
-describe('migrateSessionState', () => {
+describe('migrateLegacySessionState', () => {
   it('adds schema and command versions to legacy sessions', () => {
-    const legacy: SessionStateRecord = {
+    const legacy: LegacySessionStateRecord = {
       id: 'current-session',
       projectTitle: 'Legacy',
       activeSourceIds: [],
@@ -17,9 +16,9 @@ describe('migrateSessionState', () => {
       updatedAt: 0,
     }
 
-    const migrated = migrateSessionState(legacy)
+    const migrated = migrateLegacySessionState(legacy)
 
-    expect(migrated.schemaVersion).toBe(SESSION_SCHEMA_VERSION)
+    expect(migrated.schemaVersion).toBe(SCHEMA_VERSION.SESSION)
     expect(migrated.history[0]?.version).toBe(COMMAND_SCHEMA_VERSION)
     expect(migrated.bookmarksDirty).toBe(false)
     expect(migrated.metadataDirty).toBe(false)

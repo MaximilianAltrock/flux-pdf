@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { FilePlus, HelpCircle } from 'lucide-vue-next'
+import { FilePlus, HelpCircle, MoreVertical } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ const props = defineProps<{
 
 const isEditingTitle = ref(false)
 const titleInput = ref<InstanceType<typeof Input> | null>(null)
+const router = useRouter()
 
 // Computed for Title to handle store sync and validation
 const displayTitle = computed({
@@ -46,6 +48,10 @@ function finishEditing() {
   props.actions.commitProjectTitle()
 }
 
+function goToDashboard() {
+  router.push('/')
+}
+
 const emit = defineEmits<{
   (e: 'command'): void
   (e: 'export'): void
@@ -62,16 +68,22 @@ const emit = defineEmits<{
   >
     <!-- Left: Context Zone -->
     <div class="flex items-center gap-4 w-[280px]">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="group"
+        @click="goToDashboard"
+        aria-label="Open Dashboard"
+      >
+        <div
+          class="w-4 h-4 bg-gradient-to-br from-primary to-primary/60 rounded-[3px] shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_30%,transparent)] group-hover:scale-110 transition-transform"
+        ></div>
+      </Button>
+
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="group"
-          >
-            <div
-              class="w-4 h-4 bg-gradient-to-br from-primary to-primary/60 rounded-[3px] shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_30%,transparent)] group-hover:scale-110 transition-transform"
-            ></div>
+          <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-foreground">
+            <MoreVertical class="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" class="w-48">

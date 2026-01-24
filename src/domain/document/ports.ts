@@ -1,9 +1,8 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { CompressionQuality, CompressionResult } from '@/composables/usePdfCompression'
-import type { StoredFile, SessionState } from '@/db/db'
+import type { StoredFile, ProjectMeta, ProjectState } from '@/db/db'
 import type { FileUploadResult } from '@/types'
 import type { LoadPdfFilesOptions } from './import'
-import type { SessionSnapshot } from './session'
 
 export interface DocumentImportAdapter {
   loadPdfFiles(
@@ -16,9 +15,15 @@ export interface DocumentImportAdapter {
   evictPdfCache(sourceFileIds: string[]): void
 }
 
-export interface DocumentSessionAdapter {
-  persistSession(snapshot: SessionSnapshot): Promise<void>
-  loadSession(): Promise<SessionState | undefined>
+export interface DocumentProjectAdapter {
+  loadProjectMeta(id: string): Promise<ProjectMeta | undefined>
+  loadProjectState(id: string): Promise<ProjectState | undefined>
+  listProjectMeta(options?: { limit?: number }): Promise<ProjectMeta[]>
+  listProjectStates(): Promise<ProjectState[]>
+  persistProjectMeta(meta: ProjectMeta): Promise<void>
+  persistProjectState(state: ProjectState): Promise<void>
+  deleteProject(id: string): Promise<void>
+  clearProjects(): Promise<void>
 }
 
 export interface DocumentStorageAdapter {
@@ -27,7 +32,6 @@ export interface DocumentStorageAdapter {
   listStoredFileIds(): Promise<string[]>
   deleteStoredFilesByIds(ids: string[]): Promise<number>
   clearFiles(): Promise<void>
-  clearSession(): Promise<void>
 }
 
 export interface DocumentCompressionAdapter {
@@ -39,14 +43,14 @@ export interface DocumentCompressionAdapter {
 
 export interface DocumentAdapters {
   import: DocumentImportAdapter
-  session: DocumentSessionAdapter
+  project: DocumentProjectAdapter
   storage: DocumentStorageAdapter
   compression: DocumentCompressionAdapter
 }
 
 export interface DocumentAdaptersOverrides {
   import?: Partial<DocumentImportAdapter>
-  session?: Partial<DocumentSessionAdapter>
+  project?: Partial<DocumentProjectAdapter>
   storage?: Partial<DocumentStorageAdapter>
   compression?: Partial<DocumentCompressionAdapter>
 }

@@ -42,6 +42,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   removeSource: [sourceId: string]
   newProject: []
+  dashboard: []
   settings: []
 }>()
 
@@ -72,6 +73,12 @@ function handleHistoryJump(pointer: number) {
 function handleNewProject() {
   haptic('medium')
   emit('newProject')
+  emit('update:open', false)
+}
+
+function handleDashboard() {
+  haptic('light')
+  emit('dashboard')
   emit('update:open', false)
 }
 
@@ -312,20 +319,19 @@ function handleSettings() {
       </ScrollArea>
 
       <div class="p-4 border-t border-border bg-card">
-        <Button
-          variant="destructive"
-          class="w-full gap-3 h-12 text-sm font-semibold"
-          @click="handleNewProject"
-        >
-          <FilePlus class="w-5 h-5" />
-          New Project
-          <Badge
-            variant="outline"
-            class="ml-auto text-destructive-foreground/60 border-destructive-foreground/20"
+        <div class="grid gap-2">
+          <Button variant="outline" class="w-full gap-3 h-12 text-sm font-semibold" @click="handleDashboard">
+            <Clock class="w-5 h-5" />
+            Dashboard
+          </Button>
+          <Button
+            class="w-full gap-3 h-12 text-sm font-semibold"
+            @click="handleNewProject"
           >
-            Clear All
-          </Badge>
-        </Button>
+            <FilePlus class="w-5 h-5" />
+            New Project
+          </Button>
+        </div>
         <div
           class="mt-4 text-center ui-kicker opacity-70"
         >

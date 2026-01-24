@@ -1,20 +1,12 @@
-import { ref, watch, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import JSZip from 'jszip'
-import { EXPORT_PROGRESS, HISTORY, PROGRESS, TIMEOUTS_MS, ZOOM } from '@/constants'
-import type { StoredFile } from '@/db/db'
+import { EXPORT_PROGRESS, PROGRESS } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
 import type { Command } from '@/commands/types'
-import type {
-  BookmarkNode,
-  DocumentMetadata,
-  FileUploadResult,
-  PageEntry,
-  PageReference,
-} from '@/types'
+import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
 import type { Result } from '@/types/result'
-import { useDebounceFn } from '@vueuse/core'
 import {
   generateRawPdf as generateRawPdfCore,
   parsePageRange,
@@ -25,7 +17,6 @@ import {
   type ExportResult,
   type GeneratorOptions,
 } from '@/domain/document/export'
-import { collectReachableSourceIds } from '@/domain/document/storage-gc'
 import {
   getExportErrorMessage,
   getImportErrorMessage,
@@ -66,10 +57,6 @@ function getExportErrorCode(error: unknown): ExportErrorCode {
 
 const importJob = ref<JobState>(createJobState())
 const exportJob = ref<JobState>(createJobState())
-const restoreJob = ref<JobState>(createJobState())
-const isInitialized = ref(false)
-let persistenceInitialized = false
-let activeAdapters = createDocumentAdapters()
 
 export type DocumentUiState = {
   zoom: Ref<number>
@@ -100,13 +87,9 @@ export function useDocumentService(
 
   const ui = boundUiState
   const adapters = createDocumentAdapters(overrides)
-  activeAdapters = adapters
 
   const store = useDocumentStore()
-  const { execute, serializeHistory, rehydrateHistory, getHistoryPointer, historyList } =
-    useCommandManager()
-
-  setupSessionPersistence()
+  const { execute } = useCommandManager()
 
   function buildMetadataUpdates(metadata: DocumentMetadata): Partial<DocumentMetadata> {
     const updates: Partial<DocumentMetadata> = {}
@@ -136,92 +119,6 @@ export function useDocumentService(
     store.setMetadata(updates)
   }
 
-  function setupSessionPersistence(): void {
-    if (persistenceInitialized) return
-    persistenceInitialized = true
-
-    const saveSession = useDebounceFn(async () => {
-      const bookmarksDirty = Boolean(store.bookmarksDirty)
-      try {
-        await activeAdapters.session.persistSession({
-          projectTitle: String(store.projectTitle ?? ''),
-          activeSourceIds: Array.from(store.sources.keys()),
-          pageMap: store.pages,
-          history: serializeHistory(),
-          historyPointer: getHistoryPointer(),
-          zoom: ui?.zoom.value ?? ZOOM.DEFAULT,
-          bookmarksTree: store.bookmarksTree,
-          bookmarksDirty,
-          metadata: store.metadata,
-          security: store.security,
-          metadataDirty: store.metadataDirty,
-        })
-      } catch (error) {
-        console.error('Failed to save session to IndexedDB:', error)
-      }
-    }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
-
-    watch(
-      [
-        historyList,
-        () => store.pages,
-        () => store.projectTitle,
-        () => ui?.zoom.value,
-        () => store.bookmarksTree,
-        () => store.bookmarksDirty,
-        () => store.metadata,
-        () => store.security,
-        () => store.metadataDirty,
-      ],
-      () => {
-        saveSession()
-      },
-      { deep: true },
-    )
-
-    const scheduleGarbageCollection = useDebounceFn(() => {
-      void garbageCollectStoredSources()
-    }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
-
-    watch(
-      [historyList, () => store.pages, () => store.sourceFileList],
-      () => {
-        scheduleGarbageCollection()
-      },
-      { deep: true },
-    )
-  }
-
-  const gcInFlight = ref(false)
-
-  async function garbageCollectStoredSources(): Promise<void> {
-    if (gcInFlight.value) return
-    gcInFlight.value = true
-
-    try {
-      if (importJob.value.status === 'running' || restoreJob.value.status === 'running') {
-        return
-      }
-
-      const keepIds = collectReachableSourceIds({
-        sources: store.sourceFileList,
-        pages: store.pages,
-        history: serializeHistory(),
-      })
-
-      const storedIds = await activeAdapters.storage.listStoredFileIds()
-      const orphanIds = storedIds.filter((id) => !keepIds.has(id))
-
-      if (orphanIds.length === 0) return
-
-      await activeAdapters.storage.deleteStoredFilesByIds(orphanIds)
-      activeAdapters.import.evictPdfCache(orphanIds)
-    } catch (error) {
-      console.warn('Failed to garbage collect stored sources:', error)
-    } finally {
-      gcInFlight.value = false
-    }
-  }
 
   async function importFiles(
     files: FileList | File[],
@@ -540,97 +437,10 @@ export function useDocumentService(
     return totalEstimatedSize
   }
 
-  async function restoreSession(): Promise<Result<null>> {
-    if (isInitialized.value) return { ok: true, value: null }
-
-    restoreJob.value = { status: 'running', progress: PROGRESS.MIN, error: null }
-    ui?.setLoading(true, 'Restoring session...')
-
-    try {
-      const session = await adapters.session.loadSession()
-      const activeIds = session?.activeSourceIds
-
-      let filesToLoad: StoredFile[] = []
-
-      if (activeIds) {
-        filesToLoad = await adapters.storage.loadStoredFilesByIds(activeIds)
-      } else if (!session) {
-        filesToLoad = []
-      } else {
-        filesToLoad = await adapters.storage.loadAllStoredFiles()
-      }
-
-      filesToLoad.forEach((f) => {
-        store.addSourceFile({
-          id: f.id,
-          filename: f.filename,
-          fileSize: f.fileSize,
-          pageCount: f.pageCount,
-          addedAt: f.addedAt,
-          color: f.color,
-          outline: f.outline,
-          metadata: f.metadata,
-        })
-      })
-
-      if (session) {
-        store.projectTitle = session.projectTitle
-        ui?.setZoom(session.zoom)
-        store.bookmarksDirty = session.bookmarksDirty ?? false
-        store.setPages(session.pageMap)
-        if (session.metadata) {
-          store.setMetadata(session.metadata, false)
-        }
-        store.metadataDirty =
-          session.metadataDirty ??
-          (session.metadata ? !isDefaultMetadata(session.metadata as DocumentMetadata) : false)
-        if (session.security) {
-          store.setSecurity(session.security)
-        }
-
-        if (store.bookmarksDirty) {
-          const restoredTree = Array.isArray(session.bookmarksTree)
-            ? (session.bookmarksTree as BookmarkNode[])
-            : []
-          store.setBookmarksTree(restoredTree, false)
-        }
-      }
-
-      if (session?.history) {
-        rehydrateHistory(session.history, session.historyPointer, session.updatedAt)
-      } else {
-        rehydrateHistory([], HISTORY.POINTER_START, session?.updatedAt)
-      }
-
-      restoreJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
-      isInitialized.value = true
-      return { ok: true, value: null }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Restore failed'
-      restoreJob.value = { status: 'error', progress: PROGRESS.MIN, error: message }
-      return { ok: false, error: { message, cause: error } }
-    } finally {
-      ui?.setLoading(false)
-    }
-  }
-
-  async function clearWorkspace(): Promise<Result<null>> {
-    try {
-      await adapters.storage.clearFiles()
-      await adapters.storage.clearSession()
-      adapters.import.clearPdfCache()
-      store.reset()
-      return { ok: true, value: null }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to clear workspace'
-      return { ok: false, error: { message, cause: error } }
-    }
-  }
 
   return {
     importJob,
     exportJob,
-    restoreJob,
     importFiles,
     generateRawPdf,
     exportDocument,
@@ -639,8 +449,6 @@ export function useDocumentService(
     getEstimatedSize,
     parsePageRange,
     validatePageRange,
-    restoreSession,
-    clearWorkspace,
     getPdfDocument: adapters.import.getPdfDocument,
     getPdfBlob: adapters.import.getPdfBlob,
   }

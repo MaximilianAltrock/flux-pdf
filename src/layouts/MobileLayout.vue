@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 // Mobile Components
 import MobileTopBar from '@/components/mobile/MobileTopBar.vue'
@@ -22,6 +23,8 @@ const props = defineProps<{
   actions: AppActions
 }>()
 
+const router = useRouter()
+
 // Local computed for template readability
 const hasPages = computed(() => props.state.document.pageCount > 0)
 const isLoading = computed(() => props.state.isLoading.value)
@@ -36,6 +39,10 @@ function onPreview(pageRef: PageReference) {
 
 function onRemoveSource(sourceId: string) {
   props.actions.handleRemoveSource(sourceId)
+}
+
+function onDashboard() {
+  router.push('/')
 }
 </script>
 
@@ -109,6 +116,7 @@ function onRemoveSource(sourceId: string) {
       @update:open="(val) => !val && props.state.closeMenuDrawer()"
       @removeSource="onRemoveSource"
       @new-project="props.actions.handleNewProject"
+      @dashboard="onDashboard"
       @settings="props.state.openSettingsSheet"
     />
 

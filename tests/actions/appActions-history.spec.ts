@@ -32,12 +32,11 @@ const mocks = vi.hoisted(() => {
       dismissAll: vi.fn(),
     },
     confirmDelete: vi.fn().mockResolvedValue(true),
-    confirmClearWorkspace: vi.fn().mockResolvedValue(true),
+    confirm: vi.fn().mockResolvedValue(true),
     mobileState,
     canShareFiles,
     haptic: vi.fn(),
     shareFile: vi.fn().mockResolvedValue({ shared: false, downloaded: false }),
-    clearCache: vi.fn(),
     exportJob,
   }
 })
@@ -49,7 +48,7 @@ vi.mock('@/composables/useToast', () => ({
 vi.mock('@/composables/useConfirm', () => ({
   useConfirm: () => ({
     confirmDelete: mocks.confirmDelete,
-    confirmClearWorkspace: mocks.confirmClearWorkspace,
+    confirm: mocks.confirm,
   }),
 }))
 
@@ -62,14 +61,9 @@ vi.mock('@/composables/useMobile', () => ({
   }),
 }))
 
-vi.mock('@/composables/useThumbnailRenderer', () => ({
-  useThumbnailRenderer: () => ({ clearCache: mocks.clearCache }),
-}))
-
 vi.mock('@/composables/useDocumentService', () => ({
   useDocumentService: () => ({
     importFiles: vi.fn(),
-    clearWorkspace: vi.fn(),
     generateRawPdf: vi.fn(),
     exportDocument: vi.fn(),
     exportJob: mocks.exportJob,
@@ -78,8 +72,17 @@ vi.mock('@/composables/useDocumentService', () => ({
     clearExportError: vi.fn(),
     parsePageRange: vi.fn(),
     validatePageRange: vi.fn(),
-    restoreSession: vi.fn(),
   }),
+}))
+
+vi.mock('@/composables/useProjectManager', () => ({
+  useProjectManager: () => ({
+    createProject: vi.fn().mockResolvedValue({ id: 'project-1' }),
+  }),
+}))
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
 const makeSource = (id: string, pageCount: number): SourceFile => ({
