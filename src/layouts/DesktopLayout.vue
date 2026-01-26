@@ -8,6 +8,8 @@ import InspectorPanel from '@/components/InspectorPanel.vue'
 import PageGrid from '@/components/PageGrid.vue'
 import FileDropzone from '@/components/FileDropzone.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import PreflightStatusBar from '@/components/PreflightStatusBar.vue'
+import PreflightPanel from '@/components/PreflightPanel.vue'
 import { Spinner } from '@/components/ui/spinner'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 
@@ -59,6 +61,14 @@ function onRemoveSource(sourceId: string) {
 function onCommandAction(action: UserAction) {
   props.actions.handleCommandAction(action)
 }
+
+async function onClearProject() {
+  await props.actions.handleClearProject()
+}
+
+async function onDeleteProject() {
+  await props.actions.handleDeleteProject()
+}
 </script>
 
 <template>
@@ -72,6 +82,8 @@ function onCommandAction(action: UserAction) {
       @zoom-in="props.actions.zoomIn"
       @zoom-out="props.actions.zoomOut"
       @new-project="props.actions.handleNewProject"
+      @clear-project="onClearProject"
+      @delete-project="onDeleteProject"
     />
     <!-- Main Content Area -->
     <ResizablePanelGroup direction="horizontal" class="flex-1 min-h-0">
@@ -135,6 +147,8 @@ function onCommandAction(action: UserAction) {
       <InspectorPanel :state="props.state" :actions="props.actions" />
     </ResizablePanelGroup>
 
+    <PreflightStatusBar :state="props.state" />
+
     <!-- Command Palette -->
     <CommandPalette
       :open="props.state.showCommandPalette.value"
@@ -142,6 +156,13 @@ function onCommandAction(action: UserAction) {
       :actions="props.actions"
       @update:open="(val) => !val && props.state.closeCommandPalette()"
       @action="onCommandAction"
+    />
+
+    <PreflightPanel
+      :open="props.state.showPreflightPanel.value"
+      :state="props.state"
+      :actions="props.actions"
+      @update:open="(val) => (val ? props.state.openPreflightPanel() : props.state.closePreflightPanel())"
     />
   </div>
 </template>

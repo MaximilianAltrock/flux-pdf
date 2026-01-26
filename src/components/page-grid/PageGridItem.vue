@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -29,6 +30,19 @@ const emit = defineEmits<{
   preview: [pageRef: PageReference]
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
+
+const pageProblems = computed(
+  () => props.state.preflight.problemsByPageId.value.get(props.page.id) ?? [],
+)
+
+const problemSeverity = computed(() => {
+  if (pageProblems.value.some((p) => p.severity === 'error')) return 'error'
+  if (pageProblems.value.some((p) => p.severity === 'warning')) return 'warning'
+  if (pageProblems.value.some((p) => p.severity === 'info')) return 'info'
+  return undefined
+})
+
+const problemMessages = computed(() => pageProblems.value.map((p) => p.message))
 
 function handlePageClick(event: MouseEvent | KeyboardEvent) {
   if (props.state.currentTool.value === 'razor') {
@@ -86,6 +100,8 @@ function handleRotate() {
         :is-start-of-file="isStartOfFile"
         :is-razor-active="state.currentTool.value === 'razor'"
         :can-split="index > 0"
+        :problem-severity="problemSeverity"
+        :problem-messages="problemMessages"
         @click="handlePageClick"
         @preview="handlePreview"
         @delete="handleDelete"

@@ -1,6 +1,12 @@
 import Dexie, { type Table } from 'dexie'
 import { SCHEMA_VERSION, ZOOM } from '@/constants'
-import type { PageEntry, PdfOutlineNode, DocumentMetadata, SecurityMetadata } from '@/types'
+import type {
+  PageEntry,
+  PdfOutlineNode,
+  DocumentMetadata,
+  SecurityMetadata,
+  PageMetrics,
+} from '@/types'
 import type { SerializedCommand } from '@/commands'
 import { migrateLegacySessionState } from '@/domain/document/project'
 
@@ -148,6 +154,10 @@ export interface StoredFile {
 
   /** Color assigned to this source for UI */
   color: string
+  /** Per-page metrics (index corresponds to pageIndex) */
+  pageMetaData?: PageMetrics[]
+  /** True when source was generated from an image import */
+  isImageSource?: boolean
 
   /** Optional outline extracted from the PDF */
   outline?: PdfOutlineNode[]

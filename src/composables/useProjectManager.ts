@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { effectScope, ref, shallowRef, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { HISTORY, TIMEOUTS_MS, ZOOM } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
@@ -14,7 +14,8 @@ import {
   type ProjectStateRecord,
 } from '@/domain/document/project'
 import { collectReachableSourceIdsFromState } from '@/domain/document/storage-gc'
-import type { BookmarkNode, DocumentMetadata, PageReference } from '@/types'
+import type { SerializedCommand } from '@/commands'
+import type { BookmarkNode, DocumentMetadata, PageEntry, PageReference } from '@/types'
 import type { DocumentUiState } from '@/composables/useDocumentService'
 
 const LAST_ACTIVE_PROJECT_KEY = 'lastActiveProjectId'
@@ -23,8 +24,9 @@ const activeProjectId = ref<string | null>(null)
 const activeProjectMeta = ref<ProjectMeta | null>(null)
 const isHydrating = ref(false)
 let autoSaveInitialized = false
-let boundUiState: DocumentUiState | null = null
+const boundUiState = shallowRef<DocumentUiState | null>(null)
 let activeAdapters = createDocumentAdapters()
+const autoSaveScope = effectScope(true)
 
 const thumbnailKeyByProject = new Map<string, string | null>()
 const thumbnailInFlight = new Map<string, Promise<Blob | undefined>>()
@@ -119,7 +121,16 @@ async function ensureThumbnail(meta: ProjectMeta, page: PageReference | null): P
   return job
 }
 
-async function garbageCollectStoredSources(adapters = activeAdapters): Promise<void> {
+type GcStateSnapshot = {
+  activeSourceIds?: ReadonlyArray<string>
+  pages: ReadonlyArray<PageEntry>
+  history: ReadonlyArray<SerializedCommand>
+}
+
+async function garbageCollectStoredSources(
+  adapters = activeAdapters,
+  currentState?: GcStateSnapshot,
+): Promise<void> {
   if (gcInFlight.value) return
   gcInFlight.value = true
 
@@ -134,6 +145,15 @@ async function garbageCollectStoredSources(adapters = activeAdapters): Promise<v
         history: state.history ?? [],
       })
       for (const id of ids) keepIds.add(id)
+    }
+
+    if (currentState) {
+      const liveIds = collectReachableSourceIdsFromState({
+        activeSourceIds: currentState.activeSourceIds ?? [],
+        pages: currentState.pages,
+        history: currentState.history,
+      })
+      for (const id of liveIds) keepIds.add(id)
     }
 
     const storedIds = await adapters.storage.listStoredFileIds()
@@ -155,7 +175,7 @@ export function useProjectManager(
   uiState?: DocumentUiState,
 ) {
   if (uiState) {
-    boundUiState = uiState
+    boundUiState.value = uiState
   }
   const adapters = createDocumentAdapters(overrides)
   activeAdapters = adapters
@@ -174,37 +194,44 @@ export function useProjectManager(
     if (autoSaveInitialized) return
     autoSaveInitialized = true
 
-    const saveProject = useDebounceFn(async () => {
-      if (!activeProjectId.value || isHydrating.value) return
-      await persistActiveProject()
-    }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
+    autoSaveScope.run(() => {
+      const saveProject = useDebounceFn(async () => {
+        if (!activeProjectId.value || isHydrating.value) return
+        await persistActiveProject()
+      }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
 
-    const scheduleGC = useDebounceFn(async () => {
-      await garbageCollectStoredSources(adapters)
-    }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
+      const scheduleGC = useDebounceFn(async () => {
+        const liveState: GcStateSnapshot = {
+          activeSourceIds: Array.from(store.sources.keys()),
+          pages: store.pages,
+          history: serializeHistory(),
+        }
+        await garbageCollectStoredSources(adapters, liveState)
+      }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
 
-    const triggerSave = () => {
-      saveProject()
-      scheduleGC()
-    }
+      const triggerSave = () => {
+        saveProject()
+        scheduleGC()
+      }
 
-    const watchTargets = [
-      historyList,
-      () => store.pages,
-      () => store.projectTitle,
-      () => store.sourceFileList,
-      () => boundUiState?.zoom.value,
-      () => store.bookmarksTree,
-      () => store.bookmarksDirty,
-      () => store.metadata,
-      () => store.security,
-      () => store.metadataDirty,
-    ]
+      const watchTargets = [
+        historyList,
+        () => store.pages,
+        () => store.projectTitle,
+        () => store.sourceFileList,
+        () => boundUiState.value?.zoom.value,
+        () => store.bookmarksTree,
+        () => store.bookmarksDirty,
+        () => store.metadata,
+        () => store.security,
+        () => store.metadataDirty,
+      ]
 
-    for (const target of watchTargets) {
-      // Pinia refs are reactive; we can watch with a deep flush using VueUse watchers
-      watch(target, triggerSave, { deep: true })
-    }
+      for (const target of watchTargets) {
+        // Pinia refs are reactive; we can watch with a deep flush using VueUse watchers
+        watch(target, triggerSave, { deep: true })
+      }
+    })
   }
 
   async function listRecentProjects(limit = 5): Promise<ProjectMeta[]> {
@@ -234,7 +261,7 @@ export function useProjectManager(
       pageMap: [],
       history: [],
       historyPointer: HISTORY.POINTER_START,
-      zoom: boundUiState?.zoom.value ?? ZOOM.DEFAULT,
+      zoom: boundUiState.value?.zoom.value ?? ZOOM.DEFAULT,
       bookmarksTree: [],
       bookmarksDirty: false,
       metadata: undefined,
@@ -279,7 +306,7 @@ export function useProjectManager(
       pageMap: store.pages,
       history: serializeHistory(),
       historyPointer: getHistoryPointer(),
-      zoom: boundUiState?.zoom.value ?? ZOOM.DEFAULT,
+      zoom: boundUiState.value?.zoom.value ?? ZOOM.DEFAULT,
       bookmarksTree: store.bookmarksTree,
       bookmarksDirty: store.bookmarksDirty,
       metadata: store.metadata,
@@ -310,13 +337,15 @@ export function useProjectManager(
         pageCount: file.pageCount,
         addedAt: file.addedAt,
         color: file.color,
+        pageMetaData: file.pageMetaData ?? [],
+        isImageSource: file.isImageSource ?? false,
         outline: file.outline,
         metadata: file.metadata,
       })
     }
 
     store.projectTitle = meta.title
-    boundUiState?.setZoom(state.zoom ?? ZOOM.DEFAULT)
+    boundUiState.value?.setZoom(state.zoom ?? ZOOM.DEFAULT)
     store.bookmarksDirty = state.bookmarksDirty ?? false
     store.setPages(state.pageMap ?? [])
 
@@ -343,7 +372,7 @@ export function useProjectManager(
   async function loadProject(id: string): Promise<boolean> {
     if (!id) return false
     isHydrating.value = true
-    boundUiState?.setLoading(true, 'Loading project...')
+    boundUiState.value?.setLoading(true, 'Loading project...')
 
     try {
       const [meta, rawState] = await Promise.all([
@@ -364,13 +393,19 @@ export function useProjectManager(
 
       const firstPage = getFirstPageReference(migrated.pageMap as PageReference[])
       thumbnailKeyByProject.set(id, getThumbnailKey(firstPage))
+      const liveState: GcStateSnapshot = {
+        activeSourceIds: Array.from(store.sources.keys()),
+        pages: store.pages,
+        history: serializeHistory(),
+      }
+      void garbageCollectStoredSources(adapters, liveState)
       return true
     } catch (error) {
       console.error('Failed to load project:', error)
       return false
     } finally {
       isHydrating.value = false
-      boundUiState?.setLoading(false)
+      boundUiState.value?.setLoading(false)
     }
   }
 

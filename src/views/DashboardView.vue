@@ -1,37 +1,35 @@
 <script setup lang="ts">
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watchEffect,
-  type ComponentPublicInstance,
-} from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  Search,
-  Plus,
-  MoreHorizontal,
-  FileText,
-  Clock,
-  LayoutGrid,
-} from 'lucide-vue-next'
+import { Search, Plus, Clock, LayoutGrid } from 'lucide-vue-next'
 import { useProjectManager } from '@/composables/useProjectManager'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
-import { formatRelativeTime } from '@/utils/relative-time'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarSeparator,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Card } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -39,8 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Card } from '@/components/ui/card'
+import ProjectCard from '@/components/ProjectCard.vue'
 import type { ProjectMeta } from '@/db/db'
+
+const PROJECT_LIST_LIMIT = 50
+const sortOptions = [
+  { value: 'updated', label: 'Last Modified' },
+  { value: 'created', label: 'Date Created' },
+  { value: 'title', label: 'Alphabetical' },
+] as const
+type SortKey = (typeof sortOptions)[number]['value']
 
 const router = useRouter()
 const projectManager = useProjectManager()
@@ -50,24 +56,20 @@ const toast = useToast()
 const projects = ref<ProjectMeta[]>([])
 const isLoading = ref(true)
 const query = ref('')
-const sort = ref<'updated' | 'created' | 'title'>('updated')
+const sort = ref<SortKey>('updated')
 const editingId = ref<string | null>(null)
-const titleDraft = ref('')
-const vFocusAuto = (el: Element | ComponentPublicInstance | null) => {
-  if (!el) return
-  const target =
-    el instanceof HTMLInputElement
-      ? el
-      : (el as ComponentPublicInstance)?.$el?.querySelector?.('input') ||
-        (el as ComponentPublicInstance)?.$el
-  if (target instanceof HTMLInputElement) {
-    target.focus()
-    target.select()
-  }
-}
 
 const thumbnailUrls = new Map<string, string>()
 const thumbnailBlobs = new Map<string, Blob | undefined>()
+
+const searchTerm = computed(() => query.value.trim().toLowerCase())
+const isSearchActive = computed(() => searchTerm.value.length > 0)
+
+const sortComparators: Record<SortKey, (a: ProjectMeta, b: ProjectMeta) => number> = {
+  updated: (a, b) => b.updatedAt - a.updatedAt,
+  created: (a, b) => b.createdAt - a.createdAt,
+  title: (a, b) => a.title.localeCompare(b.title),
+}
 
 async function refreshProjects() {
   // Don't set loading true if we already have data (prevents flashing on soft refresh)
@@ -75,7 +77,7 @@ async function refreshProjects() {
 
   try {
     // Artificial delay removed, logic stays same
-    projects.value = await projectManager.listRecentProjects(50)
+    projects.value = await projectManager.listRecentProjects(PROJECT_LIST_LIMIT)
   } catch (error) {
     console.error('Failed to load projects:', error)
   } finally {
@@ -83,74 +85,63 @@ async function refreshProjects() {
   }
 }
 
-onMounted(() => {
-  refreshProjects()
-})
+onMounted(refreshProjects)
+
+const handleRenameCancel = () => {
+  editingId.value = null
+}
 
 // Memory Management for Blob URLs
+const revokeThumbnail = (projectId: string) => {
+  const url = thumbnailUrls.get(projectId)
+  if (url) URL.revokeObjectURL(url)
+  thumbnailUrls.delete(projectId)
+  thumbnailBlobs.delete(projectId)
+}
+
+const syncThumbnail = (project: ProjectMeta) => {
+  const currentBlob = project.thumbnail
+  const previousBlob = thumbnailBlobs.get(project.id)
+
+  if (!currentBlob) {
+    revokeThumbnail(project.id)
+    return
+  }
+
+  if (currentBlob === previousBlob && thumbnailUrls.has(project.id)) return
+
+  const existingUrl = thumbnailUrls.get(project.id)
+  if (existingUrl) URL.revokeObjectURL(existingUrl)
+
+  const url = URL.createObjectURL(currentBlob)
+  thumbnailUrls.set(project.id, url)
+  thumbnailBlobs.set(project.id, currentBlob)
+}
+
 watchEffect(() => {
   const nextIds = new Set(projects.value.map((p) => p.id))
-  for (const [id, url] of thumbnailUrls) {
-    if (!nextIds.has(id)) {
-      URL.revokeObjectURL(url)
-      thumbnailUrls.delete(id)
-      thumbnailBlobs.delete(id)
-    }
+  for (const id of Array.from(thumbnailUrls.keys())) {
+    if (!nextIds.has(id)) revokeThumbnail(id)
   }
 
-  for (const project of projects.value) {
-    const currentBlob = project.thumbnail
-    const previousBlob = thumbnailBlobs.get(project.id)
-
-    if (!currentBlob) {
-      if (thumbnailUrls.has(project.id)) {
-        const url = thumbnailUrls.get(project.id)
-        if (url) URL.revokeObjectURL(url)
-        thumbnailUrls.delete(project.id)
-        thumbnailBlobs.delete(project.id)
-      }
-      continue
-    }
-
-    if (currentBlob === previousBlob && thumbnailUrls.has(project.id)) {
-      continue
-    }
-
-    const existingUrl = thumbnailUrls.get(project.id)
-    if (existingUrl) URL.revokeObjectURL(existingUrl)
-
-    const url = URL.createObjectURL(currentBlob)
-    thumbnailUrls.set(project.id, url)
-    thumbnailBlobs.set(project.id, currentBlob)
-  }
+  for (const project of projects.value) syncThumbnail(project)
 })
 
 onBeforeUnmount(() => {
-  for (const url of thumbnailUrls.values()) URL.revokeObjectURL(url)
+  for (const id of Array.from(thumbnailUrls.keys())) revokeThumbnail(id)
   thumbnailUrls.clear()
   thumbnailBlobs.clear()
 })
 
 const filteredProjects = computed(() => {
-  const term = query.value.trim().toLowerCase()
-  let list = projects.value
-  if (term) {
-    list = list.filter((p) => p.title.toLowerCase().includes(term))
-  }
-
-  const sorted = [...list]
-  switch (sort.value) {
-    case 'created':
-      sorted.sort((a, b) => b.createdAt - a.createdAt)
-      break
-    case 'title':
-      sorted.sort((a, b) => a.title.localeCompare(b.title))
-      break
-    default:
-      sorted.sort((a, b) => b.updatedAt - a.updatedAt)
-  }
-  return sorted
+  const term = searchTerm.value
+  const list = term
+    ? projects.value.filter((project) => project.title.toLowerCase().includes(term))
+    : projects.value
+  return [...list].sort(sortComparators[sort.value])
 })
+
+const isEmptyState = computed(() => filteredProjects.value.length === 0 && !isSearchActive.value)
 
 function thumbnailFor(project: ProjectMeta): string | undefined {
   return thumbnailUrls.get(project.id)
@@ -186,79 +177,87 @@ async function handleDelete(project: ProjectMeta) {
   await refreshProjects()
 }
 
-async function handleRenameStart(project: ProjectMeta) {
+function handleRenameStart(project: ProjectMeta) {
   editingId.value = project.id
-  titleDraft.value = project.title
 }
 
-async function handleRenameCommit(project: ProjectMeta) {
+async function handleRenameCommit(project: ProjectMeta, nextTitle: string) {
   if (editingId.value !== project.id) return
   editingId.value = null
-  const nextTitle = titleDraft.value.trim()
-  if (!nextTitle || nextTitle === project.title) return
-  await projectManager.renameProject(project.id, nextTitle)
+  const trimmed = nextTitle.trim()
+  if (!trimmed || trimmed === project.title) return
+  await projectManager.renameProject(project.id, trimmed)
   await refreshProjects()
 }
 </script>
 
 <template>
-  <div class="flex h-screen w-full bg-background text-foreground overflow-hidden">
-    <!-- Sidebar (Minimal) -->
-    <aside
-      class="w-[260px] border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col shrink-0"
-    >
-      <!-- Logo Area -->
-      <div class="h-16 flex items-center px-6 border-b border-sidebar-border/50">
+  <SidebarProvider class="h-screen w-full bg-sidebar text-foreground overflow-hidden">
+    <Sidebar class="border-sidebar-border">
+      <SidebarHeader class="h-16 px-4 flex-row items-center">
         <div class="flex items-center gap-2.5">
           <div class="w-6 h-6 bg-primary rounded flex items-center justify-center shadow-sm">
-            <div class="w-3 h-3 bg-white rounded-[1px]"></div>
+            <div class="w-3 h-3 bg-white rounded-sm"></div>
           </div>
           <span class="font-bold text-sm tracking-wide">FluxPDF</span>
         </div>
+      </SidebarHeader>
+
+      <SidebarContent class="px-2 py-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton is-active>
+              <Clock class="w-4 h-4" />
+              <span>Recents</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarContent>
+
+      <div class="px-4 py-2">
+        <SidebarSeparator class="mx-0" />
       </div>
 
-      <!-- Navigation -->
-      <div class="p-3 flex-1">
-        <nav class="space-y-1">
-          <button
-            class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium bg-primary/10 text-primary"
-          >
-            <Clock class="w-4 h-4" />
-            Recents
-          </button>
-          <!-- Future: Add Favorites / Shared here -->
-        </nav>
-      </div>
+      <SidebarFooter class="px-4 py-4">
+        <div class="ui-caption">
+          <p>Local-First Architecture</p>
+          <p class="opacity-50">v1.0.0</p>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
 
-      <!-- Footer Info -->
-      <div class="p-4 text-[10px] text-muted-foreground border-t border-sidebar-border/50">
-        <p>Local-First Architecture</p>
-        <p class="opacity-50">v1.0.0</p>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col min-w-0 bg-background">
+    <SidebarInset class="min-w-0">
       <!-- Top Bar -->
       <header
-        class="h-16 border-b border-border/50 flex items-center justify-between px-8 shrink-0 bg-card"
+        class="border-b border-border/50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-16 shrink-0 bg-sidebar"
       >
-        <h1 class="text-xl font-semibold tracking-tight">Your Projects</h1>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <SidebarTrigger class="md:hidden" />
+            <div
+              class="md:hidden w-5 h-5 bg-primary rounded flex items-center justify-center shadow-sm"
+            >
+              <div class="w-2.5 h-2.5 bg-white rounded-sm"></div>
+            </div>
+            <h1 class="text-lg sm:text-xl font-semibold tracking-tight">Your Projects</h1>
+          </div>
+          <Button @click="handleCreateProject" class="sm:hidden" size="sm">
+            <Plus class="w-4 h-4" />
+            New
+          </Button>
+        </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 w-full sm:w-auto">
           <!-- Search -->
-          <InputGroup class="w-64 bg-card/60 dark:bg-input/30">
-            <InputGroupAddon class="text-muted-foreground">
+          <InputGroup class="w-full sm:w-64">
+            <InputGroupAddon>
               <Search class="w-4 h-4" />
             </InputGroupAddon>
-            <InputGroupInput v-model="query" placeholder="Search..." class="text-sm" />
+            <InputGroupInput v-model="query" placeholder="Search..." />
           </InputGroup>
 
           <!-- Create Button -->
-          <Button
-            @click="handleCreateProject"
-            class="shadow-sm"
-          >
+          <Button @click="handleCreateProject" class="hidden sm:inline-flex">
             <Plus class="w-4 h-4" />
             New Project
           </Button>
@@ -266,44 +265,43 @@ async function handleRenameCommit(project: ProjectMeta) {
       </header>
 
       <!-- Scrollable Grid -->
-      <div class="flex-1 overflow-y-auto p-8">
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
         <!-- Loading Skeleton -->
         <div
           v-if="isLoading"
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
-          <Skeleton
-            v-for="i in 4"
-            :key="i"
-            class="h-64 rounded-xl bg-card border border-border"
-          />
+          <Card v-for="i in 4" :key="i" class="overflow-hidden p-0 gap-0">
+            <Skeleton class="aspect-video w-full rounded-none" />
+            <div class="p-3.5 space-y-2">
+              <Skeleton class="h-4 w-3/4" />
+              <Skeleton class="h-3 w-1/2" />
+            </div>
+          </Card>
         </div>
 
         <div v-else>
           <!-- Sort & Filter Bar -->
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <p class="text-sm text-muted-foreground font-medium">
               {{ filteredProjects.length }} Projects
             </p>
 
             <Select v-model="sort">
-              <SelectTrigger size="sm" class="w-[160px] text-xs font-medium">
+              <SelectTrigger size="sm" class="w-full sm:w-40">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="updated">Last Modified</SelectItem>
-                <SelectItem value="created">Date Created</SelectItem>
-                <SelectItem value="title">Alphabetical</SelectItem>
+                <SelectItem v-for="option in sortOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <!-- Empty State -->
-          <Empty
-            v-if="filteredProjects.length === 0 && !query"
-            class="bg-card/40 border-border/60 py-12 rounded-xl"
-          >
-            <EmptyMedia variant="icon" class="bg-muted/40 text-muted-foreground">
+          <Empty v-if="isEmptyState">
+            <EmptyMedia variant="icon">
               <LayoutGrid class="w-5 h-5" />
             </EmptyMedia>
             <EmptyHeader>
@@ -322,10 +320,10 @@ async function handleRenameCommit(project: ProjectMeta) {
             <!-- Ghost Card (New Project) -->
             <button
               @click="handleCreateProject"
-              class="group relative aspect-[4/3] rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center justify-center gap-3 transition-all duration-200"
+              class="group relative aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-3 transition-colors hover:border-primary/50 hover:bg-primary/5"
             >
               <div
-                class="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm"
+                class="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center group-hover:scale-110 transition-transform"
               >
                 <Plus
                   class="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors"
@@ -336,102 +334,22 @@ async function handleRenameCommit(project: ProjectMeta) {
               >
             </button>
 
-            <!-- Project Card -->
-            <Card
+            <ProjectCard
               v-for="project in filteredProjects"
               :key="project.id"
-              class="group relative flex flex-col overflow-hidden p-0 gap-0 hover:shadow-lg hover:border-primary/30 transition-all duration-200 cursor-pointer"
-              @click="handleOpenProject(project.id)"
-            >
-              <!-- Thumbnail -->
-              <div
-                class="aspect-[4/3] bg-muted/10 relative overflow-hidden border-b border-border/50"
-              >
-                <div v-if="thumbnailFor(project)" class="w-full h-full">
-                  <img
-                    :src="thumbnailFor(project)"
-                    class="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
-                    alt="Thumbnail"
-                  />
-                  <!-- Inner shadow to separate white paper from white bg -->
-                  <div class="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]"></div>
-                </div>
-
-                <div
-                  v-else
-                  class="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30 gap-2"
-                >
-                  <FileText class="w-10 h-10" />
-                </div>
-
-                <!-- Hover Overlay Actions -->
-                <div
-                  class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                      <button
-                        type="button"
-                        @click.stop
-                        @pointerdown.stop
-                        class="p-1.5 bg-card hover:bg-muted/60 rounded-md shadow-sm text-foreground border border-border/70 transition-colors"
-                      >
-                        <MoreHorizontal class="w-4 h-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-40">
-                      <DropdownMenuItem @select="handleOpenProject(project.id)"
-                        >Open</DropdownMenuItem
-                      >
-                      <DropdownMenuItem @select="handleRenameStart(project)"
-                        >Rename</DropdownMenuItem
-                      >
-                      <DropdownMenuItem @select="handleDuplicate(project)"
-                        >Duplicate</DropdownMenuItem
-                      >
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        @select="handleDelete(project)"
-                        class="text-destructive focus:text-destructive"
-                        >Delete</DropdownMenuItem
-                      >
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              <!-- Meta Info -->
-              <div class="p-3.5">
-                <div class="flex items-center justify-between gap-2 mb-1">
-                  <!-- Rename Input -->
-                  <Input
-                    v-if="editingId === project.id"
-                    :ref="vFocusAuto"
-                    v-model="titleDraft"
-                    class="h-7 px-2 text-sm font-medium border-primary"
-                    @blur="handleRenameCommit(project)"
-                    @click.stop
-                    @keyup.enter="handleRenameCommit(project)"
-                  />
-                  <!-- Static Title -->
-                  <h3
-                    v-else
-                    class="font-medium text-sm text-foreground truncate"
-                    :title="project.title"
-                  >
-                    {{ project.title }}
-                  </h3>
-                </div>
-
-                <div class="text-[11px] text-muted-foreground">
-                  {{ project.pageCount }} page{{ project.pageCount === 1 ? '' : 's' }} &bull;
-                  {{ formatRelativeTime(project.updatedAt) }}
-                </div>
-              </div>
-            </Card>
+              :project="project"
+              :thumbnail-url="thumbnailFor(project)"
+              :is-editing="editingId === project.id"
+              @open="handleOpenProject($event.id)"
+              @rename-start="handleRenameStart"
+              @rename-commit="handleRenameCommit"
+              @rename-cancel="handleRenameCancel"
+              @duplicate="handleDuplicate"
+              @delete="handleDelete"
+            />
           </div>
         </div>
       </div>
-    </main>
-  </div>
+    </SidebarInset>
+  </SidebarProvider>
 </template>

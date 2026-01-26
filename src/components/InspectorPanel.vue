@@ -43,7 +43,11 @@ function handleInspectorResize(size: number) {
         <ResizablePanel :default-size="60" :min-size="30" class="flex flex-col">
           <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
             <!-- TAB BAR -->
-            <Tabs default-value="structure" class="flex-1 min-h-0 gap-0">
+            <Tabs
+              :value="props.state.inspectorTab.value"
+              @update:value="props.state.setInspectorTab"
+              class="flex-1 min-h-0 gap-0"
+            >
               <div
                 class="h-9 px-2 border-b border-sidebar-border/40 bg-sidebar flex items-center"
               >

@@ -22,6 +22,7 @@ import {
   RemoveSourceCommand,
   ReorderPagesCommand,
   SplitGroupCommand,
+  ResizePagesCommand,
 } from '@/commands'
 import { UserAction } from '@/types/actions'
 import type {
@@ -31,6 +32,7 @@ import type {
   PageReference,
   SecurityMetadata,
 } from '@/types'
+import type { PreflightFix } from '@/types/linter'
 import type { AppState } from './useAppState'
 
 /**
@@ -49,6 +51,7 @@ export function useAppActions(state: AppState) {
     redoName,
     historyList,
     jumpTo,
+    clearHistory,
   } = useCommandManager()
   const toast = useToast()
   const { confirmDelete, confirm } = useConfirm()
@@ -165,11 +168,14 @@ export function useAppActions(state: AppState) {
     const newPages: PageReference[] = []
 
     for (let i = 0; i < sourceFile.pageCount; i++) {
+      const metrics = sourceFile.pageMetaData?.[i]
       newPages.push({
         id: crypto.randomUUID(),
         sourceFileId: sourceFile.id,
         sourcePageIndex: i,
         rotation: ROTATION_DEFAULT_DEGREES,
+        width: metrics?.width,
+        height: metrics?.height,
         groupId,
       })
     }
@@ -190,6 +196,8 @@ export function useAppActions(state: AppState) {
       sourceFileId: sourceFile.id,
       sourcePageIndex: pageIndex,
       rotation: ROTATION_DEFAULT_DEGREES,
+      width: sourceFile.pageMetaData?.[pageIndex]?.width,
+      height: sourceFile.pageMetaData?.[pageIndex]?.height,
       groupId: crypto.randomUUID(),
     }
 
@@ -226,6 +234,8 @@ export function useAppActions(state: AppState) {
         sourceFileId: sourceFile.id,
         sourcePageIndex: pageIndex,
         rotation: ROTATION_DEFAULT_DEGREES,
+        width: sourceFile.pageMetaData?.[pageIndex]?.width,
+        height: sourceFile.pageMetaData?.[pageIndex]?.height,
         groupId,
       }))
 
@@ -448,6 +458,33 @@ export function useAppActions(state: AppState) {
   }
 
   // ============================================
+  // Preflight Fixes
+  // ============================================
+
+  function applyPreflightFix(fix: PreflightFix, pageIds: string[]) {
+    if (!fix) return
+
+    switch (fix.id) {
+      case 'resize': {
+        if (!fix.targets || fix.targets.length === 0) return
+        execute(new ResizePagesCommand(fix.targets))
+        break
+      }
+      case 'rotate': {
+        if (!pageIds || pageIds.length === 0) return
+        execute(new RotatePagesCommand(pageIds, fix.rotation))
+        break
+      }
+      case 'edit-metadata': {
+        state.setInspectorTab('metadata')
+        break
+      }
+      default:
+        break
+    }
+  }
+
+  // ============================================
   // Source Management
   // ============================================
 
@@ -476,6 +513,67 @@ export function useAppActions(state: AppState) {
   // ============================================
   // Project Management
   // ============================================
+
+  function resetWorkspaceUi() {
+    state.closeCommandPalette()
+    state.closePreflightPanel()
+    state.closeExportModal()
+    state.closePreviewModal()
+    state.closeDiffModal()
+  }
+
+  /**
+   * Clear current project contents (sources, pages, metadata, history)
+   */
+  async function handleClearProject() {
+    const confirmed = await confirm({
+      title: 'Clear project?',
+      message: 'This will remove all files, metadata, and history from this project.',
+      confirmText: 'Clear Project',
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
+    resetWorkspaceUi()
+    store.reset()
+    clearHistory()
+
+    toast.success('Project cleared')
+
+    try {
+      await projectManager.persistActiveProject()
+    } catch (error) {
+      console.error('Failed to persist cleared project:', error)
+      toast.error('Failed to save cleared project')
+    }
+  }
+
+  /**
+   * Delete current project and return to dashboard
+   */
+  async function handleDeleteProject() {
+    const projectId = projectManager.activeProjectId.value
+    if (!projectId) {
+      toast.error('No active project to delete')
+      return
+    }
+
+    const projectTitle = normalizeProjectTitle(
+      projectManager.activeProjectMeta.value?.title ?? store.projectTitle,
+    )
+
+    const confirmed = await confirm({
+      title: `Delete "${projectTitle}"?`,
+      message: 'This action cannot be undone. This project will be permanently removed.',
+      confirmText: 'Delete',
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
+    await projectManager.deleteProject(projectId)
+    toast.success('Project deleted')
+    await router.push('/')
+  }
 
   /**
    * Handle new project action (clears workspace)
@@ -813,11 +911,14 @@ export function useAppActions(state: AppState) {
     handleDuplicateSelected,
     handleRotateSelected,
     handleDiffSelected,
+    applyPreflightFix,
 
     // Source Management
     handleRemoveSource,
 
     // Project Management
+    handleClearProject,
+    handleDeleteProject,
     handleNewProject,
 
     // Context/Command Actions

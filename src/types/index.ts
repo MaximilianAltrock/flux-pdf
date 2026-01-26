@@ -21,6 +21,10 @@ export interface SourceFile {
   addedAt: number
   /** Color theme for this source (Tailwind color name) */
   color: string
+  /** Per-page metrics (index corresponds to pageIndex) */
+  pageMetaData: PageMetrics[]
+  /** True when source was generated from an image import */
+  isImageSource?: boolean
   /** Optional outline extracted from the source PDF */
   outline?: PdfOutlineNode[]
   /** Optional metadata extracted from the source PDF */
@@ -36,6 +40,21 @@ export interface DocumentMetadata {
   subject: string
   keywords: string[]
   pdfVersion?: '1.4' | '1.7' | '2.0' | 'PDF/A'
+}
+
+export interface PageMetrics {
+  /** Page width in points */
+  width: number
+  /** Page height in points */
+  height: number
+  /** Original source rotation in degrees */
+  rotation: number
+  /** Approximate non-whitespace text character count */
+  textChars?: number
+  /** Ratio of the largest raster image to page area */
+  dominantImageCoverage?: number
+  /** Estimated DPI based on the largest raster image */
+  dominantImageDpi?: number
 }
 
 /**
@@ -59,6 +78,12 @@ export interface PageReference {
   sourceFileId: string
   sourcePageIndex: number // 0-based index in the original file
   rotation: RotationAngle
+  /** Source page width in points (captured on import) */
+  width?: number
+  /** Source page height in points (captured on import) */
+  height?: number
+  /** Optional export-time override for page dimensions */
+  targetDimensions?: { width: number; height: number }
 
   // Grouping
   groupId?: string // specific group/batch ID, defaults to sourceFileId

@@ -92,6 +92,12 @@ const makeSource = (id: string, pageCount: number): SourceFile => ({
   fileSize: pageCount * 1000,
   addedAt: Date.now(),
   color: '#111111',
+  pageMetaData: Array.from({ length: pageCount }, () => ({
+    width: 612,
+    height: 792,
+    rotation: 0,
+  })),
+  isImageSource: false,
 })
 
 const makePages = (sourceId: string, count: number): PageReference[] =>

@@ -1,12 +1,13 @@
 import * as pdfjs from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import type { PDFDocumentProxy, PDFPageProxy, TextContent } from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
 import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import { db } from '@/db/db'
 import type {
   DocumentMetadata,
   FileUploadResult,
+  PageMetrics,
   PageReference,
   PdfOutlineNode,
   SourceFile,
@@ -21,6 +22,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 const pdfDocCache = new Map<string, PDFDocumentProxy>()
 
 const PALETTE = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#06b6d4']
+const POINTS_PER_INCH = 72
 
 function getNextColor(index: number): string {
   return PALETTE[index % PALETTE.length] ?? '#3b82f6'
@@ -74,8 +76,181 @@ function buildDocumentMetadata(info: Record<string, unknown>): DocumentMetadata 
   }
 }
 
+function countTextChars(textContent: TextContent | null): number {
+  if (!textContent) return 0
+  let count = 0
+  for (const item of textContent.items) {
+    if (typeof (item as { str?: string }).str !== 'string') continue
+    count += (item as { str: string }).str.replace(/\s+/g, '').length
+  }
+  return count
+}
+
+function getImageDimensions(value: unknown): { width: number; height: number } | null {
+  if (!value || typeof value !== 'object') return null
+  const width = (value as { width?: unknown }).width
+  const height = (value as { height?: unknown }).height
+  if (typeof width !== 'number' || typeof height !== 'number') return null
+  if (width <= 0 || height <= 0) return null
+  return { width, height }
+}
+
+async function analyzePageScanMetrics(
+  page: PDFPageProxy,
+  pageWidth: number,
+  pageHeight: number,
+): Promise<Pick<PageMetrics, 'textChars' | 'dominantImageCoverage' | 'dominantImageDpi'>> {
+  const [textContent, operatorList] = await Promise.all([
+    page.getTextContent().catch(() => null),
+    page.getOperatorList().catch(() => null),
+  ])
+
+  const textChars = countTextChars(textContent)
+  if (!operatorList || pageWidth <= 0 || pageHeight <= 0) {
+    return { textChars }
+  }
+
+  const pageArea = pageWidth * pageHeight
+  let maxCoverage = 0
+  let maxDpi = 0
+  let ctm: number[] = [1, 0, 0, 1, 0, 0]
+  const stack: number[][] = []
+  const pendingImages = new Map<string, number[][]>()
+
+  const recordImage = (image: { width: number; height: number }, transform: number[]) => {
+    const bounds = [Infinity, Infinity, -Infinity, -Infinity]
+    pdfjs.Util.axialAlignedBoundingBox([0, 0, 1, 1], transform, bounds)
+    const drawnWidth = Math.abs(bounds[2] - bounds[0])
+    const drawnHeight = Math.abs(bounds[3] - bounds[1])
+    if (!Number.isFinite(drawnWidth) || !Number.isFinite(drawnHeight)) return
+    if (drawnWidth <= 0 || drawnHeight <= 0) return
+    const coverage = Math.min(1, (drawnWidth * drawnHeight) / pageArea)
+    const dpiX = image.width / (drawnWidth / POINTS_PER_INCH)
+    const dpiY = image.height / (drawnHeight / POINTS_PER_INCH)
+    const dpi = Math.min(dpiX, dpiY)
+    if (!Number.isFinite(dpi) || dpi <= 0) return
+    if (coverage > maxCoverage) {
+      maxCoverage = coverage
+      maxDpi = dpi
+    }
+  }
+
+  const queueImage = (objId: string, transform: number[]) => {
+    const existing = pendingImages.get(objId)
+    if (existing) {
+      existing.push(transform)
+    } else {
+      pendingImages.set(objId, [transform])
+    }
+  }
+
+  const resolveImageData = (objId: string) =>
+    new Promise<{ width: number; height: number } | null>((resolve) => {
+      const objs = objId.startsWith('g_') ? page.commonObjs : page.objs
+      let settled = false
+      const finish = (data: unknown) => {
+        if (settled) return
+        settled = true
+        resolve(getImageDimensions(data))
+      }
+      try {
+        const data = objs.get(objId, finish)
+        if (data) finish(data)
+      } catch {
+        resolve(null)
+      }
+    })
+
+  for (let i = 0; i < operatorList.fnArray.length; i++) {
+    const fn = operatorList.fnArray[i]
+    const args = operatorList.argsArray[i]
+
+    switch (fn) {
+      case pdfjs.OPS.save:
+        stack.push(ctm.slice())
+        break
+      case pdfjs.OPS.restore:
+        ctm = stack.pop() ?? [1, 0, 0, 1, 0, 0]
+        break
+      case pdfjs.OPS.transform: {
+        if (Array.isArray(args) && args.length >= 6) {
+          const [a, b, c, d, e, f] = args
+          if ([a, b, c, d, e, f].every((value) => typeof value === 'number')) {
+            ctm = pdfjs.Util.transform(ctm, [a, b, c, d, e, f])
+          }
+        }
+        break
+      }
+      case pdfjs.OPS.paintInlineImageXObject: {
+        const image = getImageDimensions(Array.isArray(args) ? args[0] : undefined)
+        if (image) recordImage(image, ctm)
+        break
+      }
+      case pdfjs.OPS.paintInlineImageXObjectGroup: {
+        const [imgData, map] = Array.isArray(args) ? args : []
+        const image = getImageDimensions(imgData)
+        if (image && Array.isArray(map)) {
+          for (const entry of map) {
+            const transform = entry?.transform
+            if (Array.isArray(transform) && transform.length >= 6) {
+              const [a, b, c, d, e, f] = transform
+              if ([a, b, c, d, e, f].every((value) => typeof value === 'number')) {
+                recordImage(image, pdfjs.Util.transform(ctm, [a, b, c, d, e, f]))
+              }
+            }
+          }
+        }
+        break
+      }
+      case pdfjs.OPS.paintImageXObject: {
+        const objId = Array.isArray(args) ? args[0] : undefined
+        if (typeof objId === 'string') {
+          queueImage(objId, ctm.slice())
+        }
+        break
+      }
+      case pdfjs.OPS.paintImageXObjectRepeat: {
+        const [objId, scaleX, scaleY, positions] = Array.isArray(args) ? args : []
+        if (
+          typeof objId === 'string' &&
+          typeof scaleX === 'number' &&
+          typeof scaleY === 'number' &&
+          Array.isArray(positions)
+        ) {
+          for (let j = 0; j < positions.length; j += 2) {
+            const x = positions[j]
+            const y = positions[j + 1]
+            if (typeof x !== 'number' || typeof y !== 'number') continue
+            const repeatTransform: number[] = [scaleX, 0, 0, scaleY, x, y]
+            queueImage(objId, pdfjs.Util.transform(ctm, repeatTransform))
+          }
+        }
+        break
+      }
+      default:
+        break
+    }
+  }
+
+  for (const [objId, transforms] of pendingImages) {
+    const image = await resolveImageData(objId)
+    if (!image) continue
+    for (const transform of transforms) {
+      recordImage(image, transform)
+    }
+  }
+
+  const result: Pick<PageMetrics, 'textChars' | 'dominantImageCoverage' | 'dominantImageDpi'> = {
+    textChars,
+  }
+  if (maxCoverage > 0) result.dominantImageCoverage = maxCoverage
+  if (maxDpi > 0) result.dominantImageDpi = Math.round(maxDpi)
+  return result
+}
+
 export interface LoadPdfFileOptions {
   colorIndex: number
+  isImageSource?: boolean
 }
 
 export interface LoadPdfFilesOptions {
@@ -104,6 +279,38 @@ export async function loadPdfFile(
     const color = getNextColor(options.colorIndex)
     const addedAt = Date.now()
 
+    const groupId = crypto.randomUUID()
+    const pageMetaData: PageMetrics[] = []
+    const pageRefs: PageReference[] = []
+
+    for (let i = 0; i < pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i + 1)
+      const viewport = page.getViewport({ scale: 1 })
+      const pageRotation = (page as { rotate?: number }).rotate
+      const rotation =
+        typeof pageRotation === 'number'
+          ? pageRotation
+          : typeof viewport.rotation === 'number'
+            ? viewport.rotation
+            : 0
+      const metrics: PageMetrics = {
+        width: viewport.width,
+        height: viewport.height,
+        rotation,
+      }
+      Object.assign(metrics, await analyzePageScanMetrics(page, metrics.width, metrics.height))
+      pageMetaData.push(metrics)
+      pageRefs.push({
+        id: crypto.randomUUID(),
+        sourceFileId,
+        sourcePageIndex: i,
+        rotation: ROTATION_DEFAULT_DEGREES,
+        width: metrics.width,
+        height: metrics.height,
+        groupId,
+      })
+    }
+
     await db.files.add({
       id: sourceFileId,
       data: arrayBuffer,
@@ -112,6 +319,8 @@ export async function loadPdfFile(
       pageCount: pdfDoc.numPages,
       addedAt,
       color,
+      pageMetaData,
+      isImageSource: options.isImageSource ?? false,
       outline: outline.length ? outline : undefined,
       metadata: extractedMetadata ?? undefined,
     })
@@ -123,23 +332,13 @@ export async function loadPdfFile(
       fileSize: file.size,
       addedAt,
       color,
+      pageMetaData,
+      isImageSource: options.isImageSource ?? false,
       outline: outline.length ? outline : undefined,
       metadata: extractedMetadata ?? undefined,
     }
 
     pdfDocCache.set(sourceFileId, pdfDoc)
-
-    const groupId = crypto.randomUUID()
-    const pageRefs: PageReference[] = []
-    for (let i = 0; i < pdfDoc.numPages; i++) {
-      pageRefs.push({
-        id: crypto.randomUUID(),
-        sourceFileId,
-        sourcePageIndex: i,
-        rotation: ROTATION_DEFAULT_DEGREES,
-        groupId,
-      })
-    }
 
     return { success: true, sourceFile, pageRefs }
   } catch (error) {
@@ -161,12 +360,12 @@ export async function loadPdfFiles(
 
   for (const file of Array.from(files)) {
     if (file.type === 'application/pdf') {
-      results.push(await loadPdfFile(file, { colorIndex }))
+      results.push(await loadPdfFile(file, { colorIndex, isImageSource: false }))
       colorIndex++
     } else if (file.type.startsWith('image/')) {
       const conversion = await convertImageToPdf(file)
       if (conversion.success && conversion.file) {
-        results.push(await loadPdfFile(conversion.file, { colorIndex }))
+        results.push(await loadPdfFile(conversion.file, { colorIndex, isImageSource: true }))
         colorIndex++
       } else {
         results.push({

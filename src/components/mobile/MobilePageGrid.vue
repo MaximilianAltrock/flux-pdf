@@ -33,6 +33,7 @@ const isMove = computed(() => mode.value === 'move')
 
 const selectedCount = computed(() => props.state.document.selectedCount)
 const selectedIds = computed(() => props.state.document.selectedIds)
+const problemsByPageId = computed(() => props.state.preflight.problemsByPageId.value)
 
 // Mobile-specific state
 const columnCount = ref(2)
@@ -161,6 +162,19 @@ function handleDropMarkerTap(index: number) {
 
 function handleSplitMarkerTap(index: number) {
   props.actions.handleSplitGroup(index)
+}
+
+function getProblemSeverity(pageId: string) {
+  const problems = problemsByPageId.value.get(pageId) ?? []
+  if (problems.some((p) => p.severity === 'error')) return 'error'
+  if (problems.some((p) => p.severity === 'warning')) return 'warning'
+  if (problems.some((p) => p.severity === 'info')) return 'info'
+  return undefined
+}
+
+function getProblemMessages(pageId: string) {
+  const problems = problemsByPageId.value.get(pageId) ?? []
+  return problems.map((p) => p.message)
 }
 
 // === Pinch Zoom ===
@@ -294,6 +308,8 @@ useEventListener(document, 'touchend', handlePinchEnd)
             :is-start-of-file="false"
             :is-razor-active="false"
             :can-split="false"
+            :problem-severity="getProblemSeverity(pageRef.id)"
+            :problem-messages="getProblemMessages(pageRef.id)"
             class="pointer-events-none"
           />
         </div>

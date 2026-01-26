@@ -6,7 +6,7 @@
  */
 
 import { watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 // Composables
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
@@ -55,6 +55,15 @@ watch(
   },
   { immediate: true },
 )
+
+onBeforeRouteLeave(async () => {
+  actions.commitProjectTitle()
+  try {
+    await projectManager.persistActiveProject()
+  } catch (error) {
+    console.error('Failed to persist project before leaving:', error)
+  }
+})
 </script>
 <template>
   <div

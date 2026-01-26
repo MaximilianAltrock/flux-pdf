@@ -20,6 +20,10 @@ const { mockGetDocument, createMockPdfDoc } = vi.hoisted(() => {
     }),
     getDestination: vi.fn().mockResolvedValue([1]),
     getPageIndex: vi.fn().mockResolvedValue(0),
+    getPage: vi.fn().mockResolvedValue({
+      rotate: 0,
+      getViewport: vi.fn().mockReturnValue({ width: 612, height: 792, rotation: 0 }),
+    }),
   })
   return { mockGetDocument, createMockPdfDoc }
 })

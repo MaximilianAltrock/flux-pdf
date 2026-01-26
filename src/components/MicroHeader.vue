@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { FilePlus, HelpCircle, MoreVertical } from 'lucide-vue-next'
+import { FilePlus, HelpCircle, MoreVertical, RotateCcw, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import {
   DropdownMenu,
@@ -58,6 +58,8 @@ const emit = defineEmits<{
   (e: 'zoom-in'): void
   (e: 'zoom-out'): void
   (e: 'new-project'): void
+  (e: 'clear-project'): void
+  (e: 'delete-project'): void
   (e: 'show-help'): void
 }>()
 </script>
@@ -90,6 +92,14 @@ const emit = defineEmits<{
           <DropdownMenuItem @select="emit('new-project')" class="gap-2">
             <FilePlus class="w-4 h-4" />
             <span class="font-medium">New Project</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="emit('clear-project')" class="gap-2">
+            <RotateCcw class="w-4 h-4" />
+            <span class="font-medium">Clear Project</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="emit('delete-project')" variant="destructive" class="gap-2">
+            <Trash2 class="w-4 h-4" />
+            <span class="font-medium">Delete Project</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem @select="emit('show-help')" class="gap-2">

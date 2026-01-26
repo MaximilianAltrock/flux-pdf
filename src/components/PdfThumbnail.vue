@@ -2,7 +2,7 @@
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
-import { RotateCw, Trash2, Scissors } from 'lucide-vue-next'
+import { RotateCw, Trash2, Scissors, AlertTriangle } from 'lucide-vue-next'
 import type { PageReference } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,8 @@ const props = defineProps<{
   isRazorActive?: boolean
   canSplit?: boolean
   sourceColor?: string
+  problemSeverity?: 'error' | 'warning' | 'info'
+  problemMessages?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -40,6 +42,13 @@ const hasBeenVisible = ref(false)
 const renderRequestId = ref(0)
 
 const sourceColor = computed(() => props.sourceColor || 'gray')
+const problemCount = computed(() => props.problemMessages?.length ?? 0)
+
+const problemClass = computed(() => {
+  if (props.problemSeverity === 'error') return 'bg-destructive/15 text-destructive'
+  if (props.problemSeverity === 'warning') return 'bg-amber-500/15 text-amber-600'
+  return 'bg-muted text-muted-foreground'
+})
 
 const cssWidth = computed(() => (props.fixedSize ? `${props.width ?? 220}px` : '100%'))
 const renderTargetWidth = computed(() => props.width ?? 300)
@@ -150,6 +159,23 @@ function handleRetry() {
           'w-full': !fixedSize,
         }"
       >
+        <Tooltip v-if="problemCount > 0">
+          <TooltipTrigger as-child>
+            <div
+              class="absolute top-2 left-2 z-20 rounded-sm px-1.5 py-1 text-[10px] font-semibold flex items-center gap-1 shadow-sm border border-border/60"
+              :class="problemClass"
+            >
+              <AlertTriangle class="w-3 h-3" />
+              <span>{{ problemCount }}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" class="max-w-[240px] text-xs leading-snug">
+            <div class="space-y-1">
+              <p v-for="msg in props.problemMessages" :key="msg">{{ msg }}</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
         <!-- Source Strip (Integrated onto the left edge of the paper) -->
         <div
           class="absolute inset-y-0 left-0 w-1.5 z-10 opacity-90 pointer-events-none"

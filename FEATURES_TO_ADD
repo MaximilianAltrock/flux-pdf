@@ -77,6 +77,201 @@ The Flux Solution: Automated Quality Control (Linting).
 
         A simple computed property compares them and flags outliers.
 
+This is the feature that solidifies FluxPDF as an Engineering Tool rather than just a PDF viewer.
+
+In professional printing and publishing software (like Adobe InDesign), "Preflight" is a standard term. It means "Checking the document for errors before it goes to the printer."
+
+Here is the in-depth breakdown of how to build the FluxPDF Preflight Linter.
+
+1. The Concept: "Linting for Documents"
+
+Just as ESLint checks your code for bugs before you commit, the Flux Linter checks your PDF for layout inconsistencies before you export.
+
+The Problem it solves: "Frankenstein PDFs."
+
+    User merges a signed contract (Scanned Image, A4) with a digital cover letter (Word Export, US Letter).
+
+    Result: When printed, the printer jams or shrinks pages randomly. The user doesn't notice until it's too late.
+
+The Solution:
+Passive, real-time analysis of the pageMap. If Page 1 is A4 and Page 2 is US Letter, a Warning appears in the status bar. 2. The User Experience (UX)
+
+The UI should mimic the "Problems" tab in VS Code.
+A. The Status Bar Indicator
+
+Located in the footer or the top-right toolbar.
+
+    Clean State: [✓ Preflight Passed] (Green text).
+
+    Dirty State: [⚠ 3 Problems] (Amber text).
+
+B. The "Problems" Panel
+
+When the user clicks the warning indicator, a bottom drawer slides up (like the terminal in VS Code).
+
+    List Item: "Inconsistent Page Sizes"
+
+        Detail: "Page 3 (8.5 x 11 in) does not match the majority size (A4)."
+
+        Action Button (The Quick Fix): [Fix: Scale to A4]
+
+C. Visual Feedback on Grid
+
+The grid thumbnail for the problematic page gets a tiny yellow triangle in the corner. Hovering it shows the specific error. 3. The Logic: What are we checking?
+
+We don't need AI. We just need geometry. Here are the 4 MVP rules:
+Rule 1: Dimension Consistency (The "A4 vs Letter" Check)
+
+    Logic: Calculate the "Mode" (most common) width/height in the document.
+
+    Flag: Any page that deviates by more than 5% from the Mode.
+
+    Fix: "Scale page to match document."
+
+Rule 2: Orientation Consistency
+
+    Logic: Check if the document is primarily Portrait or Landscape.
+
+    Flag: A Landscape page in a 90% Portrait document.
+
+    Fix: "Rotate 90°". (Note: Sometimes mixed orientation is intentional, so this is a Warning, not an Error).
+
+Rule 3: File Size / Complexity
+
+    Logic: Check the fileSize of the source file divided by page count.
+
+    Flag: If one page is estimated to be > 5MB (likely a raw uncompressed photo).
+
+    Fix: "Rasterize & Compress Page."
+
+Rule 4: Metadata Health
+
+    Flag: If Title is "Untitled" or "Microsoft Word - Document1.docx".
+
+    Fix: "Edit Metadata."
+
+4. Technical Implementation
+
+This fits perfectly into your composables architecture. It is a read-only analyzer of the store.
+Step 1: Define the Types
+code TypeScript
+
+// src/types/linter.ts
+
+export type Severity = 'error' | 'warning' | 'info'
+
+export interface LintRule {
+id: string
+label: string
+check: (pages: PageReference[]) => LintResult[]
+}
+
+export interface LintResult {
+ruleId: string
+severity: Severity
+message: string
+pageIds: string[] // Which pages caused this?
+fixAction?: () => void // The Command to run to fix it
+}
+
+Step 2: The Linter Composable
+
+Create src/composables/usePreflight.ts. This watches the pages array and re-runs logic instantly.
+code TypeScript
+
+import { computed } from 'vue'
+import { useDocumentStore } from '@/stores/document'
+import type { LintResult, LintRule } from '@/types/linter'
+
+export function usePreflight() {
+const store = useDocumentStore()
+
+// --- Helper: Get Dimensions ---
+// In a real app, you'd store page width/height in the PageReference
+// during the import phase (usePdfManager).
+// For now, let's assume PageReference has width/height properties.
+
+const rules: LintRule[] = [
+{
+id: 'size-mismatch',
+label: 'Inconsistent Page Sizes',
+check: (pages) => {
+if (pages.length < 2) return []
+
+        // 1. Find the most common width (The "Standard")
+        const widths = pages.map(p => Math.round(p.width || 0))
+        const modeWidth = getMode(widths)
+
+        // 2. Find outliers
+        const outliers = pages.filter(p => {
+          const w = Math.round(p.width || 0)
+          return Math.abs(w - modeWidth) > 10 // 10pt tolerance
+        })
+
+        if (outliers.length === 0) return []
+
+        return [{
+          ruleId: 'size-mismatch',
+          severity: 'warning',
+          message: `${outliers.length} pages have different sizes than the rest of the document.`,
+          pageIds: outliers.map(p => p.id),
+          fixAction: () => console.log('Trigger Resize Command') // TODO: Implement Command
+        }]
+      }
+    },
+    // ... Add Orientation Rule here
+
+]
+
+const problems = computed(() => {
+// Only run if we have pages
+if (store.pageCount === 0) return []
+
+    return rules.flatMap(rule => rule.check(store.pages))
+
+})
+
+const problemCount = computed(() => problems.value.length)
+const isHealthy = computed(() => problemCount.value === 0)
+
+return {
+problems,
+problemCount,
+isHealthy
+}
+}
+
+// Utility
+function getMode(arr: number[]): number {
+return arr.sort((a,b) =>
+arr.filter(v => v===a).length - arr.filter(v => v===b).length
+).pop() || 0
+}
+
+Step 3: Prerequisites (Data Update)
+
+For this to work, you need to know the Dimensions of the pages. Currently, your PageReference only stores IDs.
+
+Update usePdfManager.ts to read the MediaBox during import.
+code TypeScript
+
+// src/composables/usePdfManager.ts
+
+// Inside loadPdfFile...
+for (let i = 0; i < pdfDoc.numPages; i++) {
+const page = await pdfDoc.getPage(i + 1) // pdfjs
+const viewport = page.getViewport({ scale: 1 }) // Get natural dimensions
+
+pageRefs.push({
+id: crypto.randomUUID(),
+// ...
+// NEW DATA:
+width: viewport.width,
+height: viewport.height,
+originalRotation: viewport.rotation
+})
+}
+
 4. "The Redactor" (Privacy Mode)
 
 Target: HR, Legal, Finance.

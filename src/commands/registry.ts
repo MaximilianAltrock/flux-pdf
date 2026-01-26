@@ -12,6 +12,7 @@ export const CommandType = {
   DUPLICATE: 'DuplicatePages',
   REORDER: 'ReorderPages',
   ROTATE: 'RotatePages',
+  RESIZE: 'ResizePages',
   SPLIT: 'SplitGroup',
   REMOVE_SOURCE: 'RemoveSource',
   BATCH: 'BatchCommand',

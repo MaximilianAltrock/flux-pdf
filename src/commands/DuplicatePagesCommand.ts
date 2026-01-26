@@ -94,6 +94,11 @@ export class DuplicatePagesCommand extends BaseCommand {
         sourceFileId: page.sourceFileId,
         sourcePageIndex: page.sourcePageIndex,
         rotation: page.rotation,
+        width: page.width,
+        height: page.height,
+        targetDimensions: page.targetDimensions
+          ? { ...page.targetDimensions }
+          : undefined,
         groupId: page.groupId,
       }
 

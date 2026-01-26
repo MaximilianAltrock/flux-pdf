@@ -23,6 +23,7 @@ export function useAppState() {
   )
 
   const currentTool = ref<'select' | 'razor'>('select')
+  const inspectorTab = ref<'structure' | 'metadata' | 'security'>('structure')
 
   // ============================================
   // File Input Reference
@@ -33,6 +34,7 @@ export function useAppState() {
   // Desktop State
   // ============================================
   const showCommandPalette = ref(false)
+  const showPreflightPanel = ref(false)
 
   // ============================================
   // Mobile State
@@ -69,7 +71,8 @@ export function useAppState() {
       showPreviewModal.value ||
       showDiffModal.value ||
       showCommandPalette.value ||
-      showSettingsSheet.value,
+      showSettingsSheet.value ||
+      showPreflightPanel.value,
   )
 
   // ============================================
@@ -96,6 +99,10 @@ export function useAppState() {
     currentTool.value = tool
   }
 
+  function setInspectorTab(tab: 'structure' | 'metadata' | 'security') {
+    inspectorTab.value = tab
+  }
+
   function blurActiveElement() {
     if (typeof document === 'undefined') return
     const el = document.activeElement as HTMLElement | null
@@ -115,6 +122,18 @@ export function useAppState() {
     if (!isMobile.value) {
       showCommandPalette.value = !showCommandPalette.value
     }
+  }
+
+  function openPreflightPanel() {
+    showPreflightPanel.value = true
+  }
+
+  function closePreflightPanel() {
+    showPreflightPanel.value = false
+  }
+
+  function togglePreflightPanel() {
+    showPreflightPanel.value = !showPreflightPanel.value
   }
 
   function openExportModal(selectedOnly = false) {
@@ -233,12 +252,14 @@ export function useAppState() {
     zoom,
     zoomPercentage,
     currentTool,
+    inspectorTab,
 
     // Refs
     fileInputRef,
 
     // Desktop State
     showCommandPalette,
+    showPreflightPanel,
 
     // Mobile State
     mobileSelectionMode,
@@ -264,6 +285,9 @@ export function useAppState() {
     openCommandPalette,
     closeCommandPalette,
     toggleCommandPalette,
+    openPreflightPanel,
+    closePreflightPanel,
+    togglePreflightPanel,
 
     // UI Document Actions
     setLoading,
@@ -271,6 +295,7 @@ export function useAppState() {
     zoomIn,
     zoomOut,
     setCurrentTool,
+    setInspectorTab,
 
     // Export Modal Actions
     openExportModal,

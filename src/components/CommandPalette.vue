@@ -71,6 +71,32 @@ const allCommands = computed<CommandItemData[]>(() => [
     keywords: ['clear', 'reset', 'workspace', 'start over'],
   },
   {
+    id: 'clear-project',
+    label: 'Clear Project',
+    shortcut: '',
+    icon: RotateCcw,
+    action: () => {
+      emit('update:open', false)
+      void props.actions.handleClearProject()
+    },
+    enabled: () => true,
+    category: 'File',
+    keywords: ['reset', 'wipe', 'empty', 'workspace'],
+  },
+  {
+    id: 'delete-project',
+    label: 'Delete Project',
+    shortcut: '',
+    icon: Trash2,
+    action: () => {
+      emit('update:open', false)
+      void props.actions.handleDeleteProject()
+    },
+    enabled: () => true,
+    category: 'File',
+    keywords: ['remove', 'destroy', 'project', 'dashboard'],
+  },
+  {
     id: 'add-files',
     label: 'Add PDF files',
     shortcut: '',

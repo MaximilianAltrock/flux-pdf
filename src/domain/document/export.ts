@@ -157,6 +157,33 @@ export function splitPagesIntoSegments(pages: PageEntry[]): PageReference[][] {
   return segments
 }
 
+function applyTargetDimensions(
+  pdfPage: PDFPage,
+  target?: { width: number; height: number } | null,
+): void {
+  if (!target) return
+  if (target.width <= 0 || target.height <= 0) return
+
+  const current = pdfPage.getSize()
+  if (current.width <= 0 || current.height <= 0) return
+
+  const scale = Math.min(target.width / current.width, target.height / current.height)
+
+  pdfPage.setSize(target.width, target.height)
+
+  if (scale !== 1) {
+    pdfPage.scaleContent(scale, scale)
+    pdfPage.scaleAnnotations(scale, scale)
+  }
+
+  const xOffset = (target.width - current.width * scale) / 2
+  const yOffset = (target.height - current.height * scale) / 2
+
+  if (xOffset !== 0 || yOffset !== 0) {
+    pdfPage.translateContent(xOffset, yOffset)
+  }
+}
+
 /**
  * Generates a Uint8Array PDF from a list of PageReferences.
  */
@@ -224,6 +251,10 @@ export async function generateRawPdf(
       if (!item || !pdfPage) continue
 
       const { pageRef, finalIndex } = item
+
+      if (pageRef.targetDimensions) {
+        applyTargetDimensions(pdfPage, pageRef.targetDimensions)
+      }
 
       if (pageRef.rotation !== 0) {
         const currentRotation = pdfPage.getRotation().angle

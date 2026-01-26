@@ -57,6 +57,14 @@ describe('commandRegistry.deserialize', () => {
       fileSize: 123,
       addedAt: Date.now(),
       color: '#000000',
+      pageMetaData: [
+        {
+          width: 612,
+          height: 792,
+          rotation: 0,
+        },
+      ],
+      isImageSource: false,
     }
 
     const pages: PageReference[] = [
