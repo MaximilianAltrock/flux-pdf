@@ -1,6 +1,7 @@
 import * as pdfjs from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { PDFDocumentProxy, PDFPageProxy, TextContent } from 'pdfjs-dist'
+import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
+import type { TextContent } from 'pdfjs-dist/types/src/display/api'
 import { PDFDocument } from 'pdf-lib'
 import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import { db } from '@/db/db'
@@ -118,7 +119,7 @@ async function analyzePageScanMetrics(
   const pendingImages = new Map<string, number[][]>()
 
   const recordImage = (image: { width: number; height: number }, transform: number[]) => {
-    const bounds = [Infinity, Infinity, -Infinity, -Infinity]
+    const bounds: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity]
     pdfjs.Util.axialAlignedBoundingBox([0, 0, 1, 1], transform, bounds)
     const drawnWidth = Math.abs(bounds[2] - bounds[0])
     const drawnHeight = Math.abs(bounds[3] - bounds[1])
