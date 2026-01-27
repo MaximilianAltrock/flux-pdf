@@ -1,18 +1,41 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ROTATION_DELTA_DEGREES } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import type { PageReference, SourceFile } from '@/types'
-import type { LintResult, PreflightFix, ResizeFixTarget } from '@/types/linter'
+import {
+  type LintResult,
+  type PreflightFix,
+  type ResizeFixTarget,
+  PreflightRuleId,
+  PreflightFixId,
+} from '@/types/linter'
 
+// === CONSTANTS ===
 const POINTS_PER_INCH = 72
 const SIZE_TOLERANCE = 0.05
 const ORIENTATION_DOMINANCE = 0.9
+
+// Thresholds for Heuristics & Analysis
 const HEAVY_PAGE_BYTES = 10 * 1024 * 1024
 const LOW_QUALITY_BYTES = 40 * 1024
 const LOW_QUALITY_DPI = 150
 const SCAN_IMAGE_DOMINANCE = 0.7
 const SCAN_IMAGE_FULL_COVERAGE = 0.9
 const SCAN_TEXT_CHAR_THRESHOLD = 40
+
+const GENERIC_TITLES = new Set([
+  'untitled',
+  'untitled project',
+  'document1',
+  'document1.docx',
+  'microsoft word - document1.docx',
+  'scan',
+  'new document',
+  'print',
+])
+
+// === SHARED STATE ===
+const ignoredRules = ref<Set<string>>(new Set())
 
 type DisplaySize = { width: number; height: number }
 type Orientation = 'portrait' | 'landscape'
@@ -55,13 +78,7 @@ function buildSizeMismatchRule(pages: PageReference[]): LintResult[] {
       const short = Math.min(display.width, display.height)
       const long = Math.max(display.width, display.height)
       const key = `${Math.round(short)}x${Math.round(long)}`
-      return {
-        pageId: page.id,
-        display,
-        short,
-        long,
-        key,
-      }
+      return { pageId: page.id, display, short, long, key }
     })
     .filter((entry): entry is NonNullable<typeof entry> => !!entry)
 
@@ -73,12 +90,7 @@ function buildSizeMismatchRule(pages: PageReference[]): LintResult[] {
   >()
 
   for (const entry of entries) {
-    const bucket = buckets.get(entry.key) ?? {
-      count: 0,
-      sumShort: 0,
-      sumLong: 0,
-      pageIds: [],
-    }
+    const bucket = buckets.get(entry.key) ?? { count: 0, sumShort: 0, sumLong: 0, pageIds: [] }
     bucket.count += 1
     bucket.sumShort += entry.short
     bucket.sumLong += entry.long
@@ -87,8 +99,12 @@ function buildSizeMismatchRule(pages: PageReference[]): LintResult[] {
   }
 
   let primaryKey: string | null = null
-  let primaryBucket: { count: number; sumShort: number; sumLong: number; pageIds: string[] } | null =
-    null
+  let primaryBucket: {
+    count: number
+    sumShort: number
+    sumLong: number
+    pageIds: string[]
+  } | null = null
 
   for (const [key, bucket] of buckets) {
     if (!primaryBucket || bucket.count > primaryBucket.count) {
@@ -121,15 +137,16 @@ function buildSizeMismatchRule(pages: PageReference[]): LintResult[] {
   })
 
   const label = formatSizeLabel(primaryShort, primaryLong)
+
   const fix: PreflightFix = {
-    id: 'resize',
+    id: PreflightFixId.RESIZE,
     label: `Resize to ${label}`,
     targets,
   }
 
   return [
     {
-      ruleId: 'size-mismatch',
+      ruleId: PreflightRuleId.SIZE,
       severity: 'warning',
       message: `${outliers.length} page${outliers.length === 1 ? '' : 's'} deviate from the majority size (${label}).`,
       pageIds: outliers.map((entry) => entry.pageId),
@@ -143,10 +160,7 @@ function buildOrientationRule(pages: PageReference[]): LintResult[] {
     .map((page) => {
       const display = getDisplaySize(page)
       if (!display) return null
-      return {
-        pageId: page.id,
-        orientation: getOrientation(display),
-      }
+      return { pageId: page.id, orientation: getOrientation(display) }
     })
     .filter((entry): entry is NonNullable<typeof entry> => !!entry)
 
@@ -160,10 +174,8 @@ function buildOrientationRule(pages: PageReference[]): LintResult[] {
     { portrait: 0, landscape: 0 } as Record<Orientation, number>,
   )
 
-  const dominant =
-    counts.portrait >= counts.landscape ? 'portrait' : 'landscape'
-  const dominantCount = counts[dominant]
-  const ratio = dominantCount / entries.length
+  const dominant = counts.portrait >= counts.landscape ? 'portrait' : 'landscape'
+  const ratio = counts[dominant] / entries.length
 
   if (ratio < ORIENTATION_DOMINANCE) return []
 
@@ -172,14 +184,12 @@ function buildOrientationRule(pages: PageReference[]): LintResult[] {
 
   return [
     {
-      ruleId: 'orientation-mismatch',
+      ruleId: PreflightRuleId.ORIENTATION,
       severity: 'warning',
-      message: `Mixed orientations detected. ${outliers.length} page${
-        outliers.length === 1 ? '' : 's'
-      } differ from the dominant ${dominant} layout.`,
+      message: `Mixed orientations detected. ${outliers.length} page${outliers.length === 1 ? '' : 's'} differ from the dominant ${dominant} layout.`,
       pageIds: outliers.map((entry) => entry.pageId),
       fix: {
-        id: 'rotate',
+        id: PreflightFixId.ROTATE,
         label: `Rotate to ${dominant}`,
         rotation: ROTATION_DELTA_DEGREES.RIGHT,
       },
@@ -197,29 +207,36 @@ function buildResolutionRules(
   for (const page of pages) {
     const source = sources.get(page.sourceFileId)
     if (!source) continue
+
     const avgSize = source.fileSize / Math.max(1, source.pageCount)
 
-    if (avgSize > HEAVY_PAGE_BYTES) {
-      heavyPageIds.push(page.id)
-    }
+    if (avgSize > HEAVY_PAGE_BYTES) heavyPageIds.push(page.id)
 
+    // Check for Deep Analysis Metrics (Production Grade)
     const metrics = source.pageMetaData?.[page.sourcePageIndex]
-    const textChars = metrics?.textChars ?? 0
-    const coverage = metrics?.dominantImageCoverage ?? 0
-    const dpi = metrics?.dominantImageDpi
-    const isImageDominant = coverage >= SCAN_IMAGE_DOMINANCE
-    const isFullPageImage = coverage >= SCAN_IMAGE_FULL_COVERAGE
-    const hasLowText = textChars <= SCAN_TEXT_CHAR_THRESHOLD
-    const isScanLike = isImageDominant && (hasLowText || isFullPageImage)
+    const dpi = metrics?.dominantImageDpi // Optional, might be undefined
 
-    if (isScanLike) {
-      if (typeof dpi === 'number') {
-        if (dpi < LOW_QUALITY_DPI) lowQualityPageIds.push(page.id)
-      } else if (avgSize < LOW_QUALITY_BYTES) {
+    if (metrics) {
+      // Use detailed analysis if available
+      const textChars = metrics.textChars ?? 0
+      const coverage = metrics.dominantImageCoverage ?? 0
+      const isImageDominant = coverage >= SCAN_IMAGE_DOMINANCE
+      const isFullPageImage = coverage >= SCAN_IMAGE_FULL_COVERAGE
+      const hasLowText = textChars <= SCAN_TEXT_CHAR_THRESHOLD
+      const isScanLike = isImageDominant && (hasLowText || isFullPageImage)
+
+      if (isScanLike) {
+        if (typeof dpi === 'number') {
+          if (dpi < LOW_QUALITY_DPI) lowQualityPageIds.push(page.id)
+        } else if (avgSize < LOW_QUALITY_BYTES) {
+          lowQualityPageIds.push(page.id)
+        }
+      }
+    } else {
+      // Fallback Heuristic (MVP / No Analysis)
+      if (source.isImageSource && avgSize < LOW_QUALITY_BYTES) {
         lowQualityPageIds.push(page.id)
       }
-    } else if (!metrics && source.isImageSource && avgSize < LOW_QUALITY_BYTES) {
-      lowQualityPageIds.push(page.id)
     }
   }
 
@@ -227,7 +244,7 @@ function buildResolutionRules(
 
   if (heavyPageIds.length > 0) {
     results.push({
-      ruleId: 'heavy-pages',
+      ruleId: PreflightRuleId.HEAVY,
       severity: 'warning',
       message: `Heavy pages detected (${heavyPageIds.length}). Printing may be slow.`,
       pageIds: heavyPageIds,
@@ -236,7 +253,7 @@ function buildResolutionRules(
 
   if (lowQualityPageIds.length > 0) {
     results.push({
-      ruleId: 'low-quality',
+      ruleId: PreflightRuleId.LOW_QUALITY,
       severity: 'warning',
       message: `Potential low-quality scans detected (${lowQualityPageIds.length}).`,
       pageIds: lowQualityPageIds,
@@ -251,30 +268,23 @@ function buildMetadataRule(title: string): LintResult[] {
   if (!normalized) {
     return [
       {
-        ruleId: 'metadata-title',
+        ruleId: PreflightRuleId.METADATA,
         severity: 'warning',
         message: 'Document title is empty. Add metadata before exporting.',
         pageIds: [],
-        fix: { id: 'edit-metadata', label: 'Edit metadata' },
+        fix: { id: PreflightFixId.EDIT_METADATA, label: 'Edit metadata' },
       },
     ]
   }
 
-  const genericTitles = new Set([
-    'untitled',
-    'untitled project',
-    'document1.docx',
-    'microsoft word - document1.docx',
-  ])
-
-  if (genericTitles.has(normalized)) {
+  if (GENERIC_TITLES.has(normalized)) {
     return [
       {
-        ruleId: 'metadata-title',
+        ruleId: PreflightRuleId.METADATA,
         severity: 'warning',
         message: `Document title looks generic ("${title.trim()}"). Consider updating metadata.`,
         pageIds: [],
-        fix: { id: 'edit-metadata', label: 'Edit metadata' },
+        fix: { id: PreflightFixId.EDIT_METADATA, label: 'Edit metadata' },
       },
     ]
   }
@@ -285,8 +295,17 @@ function buildMetadataRule(title: string): LintResult[] {
 export function usePreflight() {
   const store = useDocumentStore()
 
+  function ignoreRule(ruleId: string) {
+    ignoredRules.value.add(ruleId)
+  }
+
+  function resetIgnoredRules() {
+    ignoredRules.value.clear()
+  }
+
   const problems = computed<LintResult[]>(() => {
     const results: LintResult[] = []
+    // Cast strictly if store type inference is loose
     const pages = store.contentPages as PageReference[]
 
     if (pages.length > 0) {
@@ -296,7 +315,7 @@ export function usePreflight() {
       results.push(...buildMetadataRule(store.metadata.title))
     }
 
-    return results
+    return results.filter((p) => !ignoredRules.value.has(p.ruleId))
   })
 
   const problemsByPageId = computed(() => {
@@ -319,5 +338,8 @@ export function usePreflight() {
     problemsByPageId,
     problemCount,
     isHealthy,
+    ignoreRule,
+    resetIgnoredRules,
+    ignoredRules,
   }
 }
