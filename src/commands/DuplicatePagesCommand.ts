@@ -5,15 +5,6 @@ import type { PageReference } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
 /**
- * Payload structure for serialization
- */
-interface DuplicatePagesPayload {
-  id: string
-  sourcePageIds: string[]
-  createdPageIds: string[]
-}
-
-/**
  * Command to duplicate one or more pages
  *
  * Duplicates are inserted immediately after their source pages.
@@ -33,12 +24,7 @@ export class DuplicatePagesCommand extends BaseCommand {
    */
   private createdPageIds: string[] = []
 
-  constructor(
-    sourcePageIds: string[],
-    id?: string,
-    createdPageIds?: string[],
-    createdAt?: number,
-  ) {
+  constructor(sourcePageIds: string[], id?: string, createdPageIds?: string[], createdAt?: number) {
     super(id, createdAt)
 
     // Validate inputs
@@ -46,8 +32,10 @@ export class DuplicatePagesCommand extends BaseCommand {
       throw new Error('DuplicatePagesCommand requires at least one source page ID')
     }
 
-    this.sourcePageIds = [...sourcePageIds] // Defensive copy
-    this.name = BaseCommand.formatName('Duplicate', sourcePageIds.length)
+    // TODO: Move defensive copying to store layer
+    this.sourcePageIds = [...sourcePageIds]
+    this.name =
+      sourcePageIds.length === 1 ? 'Duplicate page' : `Duplicate ${sourcePageIds.length} pages`
 
     // Restore created IDs if provided (from deserialization)
     if (createdPageIds) {
@@ -89,6 +77,7 @@ export class DuplicatePagesCommand extends BaseCommand {
         ? this.createdPageIds[this.createdPageIds.length - 1 - reuseIndex]!
         : crypto.randomUUID()
 
+      // TODO: Move defensive copying to store layer
       const duplicate: PageReference = {
         id: newId,
         sourceFileId: page.sourceFileId,
@@ -96,9 +85,7 @@ export class DuplicatePagesCommand extends BaseCommand {
         rotation: page.rotation,
         width: page.width,
         height: page.height,
-        targetDimensions: page.targetDimensions
-          ? { ...page.targetDimensions }
-          : undefined,
+        targetDimensions: page.targetDimensions ? { ...page.targetDimensions } : undefined,
         groupId: page.groupId,
       }
 
@@ -129,19 +116,14 @@ export class DuplicatePagesCommand extends BaseCommand {
     }
   }
 
-  /**
-   * Reconstruct command from serialized data
-   */
   static deserialize(data: SerializedCommand): DuplicatePagesCommand {
-    const payload = data.payload as unknown as DuplicatePagesPayload
-    return new DuplicatePagesCommand(
-      payload.sourcePageIds,
-      payload.id,
-      payload.createdPageIds,
-      data.timestamp,
-    )
+    const { id, sourcePageIds, createdPageIds } = data.payload as {
+      id: string
+      sourcePageIds: string[]
+      createdPageIds: string[]
+    }
+    return new DuplicatePagesCommand(sourcePageIds, id, createdPageIds, data.timestamp)
   }
 }
 
-// Self-register with the command registry
 registerCommand(CommandType.DUPLICATE, DuplicatePagesCommand)

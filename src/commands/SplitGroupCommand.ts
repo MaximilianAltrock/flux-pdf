@@ -5,15 +5,6 @@ import type { DividerReference } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
 /**
- * Payload structure for serialization
- */
-interface SplitGroupPayload {
-  id: string
-  index: number
-  divider: DividerReference
-}
-
-/**
  * Command to split the document at a specific position
  *
  * Inserts a virtual "divider" page that marks a document boundary.
@@ -55,6 +46,7 @@ export class SplitGroupCommand extends BaseCommand {
 
   execute(): void {
     const store = useDocumentStore()
+    // TODO: Move defensive copying to store layer
     store.insertPages(this.index, [{ ...this.divider }])
   }
 
@@ -66,18 +58,19 @@ export class SplitGroupCommand extends BaseCommand {
   protected getPayload(): Record<string, unknown> {
     return {
       index: this.index,
+      // TODO: Move defensive copying to store layer
       divider: { ...this.divider },
     }
   }
 
-  /**
-   * Reconstruct command from serialized data
-   */
   static deserialize(data: SerializedCommand): SplitGroupCommand {
-    const payload = data.payload as unknown as SplitGroupPayload
-    return new SplitGroupCommand(payload.index, payload.id, payload.divider, data.timestamp)
+    const { id, index, divider } = data.payload as {
+      id: string
+      index: number
+      divider: DividerReference
+    }
+    return new SplitGroupCommand(index, id, divider, data.timestamp)
   }
 }
 
-// Self-register with the command registry
 registerCommand(CommandType.SPLIT, SplitGroupCommand)

@@ -90,7 +90,7 @@ export const commandRegistry = new CommandRegistry()
  * Use at the bottom of each command file:
  *
  * @example
- * registerCommand(CommandType.ROTATE, RotatePagesCommand)
+ * registerCommand(RotatePagesCommand.TYPE, RotatePagesCommand)
  */
 export function registerCommand(type: string, constructor: CommandConstructor): void {
   commandRegistry.register(type, constructor)

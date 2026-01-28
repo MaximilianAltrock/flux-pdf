@@ -5,15 +5,6 @@ import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 
 /**
- * Payload structure for serialization
- */
-interface RotatePagesPayload {
-  id: string
-  pageIds: string[]
-  degrees: RotationDelta
-}
-
-/**
  * Command to rotate one or more pages
  *
  * Rotation is applied incrementally (adds to existing rotation)
@@ -42,11 +33,15 @@ export class RotatePagesCommand extends BaseCommand {
       )
     }
 
-    this.pageIds = [...pageIds] // Defensive copy
+    // TODO: Move defensive copying to store layer
+    this.pageIds = [...pageIds]
     this.degrees = degrees
 
     const direction = degrees > 0 ? 'right' : 'left'
-    this.name = BaseCommand.formatName(`Rotate ${direction}`, pageIds.length)
+    this.name =
+      pageIds.length === 1
+        ? `Rotate ${direction} page`
+        : `Rotate ${direction} ${pageIds.length} pages`
   }
 
   execute(): void {
@@ -74,14 +69,14 @@ export class RotatePagesCommand extends BaseCommand {
     }
   }
 
-  /**
-   * Reconstruct command from serialized data
-   */
   static deserialize(data: SerializedCommand): RotatePagesCommand {
-    const payload = data.payload as unknown as RotatePagesPayload
-    return new RotatePagesCommand(payload.pageIds, payload.degrees, payload.id, data.timestamp)
+    const { id, pageIds, degrees } = data.payload as {
+      id: string
+      pageIds: string[]
+      degrees: RotationDelta
+    }
+    return new RotatePagesCommand(pageIds, degrees, id, data.timestamp)
   }
 }
 
-// Self-register with the command registry
 registerCommand(CommandType.ROTATE, RotatePagesCommand)

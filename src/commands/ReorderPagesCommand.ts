@@ -5,15 +5,6 @@ import type { PageEntry } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
 /**
- * Payload structure for serialization
- */
-interface ReorderPagesPayload {
-  id: string
-  previousOrder: PageEntry[]
-  newOrder: PageEntry[]
-}
-
-/**
  * Command to reorder pages via drag-and-drop
  *
  * Stores both the previous and new order of all pages,
@@ -29,12 +20,7 @@ export class ReorderPagesCommand extends BaseCommand {
   /** Page order after the change */
   public readonly newOrder: PageEntry[]
 
-  constructor(
-    previousOrder: PageEntry[],
-    newOrder: PageEntry[],
-    id?: string,
-    createdAt?: number,
-  ) {
+  constructor(previousOrder: PageEntry[], newOrder: PageEntry[], id?: string, createdAt?: number) {
     super(id, createdAt)
 
     // Validate inputs
@@ -48,18 +34,20 @@ export class ReorderPagesCommand extends BaseCommand {
       throw new Error('ReorderPagesCommand: previousOrder and newOrder must have same length')
     }
 
-    // Deep copy to ensure history doesn't mutate if store mutates
+    // TODO: Move defensive copying to store layer
     this.previousOrder = BaseCommand.clonePages(previousOrder)
     this.newOrder = BaseCommand.clonePages(newOrder)
   }
 
   execute(): void {
     const store = useDocumentStore()
+    // TODO: Move defensive copying to store layer
     store.reorderPages(BaseCommand.clonePages(this.newOrder))
   }
 
   undo(): void {
     const store = useDocumentStore()
+    // TODO: Move defensive copying to store layer
     store.reorderPages(BaseCommand.clonePages(this.previousOrder))
   }
 
@@ -70,19 +58,14 @@ export class ReorderPagesCommand extends BaseCommand {
     }
   }
 
-  /**
-   * Reconstruct command from serialized data
-   */
   static deserialize(data: SerializedCommand): ReorderPagesCommand {
-    const payload = data.payload as unknown as ReorderPagesPayload
-    return new ReorderPagesCommand(
-      payload.previousOrder,
-      payload.newOrder,
-      payload.id,
-      data.timestamp,
-    )
+    const { previousOrder, newOrder, id } = data.payload as {
+      id: string
+      previousOrder: PageEntry[]
+      newOrder: PageEntry[]
+    }
+    return new ReorderPagesCommand(previousOrder, newOrder, id, data.timestamp)
   }
 }
 
-// Self-register with the command registry
 registerCommand(CommandType.REORDER, ReorderPagesCommand)

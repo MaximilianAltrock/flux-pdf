@@ -8,12 +8,6 @@ export type ResizeTarget = {
   targetDimensions?: { width: number; height: number } | null
 }
 
-interface ResizePagesPayload {
-  id: string
-  targets: ResizeTarget[]
-  previousTargets: ResizeTarget[]
-}
-
 export class ResizePagesCommand extends BaseCommand {
   public readonly type = CommandType.RESIZE
   public readonly name: string
@@ -33,19 +27,25 @@ export class ResizePagesCommand extends BaseCommand {
       throw new Error('ResizePagesCommand requires at least one target')
     }
 
+    // TODO: Move defensive copying to store layer
     this.targets = targets.map((t) => ({
       pageId: t.pageId,
-      targetDimensions: t.targetDimensions ? { ...t.targetDimensions } : t.targetDimensions ?? null,
+      targetDimensions: t.targetDimensions
+        ? { ...t.targetDimensions }
+        : (t.targetDimensions ?? null),
     }))
 
     if (previousTargets) {
+      // TODO: Move defensive copying to store layer
       this.previousTargets = previousTargets.map((t) => ({
         pageId: t.pageId,
-        targetDimensions: t.targetDimensions ? { ...t.targetDimensions } : t.targetDimensions ?? null,
+        targetDimensions: t.targetDimensions
+          ? { ...t.targetDimensions }
+          : (t.targetDimensions ?? null),
       }))
     }
 
-    this.name = BaseCommand.formatName('Resize', this.targets.length)
+    this.name = this.targets.length === 1 ? 'Resize page' : `Resize ${this.targets.length} pages`
   }
 
   execute(): void {
@@ -56,9 +56,8 @@ export class ResizePagesCommand extends BaseCommand {
         const page = store.pages.find((p) => !p.isDivider && p.id === target.pageId)
         return {
           pageId: target.pageId,
-          targetDimensions: page && !page.isDivider && page.targetDimensions
-            ? { ...page.targetDimensions }
-            : null,
+          targetDimensions:
+            page && !page.isDivider && page.targetDimensions ? { ...page.targetDimensions } : null,
         }
       })
     }
@@ -96,13 +95,12 @@ export class ResizePagesCommand extends BaseCommand {
   }
 
   static deserialize(data: SerializedCommand): ResizePagesCommand {
-    const payload = data.payload as unknown as ResizePagesPayload
-    return new ResizePagesCommand(
-      payload.targets,
-      payload.id,
-      payload.previousTargets,
-      data.timestamp,
-    )
+    const { id, targets, previousTargets } = data.payload as {
+      id: string
+      targets: ResizeTarget[]
+      previousTargets: ResizeTarget[]
+    }
+    return new ResizePagesCommand(targets, id, previousTargets, data.timestamp)
   }
 }
 

@@ -1,4 +1,4 @@
-import type { Command, SerializedCommand } from './types'
+import { type Command, type SerializedCommand } from './types'
 
 /**
  * Abstract base class for all commands
@@ -9,7 +9,7 @@ import type { Command, SerializedCommand } from './types'
  * - Common timestamp handling
  *
  * Subclasses must:
- * - Define static `TYPE` constant
+ * - Define `type` using a CommandType constant
  * - Implement `execute()` and `undo()`
  * - Implement `getPayload()` for serialization
  * - Implement static `deserialize()` for reconstruction
@@ -61,18 +61,8 @@ export abstract class BaseCommand implements Command {
   }
 
   /**
-   * Helper to generate descriptive names
-   */
-  protected static formatName(action: string, count: number, item = 'page'): string {
-    if (count === 1) {
-      return `${action} ${item}`
-    }
-    return `${action} ${count} ${item}s`
-  }
-
-  /**
-   * Helper to deep clone page references
-   * Ensures command state is isolated from store mutations
+   * Helper to shallow clone page references
+   * TODO: Move defensive copying to the store layer for consistent ownership model
    */
   protected static clonePages<T>(pages: T[]): T[] {
     return pages.map((p) => ({ ...p }))

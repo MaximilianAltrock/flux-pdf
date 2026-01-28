@@ -2,12 +2,6 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand, commandRegistry } from './registry'
 import type { SerializedCommand, Command } from './types'
 
-interface BatchPayload {
-  id: string
-  name: string
-  commands: SerializedCommand[]
-}
-
 export class BatchCommand extends BaseCommand {
   public readonly type = CommandType.BATCH
   public readonly name: string
@@ -33,8 +27,6 @@ export class BatchCommand extends BaseCommand {
     }
   }
 
-  // --- REQUIRED FOR PERSISTENCE ---
-
   protected getPayload(): Record<string, unknown> {
     // We must serialize the children so they can be saved to IDB
     return {
@@ -44,11 +36,19 @@ export class BatchCommand extends BaseCommand {
   }
 
   static deserialize(data: SerializedCommand): BatchCommand {
-    const payload = data.payload as unknown as BatchPayload
+    const {
+      id,
+      name,
+      commands: serializedCommands,
+    } = data.payload as {
+      id: string
+      name: string
+      commands: SerializedCommand[]
+    }
     const commands: Command[] = []
 
     // Recursively re-hydrate children commands
-    for (const serializedChild of payload.commands) {
+    for (const serializedChild of serializedCommands) {
       const cmd = commandRegistry.deserialize(serializedChild)
       if (cmd) {
         commands.push(cmd)
@@ -57,9 +57,8 @@ export class BatchCommand extends BaseCommand {
       }
     }
 
-    return new BatchCommand(commands, payload.name, payload.id, data.timestamp)
+    return new BatchCommand(commands, name, id, data.timestamp)
   }
 }
 
-// Self-register with the command registry
 registerCommand(CommandType.BATCH, BatchCommand)

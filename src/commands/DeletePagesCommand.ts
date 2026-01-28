@@ -4,15 +4,6 @@ import type { SerializedCommand, PageSnapshot } from './types'
 import { useDocumentStore } from '@/stores/document'
 
 /**
- * Payload structure for serialization
- */
-interface DeletePagesPayload {
-  id: string
-  pageIds: string[]
-  backupSnapshots: PageSnapshot[]
-}
-
-/**
  * Command to delete one or more pages
  *
  * Captures page state before deletion so they can be
@@ -44,11 +35,13 @@ export class DeletePagesCommand extends BaseCommand {
       throw new Error('DeletePagesCommand requires at least one page ID')
     }
 
-    this.pageIds = [...pageIds] // Defensive copy
-    this.name = BaseCommand.formatName('Delete', pageIds.length)
+    // TODO: Move defensive copying to store layer
+    this.pageIds = [...pageIds]
+    this.name = pageIds.length === 1 ? 'Delete page' : `Delete ${pageIds.length} pages`
 
     // Restore backup snapshots if provided (from deserialization)
     if (backupSnapshots) {
+      // TODO: Move defensive copying to store layer
       this.backupSnapshots = backupSnapshots.map((s) => ({
         page: { ...s.page },
         index: s.index,
@@ -77,6 +70,7 @@ export class DeletePagesCommand extends BaseCommand {
     const sorted = [...this.backupSnapshots].sort((a, b) => a.index - b.index)
 
     for (const { page, index } of sorted) {
+      // TODO: Move defensive copying to store layer
       store.insertPages(index, [{ ...page }])
     }
   }
@@ -101,6 +95,7 @@ export class DeletePagesCommand extends BaseCommand {
   protected getPayload(): Record<string, unknown> {
     return {
       pageIds: this.pageIds,
+      // TODO: Move defensive copying to store layer
       backupSnapshots: this.backupSnapshots.map((s) => ({
         page: { ...s.page },
         index: s.index,
@@ -108,19 +103,14 @@ export class DeletePagesCommand extends BaseCommand {
     }
   }
 
-  /**
-   * Reconstruct command from serialized data
-   */
   static deserialize(data: SerializedCommand): DeletePagesCommand {
-    const payload = data.payload as unknown as DeletePagesPayload
-    return new DeletePagesCommand(
-      payload.pageIds,
-      payload.id,
-      payload.backupSnapshots,
-      data.timestamp,
-    )
+    const { id, pageIds, backupSnapshots } = data.payload as {
+      id: string
+      pageIds: string[]
+      backupSnapshots: PageSnapshot[]
+    }
+    return new DeletePagesCommand(pageIds, id, backupSnapshots, data.timestamp)
   }
 }
 
-// Self-register with the command registry
 registerCommand(CommandType.DELETE, DeletePagesCommand)

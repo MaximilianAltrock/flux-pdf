@@ -4,11 +4,6 @@ import type { SerializedCommand } from './types'
 import type { SourceFile } from '@/types'
 import { useDocumentStore } from '@/stores/document'
 
-interface AddSourcePayload {
-  id: string
-  sourceFile: SourceFile
-}
-
 /**
  * Command to add a source file to the registry (without inserting pages).
  */
@@ -24,6 +19,7 @@ export class AddSourceCommand extends BaseCommand {
       throw new Error('AddSourceCommand requires a valid source file')
     }
 
+    // TODO: Move defensive copying to store layer
     this.sourceFile = { ...sourceFile }
     this.name = `Add source "${sourceFile.filename}"`
   }
@@ -31,6 +27,7 @@ export class AddSourceCommand extends BaseCommand {
   execute(): void {
     const store = useDocumentStore()
     if (!store.sources.has(this.sourceFile.id)) {
+      // TODO: Move defensive copying to store layer
       store.addSourceFile({ ...this.sourceFile })
     }
   }
@@ -47,8 +44,8 @@ export class AddSourceCommand extends BaseCommand {
   }
 
   static deserialize(data: SerializedCommand): AddSourceCommand {
-    const payload = data.payload as unknown as AddSourcePayload
-    return new AddSourceCommand(payload.sourceFile, payload.id, data.timestamp)
+    const { id, sourceFile } = data.payload as { id: string; sourceFile: SourceFile }
+    return new AddSourceCommand(sourceFile, id, data.timestamp)
   }
 }
 
