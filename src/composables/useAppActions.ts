@@ -67,12 +67,12 @@ export function useAppActions(state: AppState) {
     clearExportError,
     parsePageRange,
     validatePageRange,
-  } = useDocumentService(undefined, {
+  } = useDocumentService({
     zoom: state.zoom,
     setZoom: state.setZoom,
     setLoading: state.setLoading,
   })
-  const projectManager = useProjectManager(undefined, {
+  const projectManager = useProjectManager({
     zoom: state.zoom,
     setZoom: state.setZoom,
     setLoading: state.setLoading,

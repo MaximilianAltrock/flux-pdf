@@ -1,4 +1,4 @@
-import { COMMAND_SCHEMA_VERSION, type Command, type SerializedCommand } from './types'
+import type { Command, SerializedCommand } from './types'
 
 /**
  * Abstract base class for all commands
@@ -51,7 +51,6 @@ export abstract class BaseCommand implements Command {
    */
   serialize(): SerializedCommand {
     return {
-      version: COMMAND_SCHEMA_VERSION,
       type: this.type,
       payload: {
         id: this.id,

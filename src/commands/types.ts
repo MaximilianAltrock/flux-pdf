@@ -1,4 +1,3 @@
-import { SCHEMA_VERSION } from '@/constants'
 import type { PageReference } from '@/types'
 
 /**
@@ -15,8 +14,6 @@ export interface SerializedCommandPayload {
  * Serialized command envelope written to storage
  */
 export interface SerializedCommand {
-  /** Schema version for migrations */
-  version: number
   /** Command type identifier (survives minification) */
   type: string
   /** Command-specific payload data */
@@ -24,11 +21,6 @@ export interface SerializedCommand {
   /** When the command was executed */
   timestamp: number
 }
-
-/**
- * Current command schema version
- */
-export const COMMAND_SCHEMA_VERSION = SCHEMA_VERSION.COMMAND
 
 /**
  * Base interface for all commands

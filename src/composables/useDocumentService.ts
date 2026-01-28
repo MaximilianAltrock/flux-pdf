@@ -7,6 +7,7 @@ import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
 import type { Command } from '@/commands/types'
 import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
 import type { Result } from '@/types/result'
+import { usePdfCompression } from '@/composables/usePdfCompression'
 import {
   generateRawPdf as generateRawPdfCore,
   parsePageRange,
@@ -25,8 +26,7 @@ import {
 } from '@/domain/document/errors'
 import type { DocumentError, ExportErrorCode } from '@/domain/document/errors'
 import type { DocumentErrorCode } from '@/types/errors'
-import { createDocumentAdapters } from '@/domain/document/adapters'
-import type { DocumentAdaptersOverrides } from '@/domain/document/ports'
+import { getPdfBlob, getPdfDocument, loadPdfFiles } from '@/domain/document/import'
 
 type JobStatus = 'idle' | 'running' | 'success' | 'error'
 
@@ -77,16 +77,13 @@ export interface ImportOptions {
   addPages?: boolean
 }
 
-export function useDocumentService(
-  overrides?: DocumentAdaptersOverrides,
-  uiState?: DocumentUiState,
-) {
+export function useDocumentService(uiState?: DocumentUiState) {
   if (uiState) {
     boundUiState = uiState
   }
 
   const ui = boundUiState
-  const adapters = createDocumentAdapters(overrides)
+  const { compressPdf } = usePdfCompression()
 
   const store = useDocumentStore()
   const { execute } = useCommandManager()
@@ -137,7 +134,7 @@ export function useDocumentService(
     ui?.setLoading(true, loadingLabel)
 
     try {
-      const results = await adapters.import.loadPdfFiles(fileList, {
+      const results = await loadPdfFiles(fileList, {
         initialColorIndex: store.sources.size,
       })
       for (const result of results) {
@@ -211,7 +208,7 @@ export function useDocumentService(
     try {
       const pdfBytes = await generateRawPdfCore(pages, {
         ...options,
-        getPdfBlob: adapters.import.getPdfBlob,
+        getPdfBlob,
         bookmarks: store.bookmarksTree,
       })
       return { ok: true, value: pdfBytes }
@@ -258,7 +255,7 @@ export function useDocumentService(
             metadata,
             compress,
             onProgress: undefined,
-            getPdfBlob: adapters.import.getPdfBlob,
+            getPdfBlob,
             bookmarks: store.bookmarksTree,
           })
 
@@ -300,7 +297,7 @@ export function useDocumentService(
               : val
           exportJob.value.progress = scaledProgress
         },
-        getPdfBlob: adapters.import.getPdfBlob,
+        getPdfBlob,
         bookmarks: store.bookmarksTree,
       })
 
@@ -331,7 +328,7 @@ export function useDocumentService(
         exportJob.value.progress = EXPORT_PROGRESS.COMPRESSION_START
         let result
         try {
-          result = await adapters.compression.compressPdf(pdfBytes, {
+          result = await compressPdf(pdfBytes, {
             quality: options.compressionQuality,
           })
         } catch (error) {
@@ -449,8 +446,8 @@ export function useDocumentService(
     getEstimatedSize,
     parsePageRange,
     validatePageRange,
-    getPdfDocument: adapters.import.getPdfDocument,
-    getPdfBlob: adapters.import.getPdfBlob,
+    getPdfDocument,
+    getPdfBlob,
   }
 }
 

@@ -2,14 +2,7 @@ import { ref, computed } from 'vue'
 import { HISTORY } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { commandRegistry } from '@/commands'
-import {
-  COMMAND_SCHEMA_VERSION,
-  type Command,
-  type HistoryEntry,
-  type HistoryDisplayEntry,
-  type SerializedCommand,
-} from '@/commands'
-import type { SerializedCommandRecord } from '@/commands/migrations'
+import { type Command, type HistoryEntry, type HistoryDisplayEntry, type SerializedCommand } from '@/commands'
 
 /**
  * Global command history state (singleton)
@@ -42,7 +35,7 @@ export function useCommandManager() {
   }
 
   function rehydrateHistory(
-    serializedHistory: SerializedCommandRecord[] = [],
+    serializedHistory: SerializedCommand[] = [],
     pointer: number = HISTORY.POINTER_START,
     updatedAt?: number,
   ): void {
@@ -111,7 +104,6 @@ export function useCommandManager() {
       undo() {},
       serialize() {
         return {
-          version: COMMAND_SCHEMA_VERSION,
           type: 'Root',
           payload: { id: 'root' },
           timestamp: sessionStartTime.value,

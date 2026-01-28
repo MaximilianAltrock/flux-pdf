@@ -1,6 +1,6 @@
 import { useAppActions } from './useAppActions'
 import { useAppState, type AppState } from './useAppState'
-import { useDocumentView, type DocumentView } from './useDocumentView'
+import { useDocumentStore } from '@/stores/document'
 import { usePreflight } from './usePreflight'
 
 /**
@@ -9,7 +9,7 @@ import { usePreflight } from './usePreflight'
  */
 export function useDocumentFacade() {
   const uiState = useAppState()
-  const document = useDocumentView()
+  const document = useDocumentStore()
   const preflight = usePreflight()
   const actions = useAppActions(uiState)
 
@@ -18,5 +18,7 @@ export function useDocumentFacade() {
   return { state, actions }
 }
 
-export type FacadeState = AppState & { document: DocumentView; preflight: ReturnType<typeof usePreflight> }
+type DocumentStore = ReturnType<typeof useDocumentStore>
+
+export type FacadeState = AppState & { document: DocumentStore; preflight: ReturnType<typeof usePreflight> }
 export type DocumentFacade = ReturnType<typeof useDocumentFacade>

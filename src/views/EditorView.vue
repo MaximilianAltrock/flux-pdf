@@ -31,7 +31,7 @@ import PagePreviewModal from '@/components/PagePreviewModal.vue'
 const { state, actions } = useDocumentFacade()
 const route = useRoute()
 const router = useRouter()
-const projectManager = useProjectManager(undefined, {
+const projectManager = useProjectManager({
   zoom: state.zoom,
   setZoom: state.setZoom,
   setLoading: state.setLoading,

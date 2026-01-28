@@ -63,6 +63,8 @@ export const useDocumentStore = defineStore('document', () => {
   const selectedPages = computed(() =>
     contentPages.value.filter((p) => selection.value.selectedIds.has(p.id)),
   )
+  const selectedIds = computed(() => selection.value.selectedIds)
+  const lastSelectedId = computed(() => selection.value.lastSelectedId)
 
   // ============================================
   // Actions
@@ -220,6 +222,10 @@ export const useDocumentStore = defineStore('document', () => {
     pages.value = newPages
   }
 
+  function getSourceColor(sourceId: string, fallback = 'gray') {
+    return sources.value.get(sourceId)?.color ?? fallback
+  }
+
   function addBookmarkForPage(pageId: string, title = 'New Bookmark') {
     const node: BookmarkNode = {
       id: crypto.randomUUID(),
@@ -266,6 +272,8 @@ export const useDocumentStore = defineStore('document', () => {
     hasPages,
     selectedPages,
     selectedCount,
+    selectedIds,
+    lastSelectedId,
     sourceFileList,
     addSourceFile,
     removeSourceFile,
@@ -283,6 +291,7 @@ export const useDocumentStore = defineStore('document', () => {
     clearSelection,
     reset,
     setPages,
+    getSourceColor,
     projectTitle,
     isTitleLocked,
     bookmarksTree,

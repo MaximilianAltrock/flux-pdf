@@ -4,15 +4,9 @@ import { HISTORY, TIMEOUTS_MS, ZOOM } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { useCommandManager } from '@/composables/useCommandManager'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
-import { createDocumentAdapters } from '@/domain/document/adapters'
-import type { DocumentAdaptersOverrides } from '@/domain/document/ports'
-import type { ProjectMeta, ProjectState } from '@/db/db'
-import {
-  buildProjectState,
-  migrateProjectState,
-  type ProjectSnapshot,
-  type ProjectStateRecord,
-} from '@/domain/document/project'
+import { db, type ProjectMeta, type ProjectState } from '@/db/db'
+import { buildProjectState, type ProjectSnapshot } from '@/domain/document/project'
+import { evictPdfCache } from '@/domain/document/import'
 import { collectReachableSourceIdsFromState } from '@/domain/document/storage-gc'
 import type { SerializedCommand } from '@/commands'
 import type { BookmarkNode, DocumentMetadata, PageEntry, PageReference } from '@/types'
@@ -25,7 +19,6 @@ const activeProjectMeta = ref<ProjectMeta | null>(null)
 const isHydrating = ref(false)
 let autoSaveInitialized = false
 const boundUiState = shallowRef<DocumentUiState | null>(null)
-let activeAdapters = createDocumentAdapters()
 const autoSaveScope = effectScope(true)
 
 const thumbnailKeyByProject = new Map<string, string | null>()
@@ -128,14 +121,13 @@ type GcStateSnapshot = {
 }
 
 async function garbageCollectStoredSources(
-  adapters = activeAdapters,
   currentState?: GcStateSnapshot,
 ): Promise<void> {
   if (gcInFlight.value) return
   gcInFlight.value = true
 
   try {
-    const states = await adapters.project.listProjectStates()
+    const states = await db.states.toArray()
     const keepIds = new Set<string>()
 
     for (const state of states) {
@@ -156,13 +148,14 @@ async function garbageCollectStoredSources(
       for (const id of liveIds) keepIds.add(id)
     }
 
-    const storedIds = await adapters.storage.listStoredFileIds()
+    const storedKeys = await db.files.toCollection().primaryKeys()
+    const storedIds = storedKeys.map((key) => String(key))
     const orphanIds = storedIds.filter((id) => !keepIds.has(id))
 
     if (orphanIds.length === 0) return
 
-    await adapters.storage.deleteStoredFilesByIds(orphanIds)
-    adapters.import.evictPdfCache(orphanIds)
+    await db.files.where('id').anyOf(orphanIds).delete()
+    evictPdfCache(orphanIds)
   } catch (error) {
     console.warn('Failed to garbage collect stored sources:', error)
   } finally {
@@ -170,15 +163,10 @@ async function garbageCollectStoredSources(
   }
 }
 
-export function useProjectManager(
-  overrides?: DocumentAdaptersOverrides,
-  uiState?: DocumentUiState,
-) {
+export function useProjectManager(uiState?: DocumentUiState) {
   if (uiState) {
     boundUiState.value = uiState
   }
-  const adapters = createDocumentAdapters(overrides)
-  activeAdapters = adapters
 
   const store = useDocumentStore()
   const {
@@ -206,7 +194,7 @@ export function useProjectManager(
           pages: store.pages,
           history: serializeHistory(),
         }
-        await garbageCollectStoredSources(adapters, liveState)
+        await garbageCollectStoredSources(liveState)
       }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
 
       const triggerSave = () => {
@@ -235,11 +223,14 @@ export function useProjectManager(
   }
 
   async function listRecentProjects(limit = 5): Promise<ProjectMeta[]> {
-    return adapters.project.listProjectMeta({ limit })
+    if (limit) {
+      return db.projects.orderBy('updatedAt').reverse().limit(limit).toArray()
+    }
+    return db.projects.orderBy('updatedAt').reverse().toArray()
   }
 
   async function loadProjectMeta(id: string): Promise<ProjectMeta | undefined> {
-    return adapters.project.loadProjectMeta(id)
+    return db.projects.get(id)
   }
 
   async function createProject(options?: { title?: string; open?: boolean }): Promise<ProjectMeta> {
@@ -271,8 +262,8 @@ export function useProjectManager(
 
     const state = buildProjectState(id, snapshot)
 
-    await adapters.project.persistProjectMeta(meta)
-    await adapters.project.persistProjectState(state)
+    await db.projects.put(meta)
+    await db.states.put(state)
 
     if (options?.open) {
       await switchProject(id)
@@ -285,7 +276,7 @@ export function useProjectManager(
     if (!activeProjectId.value) return
 
     const id = activeProjectId.value
-    const existingMeta = activeProjectMeta.value ?? (await adapters.project.loadProjectMeta(id))
+    const existingMeta = activeProjectMeta.value ?? (await db.projects.get(id))
     if (!existingMeta) return
 
     const now = Date.now()
@@ -317,8 +308,8 @@ export function useProjectManager(
     const state = buildProjectState(id, snapshot)
     state.updatedAt = now
 
-    await adapters.project.persistProjectMeta(meta)
-    await adapters.project.persistProjectState(state)
+    await db.projects.put(meta)
+    await db.states.put(state)
 
     activeProjectMeta.value = meta
   }
@@ -328,7 +319,7 @@ export function useProjectManager(
     clearHistory()
     clearCache()
 
-    const files = await adapters.storage.loadStoredFilesByIds(state.activeSourceIds ?? [])
+    const files = await db.files.where('id').anyOf(state.activeSourceIds ?? []).toArray()
     for (const file of files) {
       store.addSourceFile({
         id: file.id,
@@ -376,29 +367,24 @@ export function useProjectManager(
 
     try {
       const [meta, rawState] = await Promise.all([
-        adapters.project.loadProjectMeta(id),
-        adapters.project.loadProjectState(id),
+        db.projects.get(id),
+        db.states.get(id),
       ])
       if (!meta || !rawState) return false
 
-      const migrated = migrateProjectState(rawState as ProjectStateRecord)
-      if (rawState.schemaVersion !== migrated.schemaVersion) {
-        await adapters.project.persistProjectState(migrated)
-      }
-
-      await hydrateStore(meta, migrated)
+      await hydrateStore(meta, rawState)
       activeProjectId.value = id
       activeProjectMeta.value = meta
       setLastActiveProjectId(id)
 
-      const firstPage = getFirstPageReference(migrated.pageMap as PageReference[])
+      const firstPage = getFirstPageReference(rawState.pageMap as PageReference[])
       thumbnailKeyByProject.set(id, getThumbnailKey(firstPage))
       const liveState: GcStateSnapshot = {
         activeSourceIds: Array.from(store.sources.keys()),
         pages: store.pages,
         history: serializeHistory(),
       }
-      void garbageCollectStoredSources(adapters, liveState)
+      void garbageCollectStoredSources(liveState)
       return true
     } catch (error) {
       console.error('Failed to load project:', error)
@@ -423,14 +409,14 @@ export function useProjectManager(
   }
 
   async function renameProject(id: string, title: string): Promise<void> {
-    const meta = await adapters.project.loadProjectMeta(id)
+    const meta = await db.projects.get(id)
     if (!meta) return
     const updated: ProjectMeta = {
       ...meta,
       title: normalizeTitle(title),
       updatedAt: Date.now(),
     }
-    await adapters.project.persistProjectMeta(updated)
+    await db.projects.put(updated)
 
     if (activeProjectId.value === id) {
       activeProjectMeta.value = updated
@@ -440,8 +426,8 @@ export function useProjectManager(
 
   async function duplicateProject(id: string): Promise<ProjectMeta | null> {
     const [meta, state] = await Promise.all([
-      adapters.project.loadProjectMeta(id),
-      adapters.project.loadProjectState(id),
+      db.projects.get(id),
+      db.states.get(id),
     ])
     if (!meta || !state) return null
 
@@ -464,14 +450,15 @@ export function useProjectManager(
       updatedAt: now,
     }
 
-    await adapters.project.persistProjectMeta(duplicateMeta)
-    await adapters.project.persistProjectState(duplicateState)
+    await db.projects.put(duplicateMeta)
+    await db.states.put(duplicateState)
 
     return duplicateMeta
   }
 
   async function deleteProject(id: string): Promise<void> {
-    await adapters.project.deleteProject(id)
+    await db.projects.delete(id)
+    await db.states.delete(id)
     if (activeProjectId.value === id) {
       activeProjectId.value = null
       activeProjectMeta.value = null
@@ -480,7 +467,7 @@ export function useProjectManager(
     if (getLastActiveProjectId() === id) {
       setLastActiveProjectId(null)
     }
-    await garbageCollectStoredSources(adapters)
+    await garbageCollectStoredSources()
   }
 
   setupAutoSave()
