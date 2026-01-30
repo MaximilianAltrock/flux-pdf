@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ListboxItemEmits, ListboxItemProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit, useCurrentElement } from "@vueuse/core"
+import { reactiveOmit } from "@vueuse/core"
 import { ListboxItem, useForwardPropsEmits, useId } from "reka-ui"
 import { computed, onMounted, onUnmounted, useTemplateRef } from "vue"
 import { cn } from "@/lib/utils"
@@ -36,13 +36,12 @@ const isRender = computed(() => {
 })
 
 const itemRef = useTemplateRef<HTMLElement>("itemRef")
-const currentElement = useCurrentElement(itemRef)
 onMounted(() => {
-  if (!(currentElement.value instanceof HTMLElement))
+  if (!(itemRef.value instanceof HTMLElement))
     return
 
   // textValue to perform filter
-  allItems.value.set(id, currentElement.value.textContent ?? (props.value?.toString() ?? ""))
+  allItems.value.set(id, itemRef.value.textContent ?? (props.value?.toString() ?? ""))
 
   const groupId = groupContext?.id
   if (groupId) {
