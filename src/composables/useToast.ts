@@ -47,10 +47,10 @@ export function useToast() {
   /**
    * Type C: "System Alert" - Error/Warning
    */
-  function warning(title: string, detail?: string): string | number {
+  function warning(title: string, detail?: string, durationMs?: number): string | number {
     return toast.warning(title, {
       description: detail,
-      duration: Infinity,
+      duration: durationMs ?? Infinity,
     })
   }
 

@@ -63,13 +63,7 @@ export class ResizePagesCommand extends BaseCommand {
     }
 
     for (const target of this.targets) {
-      const page = store.pages.find((p) => !p.isDivider && p.id === target.pageId)
-      if (!page || page.isDivider) continue
-      if (target.targetDimensions) {
-        page.targetDimensions = { ...target.targetDimensions }
-      } else {
-        page.targetDimensions = undefined
-      }
+      store.setPageTargetDimensions(target.pageId, target.targetDimensions ?? null)
     }
   }
 
@@ -77,13 +71,7 @@ export class ResizePagesCommand extends BaseCommand {
     const store = useDocumentStore()
 
     for (const previous of this.previousTargets) {
-      const page = store.pages.find((p) => !p.isDivider && p.id === previous.pageId)
-      if (!page || page.isDivider) continue
-      if (previous.targetDimensions) {
-        page.targetDimensions = { ...previous.targetDimensions }
-      } else {
-        page.targetDimensions = undefined
-      }
+      store.setPageTargetDimensions(previous.pageId, previous.targetDimensions ?? null)
     }
   }
 

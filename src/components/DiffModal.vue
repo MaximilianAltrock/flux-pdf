@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { X, ZoomIn, ZoomOut, Eye, Layers, Zap, Columns } from 'lucide-vue-next'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
@@ -30,16 +30,16 @@ const emit = defineEmits<{
 const { renderThumbnail } = useThumbnailRenderer()
 
 // State
-const urlA = ref<string | null>(null)
-const urlB = ref<string | null>(null)
-const isLoading = ref(true)
+const urlA = shallowRef<string | null>(null)
+const urlB = shallowRef<string | null>(null)
+const isLoading = shallowRef(true)
 
 // View Controls
-const zoom = ref(1)
+const zoom = shallowRef(1)
 const opacity = ref([100]) // Shadcn Slider uses array for multi-thumb
-const blendMode = ref<'difference' | 'normal'>('difference')
-const viewMode = ref('overlay')
-const isBlinking = ref(false)
+const blendMode = shallowRef<'difference' | 'normal'>('difference')
+const viewMode = shallowRef('overlay')
+const isBlinking = shallowRef(false)
 const { pause: stopBlinkTimer, resume: startBlinkTimer } = useIntervalFn(
   () => {
     opacity.value = opacity.value[0] === 100 ? [0] : [100]

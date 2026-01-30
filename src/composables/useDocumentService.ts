@@ -209,6 +209,7 @@ export function useDocumentService(uiState?: DocumentUiState) {
       const pdfBytes = await generateRawPdfCore(pages, {
         ...options,
         getPdfBlob,
+        getPdfDocument,
         bookmarks: store.bookmarksTree,
       })
       return { ok: true, value: pdfBytes }
@@ -256,6 +257,7 @@ export function useDocumentService(uiState?: DocumentUiState) {
             compress,
             onProgress: undefined,
             getPdfBlob,
+            getPdfDocument,
             bookmarks: store.bookmarksTree,
           })
 
@@ -298,6 +300,7 @@ export function useDocumentService(uiState?: DocumentUiState) {
           exportJob.value.progress = scaledProgress
         },
         getPdfBlob,
+        getPdfDocument,
         bookmarks: store.bookmarksTree,
       })
 

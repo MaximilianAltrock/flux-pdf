@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import { FileText, Layers, Upload } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 
@@ -10,8 +10,8 @@ const emit = defineEmits<{
   sourcePagesDropped: [pages: { sourceId: string; pageIndex: number }[]]
 }>()
 
-const isDragging = ref(false)
-const dragType = ref<'files' | 'source' | 'page' | 'pages' | null>(null)
+const isDragging = shallowRef(false)
+const dragType = shallowRef<'files' | 'source' | 'page' | 'pages' | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 let dragCounter = 0
 

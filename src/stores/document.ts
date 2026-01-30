@@ -9,6 +9,7 @@ import type {
   BookmarkNode,
   DocumentMetadata,
   SecurityMetadata,
+  RedactionMark,
 } from '@/types'
 import { isPageEntry } from '@/types'
 import { autoGenBookmarksFromPages } from '@/utils/auto-gen-tree'
@@ -41,6 +42,8 @@ export const useDocumentStore = defineStore('document', () => {
   const bookmarksTree = ref<BookmarkNode[]>([])
   const bookmarksDirty = ref(false)
   const metadataDirty = ref(false)
+  const projectTitle = ref('Untitled Project')
+  const isTitleLocked = ref(false)
 
   const selection = ref<SelectionState>({
     selectedIds: new Set(),
@@ -65,6 +68,10 @@ export const useDocumentStore = defineStore('document', () => {
   )
   const selectedIds = computed(() => selection.value.selectedIds)
   const lastSelectedId = computed(() => selection.value.lastSelectedId)
+  const redactionCount = computed(() =>
+    contentPages.value.reduce((sum, page) => sum + (page.redactions?.length ?? 0), 0),
+  )
+  const hasRedactions = computed(() => redactionCount.value > 0)
 
   // ============================================
   // Actions
@@ -120,6 +127,58 @@ export const useDocumentStore = defineStore('document', () => {
         ((current + degrees + ROTATION_FULL_DEGREES) % ROTATION_FULL_DEGREES) as RotationAngle
       page.rotation = newRotation
     }
+  }
+
+  function setPageTargetDimensions(
+    pageId: string,
+    targetDimensions?: { width: number; height: number } | null,
+  ) {
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
+    if (!page) return
+    if (targetDimensions) {
+      page.targetDimensions = { ...targetDimensions }
+    } else {
+      page.targetDimensions = undefined
+    }
+  }
+
+  function addRedaction(pageId: string, redaction: RedactionMark) {
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
+    if (!page) return
+    if (!page.redactions) page.redactions = []
+    page.redactions.push({ ...redaction })
+  }
+
+  function addRedactions(pageId: string, redactions: RedactionMark[]) {
+    if (!redactions || redactions.length === 0) return
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
+    if (!page) return
+    if (!page.redactions) page.redactions = []
+    page.redactions.push(...redactions.map((r) => ({ ...r })))
+  }
+
+  function updateRedaction(pageId: string, redaction: RedactionMark) {
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
+    if (!page?.redactions?.length) return
+    page.redactions = page.redactions.map((r) => (r.id === redaction.id ? { ...redaction } : r))
+  }
+
+  function removeRedaction(pageId: string, redactionId: string) {
+    removeRedactions(pageId, [redactionId])
+  }
+
+  function removeRedactions(pageId: string, redactionIds: string[]) {
+    if (!redactionIds || redactionIds.length === 0) return
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
+    if (!page?.redactions?.length) return
+    const removeSet = new Set(redactionIds)
+    page.redactions = page.redactions.filter((r) => !removeSet.has(r.id))
+  }
+
+  function clearRedactions(pageId: string) {
+    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
+    if (!page) return
+    page.redactions = []
   }
 
   // === SELECTION ===
@@ -218,6 +277,10 @@ export const useDocumentStore = defineStore('document', () => {
     bookmarksDirty.value = false
   }
 
+  function setBookmarksDirty(value: boolean) {
+    bookmarksDirty.value = value
+  }
+
   function setPages(newPages: PageEntry[]) {
     pages.value = newPages
   }
@@ -249,8 +312,13 @@ export const useDocumentStore = defineStore('document', () => {
     resetBookmarks()
   }
 
-  const projectTitle = ref('Untitled Project')
-  const isTitleLocked = ref(false)
+  function setProjectTitle(value: string) {
+    projectTitle.value = value
+  }
+
+  function setMetadataDirty(value: boolean) {
+    metadataDirty.value = value
+  }
 
 
   watch(
@@ -274,6 +342,8 @@ export const useDocumentStore = defineStore('document', () => {
     selectedCount,
     selectedIds,
     lastSelectedId,
+    redactionCount,
+    hasRedactions,
     sourceFileList,
     addSourceFile,
     removeSourceFile,
@@ -283,6 +353,13 @@ export const useDocumentStore = defineStore('document', () => {
     deletePages,
     reorderPages,
     rotatePage,
+    setPageTargetDimensions,
+    addRedaction,
+    addRedactions,
+    updateRedaction,
+    removeRedaction,
+    removeRedactions,
+    clearRedactions,
     selectPage,
     deselectPage,
     togglePageSelection,
@@ -294,14 +371,17 @@ export const useDocumentStore = defineStore('document', () => {
     getSourceColor,
     projectTitle,
     isTitleLocked,
+    setProjectTitle,
     bookmarksTree,
     bookmarksDirty,
     setBookmarksTree,
     markBookmarksDirty,
     resetBookmarks,
+    setBookmarksDirty,
     addBookmarkForPage,
     metadata,
     metadataDirty,
+    setMetadataDirty,
     setMetadata,
     addKeyword,
     removeKeyword,

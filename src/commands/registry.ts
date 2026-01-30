@@ -14,6 +14,9 @@ export const CommandType = {
   RESIZE: 'ResizePages',
   SPLIT: 'SplitGroup',
   REMOVE_SOURCE: 'RemoveSource',
+  REDACT: 'AddRedaction',
+  UPDATE_REDACTION: 'UpdateRedaction',
+  DELETE_REDACTION: 'DeleteRedaction',
   BATCH: 'BatchCommand',
 } as const
 

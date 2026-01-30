@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import { FileText, Settings, ChevronDown } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,8 +43,8 @@ const document = props.state.document
 const { getEstimatedSize, parsePageRange, validatePageRange } = props.actions
 
 const filenameInputRef = ref<HTMLInputElement | null>(null)
-const pageRangeError = ref<string | null>(null)
-const showAdvanced = ref(false)
+const pageRangeError = shallowRef<string | null>(null)
+const showAdvanced = shallowRef(false)
 
 // Local proxy for settings to avoid deep mutation issues
 
@@ -55,11 +55,11 @@ const localSettings = useVModel(props, 'settings', emit, {
 })
 
 watch(
-  localSettings,
+  [localSettings, () => document.selectedCount, () => document.contentPageCount],
   () => {
     validateForm()
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
 
 // Computed
@@ -138,9 +138,6 @@ function validateForm() {
   emit('update:valid', isValid)
 }
 
-onMounted(() => {
-  validateForm()
-})
 </script>
 
 <template>

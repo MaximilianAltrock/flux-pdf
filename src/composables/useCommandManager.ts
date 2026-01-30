@@ -2,7 +2,12 @@ import { ref, computed } from 'vue'
 import { HISTORY } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { commandRegistry } from '@/commands'
-import { type Command, type HistoryEntry, type HistoryDisplayEntry, type SerializedCommand } from '@/commands'
+import {
+  type Command,
+  type HistoryEntry,
+  type HistoryDisplayEntry,
+  type SerializedCommand,
+} from '@/commands'
 
 /**
  * Global command history state (singleton)

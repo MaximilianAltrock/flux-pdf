@@ -335,18 +335,19 @@ export function useProjectManager(uiState?: DocumentUiState) {
       })
     }
 
-    store.projectTitle = meta.title
+    store.setProjectTitle(meta.title)
     boundUiState.value?.setZoom(state.zoom ?? ZOOM.DEFAULT)
-    store.bookmarksDirty = state.bookmarksDirty ?? false
+    store.setBookmarksDirty(state.bookmarksDirty ?? false)
     store.setPages(state.pageMap ?? [])
 
     if (state.metadata) {
       store.setMetadata(state.metadata, false)
     }
 
-    store.metadataDirty =
+    store.setMetadataDirty(
       state.metadataDirty ??
-      (state.metadata ? !isDefaultMetadata(state.metadata as DocumentMetadata) : false)
+        (state.metadata ? !isDefaultMetadata(state.metadata as DocumentMetadata) : false),
+    )
 
     if (state.security) {
       store.setSecurity(state.security)
@@ -420,7 +421,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
 
     if (activeProjectId.value === id) {
       activeProjectMeta.value = updated
-      store.projectTitle = updated.title
+      store.setProjectTitle(updated.title)
     }
   }
 

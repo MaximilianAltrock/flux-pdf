@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { shallowRef } from 'vue'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { FileText, Tag, Lock } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -20,7 +20,7 @@ const props = defineProps<{
 }>()
 
 const inspectorLabelMinSize = 15
-const showTabLabels = ref(true)
+const showTabLabels = shallowRef(true)
 
 function handleInspectorResize(size: number) {
   showTabLabels.value = size >= inspectorLabelMinSize

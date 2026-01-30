@@ -1,7 +1,8 @@
 import { PDFDocument, PDFName, PDFNumber, PDFArray, PDFString, PDFRef, PDFDict, degrees } from 'pdf-lib'
-import { EXPORT_PROGRESS, PAGE_NUMBER_BASE } from '@/constants'
+import { EXPORT_PROGRESS, PAGE_NUMBER_BASE, PDF_PAGE_INDEX_BASE } from '@/constants'
 import type { PDFPage } from 'pdf-lib'
-import type { BookmarkNode, PageEntry, PageReference, DocumentMetadata } from '@/types'
+import type { BookmarkNode, PageEntry, PageReference, DocumentMetadata, RedactionMark } from '@/types'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 
 /**
  * Export metadata options (based on DocumentMetadata)
@@ -42,6 +43,8 @@ export interface GeneratorOptions {
 
 export interface GenerateRawPdfOptions extends GeneratorOptions {
   getPdfBlob: (sourceFileId: string) => Promise<ArrayBuffer | undefined>
+  getPdfDocument?: (sourceFileId: string) => Promise<PDFDocumentProxy>
+  burnScale?: number
   bookmarks?: BookmarkNode[]
 }
 
@@ -184,6 +187,87 @@ function applyTargetDimensions(
   }
 }
 
+const DEFAULT_BURN_SCALE = 2
+
+async function rasterizePageWithRedactions(
+  pageRef: PageReference,
+  redactions: RedactionMark[],
+  options: {
+    getPdfDocument: (sourceFileId: string) => Promise<PDFDocumentProxy>
+    scale: number
+  },
+): Promise<{ bytes: Uint8Array; width: number; height: number }> {
+  const pdfDoc = await options.getPdfDocument(pageRef.sourceFileId)
+  const page = await pdfDoc.getPage(pageRef.sourcePageIndex + PDF_PAGE_INDEX_BASE)
+  const rotation = pageRef.rotation ?? 0
+  const viewport = page.getViewport({ scale: 1, rotation })
+  const scaledViewport = page.getViewport({ scale: options.scale, rotation })
+  const scaleX = scaledViewport.width / viewport.width
+  const scaleY = scaledViewport.height / viewport.height
+
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('Failed to create canvas context for redaction burn')
+  }
+
+  canvas.width = Math.floor(scaledViewport.width)
+  canvas.height = Math.floor(scaledViewport.height)
+
+  const renderTask = page.render({
+    canvas,
+    canvasContext: context,
+    viewport: scaledViewport,
+  })
+
+  await renderTask.promise
+
+  for (const redaction of redactions) {
+    const fill = redaction.color === 'white' ? '#ffffff' : '#000000'
+    context.fillStyle = fill
+    context.fillRect(
+      redaction.x * scaleX,
+      redaction.y * scaleY,
+      redaction.width * scaleX,
+      redaction.height * scaleY,
+    )
+  }
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Failed to create redaction blob'))), 'image/png')
+  })
+
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  return { bytes, width: viewport.width, height: viewport.height }
+}
+
+function fitContentToPage(
+  content: { width: number; height: number },
+  target?: { width: number; height: number } | null,
+): { pageWidth: number; pageHeight: number; drawWidth: number; drawHeight: number; offsetX: number; offsetY: number } {
+  const pageWidth = target?.width ?? content.width
+  const pageHeight = target?.height ?? content.height
+
+  if (!target) {
+    return {
+      pageWidth,
+      pageHeight,
+      drawWidth: content.width,
+      drawHeight: content.height,
+      offsetX: 0,
+      offsetY: 0,
+    }
+  }
+
+  const scale = Math.min(pageWidth / content.width, pageHeight / content.height)
+  const drawWidth = content.width * scale
+  const drawHeight = content.height * scale
+  const offsetX = (pageWidth - drawWidth) / 2
+  const offsetY = (pageHeight - drawHeight) / 2
+
+  return { pageWidth, pageHeight, drawWidth, drawHeight, offsetX, offsetY }
+}
+
 /**
  * Generates a Uint8Array PDF from a list of PageReferences.
  */
@@ -191,7 +275,7 @@ export async function generateRawPdf(
   pages: PageReference[],
   options: GenerateRawPdfOptions,
 ): Promise<Uint8Array> {
-  const { metadata, compress, onProgress, getPdfBlob, bookmarks } = options
+  const { metadata, compress, onProgress, getPdfBlob, getPdfDocument, burnScale, bookmarks } = options
   const exportMetadata = normalizeExportMetadata(metadata)
 
   const finalPdf = await PDFDocument.create()
@@ -211,46 +295,50 @@ export async function generateRawPdf(
   }
 
   const loadedPdfs = new Map<string, PDFDocument>()
-  const pagesBySource = new Map<string, { pageRef: PageReference; finalIndex: number }[]>()
-
-  pages.forEach((page, index) => {
-    if (!pagesBySource.has(page.sourceFileId)) {
-      pagesBySource.set(page.sourceFileId, [])
-    }
-    pagesBySource.get(page.sourceFileId)!.push({ pageRef: page, finalIndex: index })
-  })
-
-  const importedPages: Array<PDFPage | undefined> = Array.from({ length: pages.length })
 
   let processedPages = 0
   const totalPages = pages.length
+  const burnScaleValue = burnScale ?? DEFAULT_BURN_SCALE
 
-  for (const [sourceId, items] of pagesBySource) {
-    let sourcePdf = loadedPdfs.get(sourceId)
-
-    if (!sourcePdf) {
-      const sourceBuffer = await getPdfBlob(sourceId)
-      if (!sourceBuffer) {
-        throw new Error(`Source file not found: ${sourceId}`)
+  for (const pageRef of pages) {
+    const redactions = pageRef.redactions ?? []
+    if (redactions.length > 0) {
+      if (!getPdfDocument) {
+        throw new Error('Redactions require PDF rendering support')
       }
-      sourcePdf = await PDFDocument.load(sourceBuffer, { ignoreEncryption: true })
-      loadedPdfs.set(sourceId, sourcePdf)
-    }
 
-    const sourceIndices = items.map((item) => item.pageRef.sourcePageIndex)
-    const copiedPages = await finalPdf.copyPages(sourcePdf, sourceIndices)
+      const raster = await rasterizePageWithRedactions(pageRef, redactions, {
+        getPdfDocument,
+        scale: burnScaleValue,
+      })
+      const image = await finalPdf.embedPng(raster.bytes)
+      const layout = fitContentToPage(
+        { width: raster.width, height: raster.height },
+        pageRef.targetDimensions,
+      )
+      const pdfPage = finalPdf.addPage([layout.pageWidth, layout.pageHeight])
+      pdfPage.drawImage(image, {
+        x: layout.offsetX,
+        y: layout.offsetY,
+        width: layout.drawWidth,
+        height: layout.drawHeight,
+      })
+    } else {
+      let sourcePdf = loadedPdfs.get(pageRef.sourceFileId)
+      if (!sourcePdf) {
+        const sourceBuffer = await getPdfBlob(pageRef.sourceFileId)
+        if (!sourceBuffer) {
+          throw new Error(`Source file not found: ${pageRef.sourceFileId}`)
+        }
+        sourcePdf = await PDFDocument.load(sourceBuffer, { ignoreEncryption: true })
+        loadedPdfs.set(pageRef.sourceFileId, sourcePdf)
+      }
 
-    if (copiedPages.length !== items.length) {
-      throw new Error('Failed to copy some pages')
-    }
-
-    for (let i = 0; i < copiedPages.length; i++) {
-      const pdfPage = copiedPages[i]
-      const item = items[i]
-
-      if (!item || !pdfPage) continue
-
-      const { pageRef, finalIndex } = item
+      const copiedPages = await finalPdf.copyPages(sourcePdf, [pageRef.sourcePageIndex])
+      const pdfPage = copiedPages[0]
+      if (!pdfPage) {
+        throw new Error('Failed to copy page')
+      }
 
       if (pageRef.targetDimensions) {
         applyTargetDimensions(pdfPage, pageRef.targetDimensions)
@@ -261,20 +349,16 @@ export async function generateRawPdf(
         pdfPage.setRotation(degrees(currentRotation + pageRef.rotation))
       }
 
-      importedPages[finalIndex] = pdfPage
-      processedPages++
-
-      if (onProgress) {
-        onProgress(Math.round((processedPages / totalPages) * EXPORT_PROGRESS.PAGE_COPY_MAX))
-      }
+      finalPdf.addPage(pdfPage)
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 0))
-  }
+    processedPages++
+    if (onProgress) {
+      onProgress(Math.round((processedPages / totalPages) * EXPORT_PROGRESS.PAGE_COPY_MAX))
+    }
 
-  for (const page of importedPages) {
-    if (page) {
-      finalPdf.addPage(page)
+    if (processedPages % 4 === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
     }
   }
 

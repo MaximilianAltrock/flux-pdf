@@ -20,10 +20,14 @@ import {
   DeletePagesCommand,
   AddPagesCommand,
   RemoveSourceCommand,
-  ReorderPagesCommand,
-  SplitGroupCommand,
-  ResizePagesCommand,
-} from '@/commands'
+    ReorderPagesCommand,
+    SplitGroupCommand,
+    ResizePagesCommand,
+    AddRedactionCommand,
+    UpdateRedactionCommand,
+    DeleteRedactionCommand,
+    BatchCommand,
+  } from '@/commands'
 import { UserAction } from '@/types/actions'
 import type {
   BookmarkNode,
@@ -31,6 +35,7 @@ import type {
   PageEntry,
   PageReference,
   SecurityMetadata,
+  RedactionMark,
 } from '@/types'
 import type { PreflightFix } from '@/types/linter'
 import type { AppState } from './useAppState'
@@ -262,7 +267,27 @@ export function useAppActions(state: AppState) {
     setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
   }
 
+  function getExportPagesForWarning(options: ExportOptions): PageReference[] {
+    if (options.pageRange) {
+      const indices = parsePageRange(options.pageRange, store.contentPageCount)
+      return indices.map((i) => store.contentPages[i]).filter((p): p is PageReference => !!p)
+    }
+    return store.contentPages
+  }
+
+  function warnIfRedactions(pages: PageReference[]) {
+    const count = pages.reduce((sum, page) => sum + (page.redactions?.length ?? 0), 0)
+    if (count <= 0) return
+    const label = count === 1 ? '1 Redaction' : `${count} Redactions`
+    toast.warning(
+      `${label} applied. This data will be permanently removed.`,
+      undefined,
+      TIMEOUTS_MS.TOAST_WARNING,
+    )
+  }
+
   async function exportDocument(options: ExportOptions) {
+    warnIfRedactions(getExportPagesForWarning(options))
     const result = await exportDocumentService(options)
     if (!result.ok) return result
 
@@ -313,6 +338,7 @@ export function useAppActions(state: AppState) {
       if (pagesToExport.length === 0) {
         throw new Error('No pages to export')
       }
+      warnIfRedactions(pagesToExport)
 
       const filename = store.projectTitle || 'document'
       const pdfResult = await generateRawPdf(pagesToExport, { compress: false })
@@ -456,6 +482,32 @@ export function useAppActions(state: AppState) {
       state.openDiffModal(pageA, pageB)
     }
   }
+
+  // ============================================
+  // Redactions
+  // ============================================
+
+  function addRedaction(pageId: string, redaction: RedactionMark) {
+    execute(new AddRedactionCommand(pageId, [redaction]))
+  }
+
+  function updateRedaction(pageId: string, previous: RedactionMark, next: RedactionMark) {
+    execute(new UpdateRedactionCommand(pageId, previous, next))
+  }
+
+    function deleteRedaction(pageId: string, redaction: RedactionMark) {
+      execute(new DeleteRedactionCommand(pageId, redaction))
+    }
+
+    function deleteRedactions(pageId: string, redactions: RedactionMark[]) {
+      if (!redactions || redactions.length === 0) return
+      if (redactions.length === 1) {
+        execute(new DeleteRedactionCommand(pageId, redactions[0]))
+        return
+      }
+      const commands = redactions.map((redaction) => new DeleteRedactionCommand(pageId, redaction))
+      execute(new BatchCommand(commands, `Delete ${redactions.length} redactions`))
+    }
 
   // ============================================
   // Preflight Fixes
@@ -841,12 +893,12 @@ export function useAppActions(state: AppState) {
 
   function setProjectTitleDraft(value: string) {
     if (store.isTitleLocked) return
-    store.projectTitle = value
+    store.setProjectTitle(value)
   }
 
   function commitProjectTitle(value?: string) {
     if (store.isTitleLocked) return
-    store.projectTitle = normalizeProjectTitle(value ?? store.projectTitle)
+    store.setProjectTitle(normalizeProjectTitle(value ?? store.projectTitle))
   }
 
   function setCurrentTool(tool: 'select' | 'razor') {
@@ -912,6 +964,10 @@ export function useAppActions(state: AppState) {
     handleRotateSelected,
     handleDiffSelected,
     applyPreflightFix,
+      addRedaction,
+      updateRedaction,
+      deleteRedaction,
+      deleteRedactions,
 
     // Source Management
     handleRemoveSource,

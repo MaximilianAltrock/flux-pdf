@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, Clock, LayoutGrid } from 'lucide-vue-next'
 import { useProjectManager } from '@/composables/useProjectManager'
@@ -54,10 +54,10 @@ const { confirm } = useConfirm()
 const toast = useToast()
 
 const projects = ref<ProjectMeta[]>([])
-const isLoading = ref(true)
-const query = ref('')
-const sort = ref<SortKey>('updated')
-const editingId = ref<string | null>(null)
+const isLoading = shallowRef(true)
+const query = shallowRef('')
+const sort = shallowRef<SortKey>('updated')
+const editingId = shallowRef<string | null>(null)
 
 const thumbnailUrls = new Map<string, string>()
 const thumbnailBlobs = new Map<string, Blob | undefined>()

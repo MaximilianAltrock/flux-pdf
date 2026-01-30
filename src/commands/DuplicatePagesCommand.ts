@@ -86,6 +86,7 @@ export class DuplicatePagesCommand extends BaseCommand {
         width: page.width,
         height: page.height,
         targetDimensions: page.targetDimensions ? { ...page.targetDimensions } : undefined,
+        redactions: page.redactions ? page.redactions.map((r) => ({ ...r })) : undefined,
         groupId: page.groupId,
       }
 

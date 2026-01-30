@@ -297,6 +297,59 @@ The Flux Solution: Secure, destructive redaction.
 
         Export: Use pdf-lib to overlay an opaque rectangle, and optionally flatten that page to an image to ensure the underlying text stream is destroyed.
 
+The Security Philosophy: "Burn Mode"
+
+Standard PDF annotations are just layers on top. The text underneath remains searchable and copyable.
+FluxPDF's "Burn Mode":
+When a page has redactions, we do not just draw a rectangle in the PDF. During export, we:
+
+    Render the page to a high-resolution image (Rasterize) including the black boxes.
+
+    Replace the original vector page with this image.
+
+    Result: The underlying text data, metadata, and hidden layers are physically destroyed. It is now just pixels.
+
+Data Model Updates (src/types/index.ts)
+
+We need to store redaction coordinates relative to the PDF's internal point system
+
+We need full Undo/Redo support. If a user accidentally covers a signature, they must be able to undo it.
+
+A. The Coordinate Math Problem
+
+The image in the modal is scaled by CSS (transform: scale(zoom)). It is also responsive (CSS object-fit: contain).
+We need to translate Mouse Event Pixels -> PDF Points.
+
+The Formula:
+
+    Get the rendered DOM width of the <img>.
+
+    Get the original PDF width (stored in PageReference.originalWidth).
+
+    Ratio = PDF_Width / DOM_Width.
+
+    PDF_X = Mouse_OffsetX * Ratio.
+
+We modify PagePreviewModal.vue to support a drawing mode.
+
+The Component Update (PagePreviewModal.vue)
+
+We add a toolbar and an overlay div.
+
+he "Burn Mode" Exporter (src/composables/usePdfExport.ts)
+
+This is the most critical logic. We intercept pages with redactions and reroute them through a rasterization process.
+
+The Coordinate "Gotcha" (Y-Axis)
+
+    Web/DOM: (0,0) is Top-Left.
+
+    PDF: (0,0) is usually Bottom-Left.
+
+    Solution: Store coordinates in the Store as Top-Left based (matching the UI). Only convert to Bottom-Left if you are drawing vectors in pdf-lib.
+
+    However: Since our "Burn Mode" draws to an HTML Canvas (which is also Top-Left), we do not need to invert Y. This simplifies the math significantly. Storing Top-Left coordinates is the correct choice for this rasterization strategy.
+
 5. "The Padder" (Print Prep)
 
 Target: Students, Print Shops.

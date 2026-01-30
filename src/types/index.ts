@@ -58,6 +58,18 @@ export interface PageMetrics {
 }
 
 /**
+ * Redaction rectangle stored in PDF point coordinates (top-left origin).
+ */
+export interface RedactionMark {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  color?: 'black' | 'white'
+}
+
+/**
  * Security options for export and session persistence.
  */
 export interface SecurityMetadata {
@@ -84,6 +96,8 @@ export interface PageReference {
   height?: number
   /** Optional export-time override for page dimensions */
   targetDimensions?: { width: number; height: number }
+  /** Optional destructive redactions (top-left coordinate space) */
+  redactions?: RedactionMark[]
 
   // Grouping
   groupId?: string // specific group/batch ID, defaults to sourceFileId

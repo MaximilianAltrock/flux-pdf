@@ -5,7 +5,7 @@
  * Owns document state + editor layouts and loads project data on route changes.
  */
 
-import { watch } from 'vue'
+import { watch, watchEffect, useTemplateRef } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 // Composables
@@ -40,6 +40,12 @@ const projectManager = useProjectManager({
 // Initialize keyboard shortcuts (desktop only)
 useKeyboardShortcuts(actions, state, { isModalOpen: state.hasOpenModal })
 
+const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
+
+watchEffect(() => {
+  state.fileInputRef.value = fileInput.value
+})
+
 async function loadFromRoute(param: string | string[] | undefined) {
   if (!param || Array.isArray(param)) return
   const ok = await projectManager.switchProject(param)
@@ -71,7 +77,7 @@ onBeforeRouteLeave(async () => {
   >
     <!-- Hidden File Input (shared across layouts) -->
     <input
-      :ref="(el) => (state.fileInputRef.value = el as HTMLInputElement)"
+      ref="fileInput"
       type="file"
       accept="application/pdf,.pdf,image/jpeg,image/png"
       multiple
