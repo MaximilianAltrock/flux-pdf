@@ -13,6 +13,7 @@ export interface ProjectSnapshot {
   metadata?: DocumentMetadata
   security?: SecurityMetadata
   metadataDirty?: boolean
+  ignoredPreflightRuleIds?: string[]
 }
 
 function toPlain<T>(value: T): T {
@@ -33,5 +34,6 @@ export function buildProjectState(id: string, snapshot: ProjectSnapshot): Projec
     metadata: snapshot.metadata ? toPlain(snapshot.metadata) : undefined,
     security: snapshot.security ? toPlain(snapshot.security) : undefined,
     metadataDirty: Boolean(snapshot.metadataDirty),
+    ignoredPreflightRuleIds: toPlain(snapshot.ignoredPreflightRuleIds ?? []),
   }
 }

@@ -1,4 +1,10 @@
+import { storeToRefs } from 'pinia'
+import { inject, provide, type InjectionKey } from 'vue'
+import { useTimeoutFn } from '@vueuse/core'
 import { useDocumentStore } from '@/stores/document'
+import { useHistoryStore } from '@/stores/history'
+import { useUiStore } from '@/stores/ui'
+import { useProjectsStore } from '@/stores/projects'
 import { useRouter } from 'vue-router'
 import {
   DIFF_REQUIRED_SELECTION,
@@ -7,12 +13,13 @@ import {
   TIMEOUTS_MS,
   type RotationDelta,
 } from '@/constants'
-import { useCommandManager } from '@/composables/useCommandManager'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useMobile } from '@/composables/useMobile'
-import { useDocumentService, type ExportOptions } from '@/composables/useDocumentService'
-import { useProjectManager } from '@/composables/useProjectManager'
+import { useActiveElementBlur } from '@/composables/useActiveElementBlur'
+import { usePdfRepository } from '@/services/pdfRepository'
+import { createDocumentService, type ExportOptions } from '@/services/documentService'
+import { useFileInput } from '@/composables/useFileInput'
 import { getImportErrorMessage } from '@/domain/document/errors'
 import {
   RotatePagesCommand,
@@ -20,14 +27,14 @@ import {
   DeletePagesCommand,
   AddPagesCommand,
   RemoveSourceCommand,
-    ReorderPagesCommand,
-    SplitGroupCommand,
-    ResizePagesCommand,
-    AddRedactionCommand,
-    UpdateRedactionCommand,
-    DeleteRedactionCommand,
-    BatchCommand,
-  } from '@/commands'
+  ReorderPagesCommand,
+  SplitGroupCommand,
+  ResizePagesCommand,
+  AddRedactionCommand,
+  UpdateRedactionCommand,
+  DeleteRedactionCommand,
+  BatchCommand,
+} from '@/commands'
 import { UserAction } from '@/types/actions'
 import type {
   BookmarkNode,
@@ -38,50 +45,61 @@ import type {
   RedactionMark,
 } from '@/types'
 import type { PreflightFix } from '@/types/linter'
-import type { AppState } from './useAppState'
+import type { DocumentUiState } from '@/types/ui'
 
 /**
  * Centralized action handlers for the application
  * All business logic lives here, keeping components thin
  */
-export function useAppActions(state: AppState) {
+export function useDocumentActions() {
   const store = useDocumentStore()
+  const history = useHistoryStore()
+  const ui = useUiStore()
+  const projects = useProjectsStore()
   const {
-    execute,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    undoName,
-    redoName,
-    historyList,
-    jumpTo,
-    clearHistory,
-  } = useCommandManager()
+    zoom,
+    importJob: uiImportJob,
+    exportJob: uiExportJob,
+    ignoredPreflightRuleIds,
+  } = storeToRefs(ui)
+  const { activeProjectId, activeProjectMeta } = storeToRefs(projects)
+  const { openFileDialog, clearFileInput } = useFileInput()
+  const { execute, undo, redo, jumpTo, clearHistory } = history
+  const { canUndo, canRedo, undoName, redoName, historyList } = storeToRefs(history)
   const toast = useToast()
   const { confirmDelete, confirm } = useConfirm()
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
+  const { blurActiveElement } = useActiveElementBlur()
   const router = useRouter()
+  const pdfRepository = usePdfRepository()
+  const uiState: DocumentUiState = {
+    zoom,
+    setZoom: ui.setZoom,
+    setLoading: ui.setLoading,
+    ignoredPreflightRuleIds,
+    setIgnoredPreflightRuleIds: ui.setIgnoredPreflightRuleIds,
+  }
+  projects.bindUiState(uiState)
   const {
     importFiles,
     generateRawPdf,
     exportDocument: exportDocumentService,
-    exportJob,
     getSuggestedFilename,
     getEstimatedSize,
     clearExportError,
     parsePageRange,
     validatePageRange,
-  } = useDocumentService({
-    zoom: state.zoom,
-    setZoom: state.setZoom,
-    setLoading: state.setLoading,
+  } = createDocumentService({
+    documentStore: store,
+    historyStore: history,
+    pdfRepository,
+    ui: {
+      setLoading: ui.setLoading,
+      importJob: uiImportJob,
+      exportJob: uiExportJob,
+    },
   })
-  const projectManager = useProjectManager({
-    zoom: state.zoom,
-    setZoom: state.setZoom,
-    setLoading: state.setLoading,
-  })
+  const exportJob = uiExportJob
 
   function normalizeProjectTitle(value: string) {
     let next = value.trim()
@@ -100,7 +118,7 @@ export function useAppActions(state: AppState) {
     const input = event.target as HTMLInputElement
     if (input.files && input.files.length > 0) {
       handleImport(input.files, { addPages: true })
-      state.clearFileInput()
+      clearFileInput()
     }
   }
 
@@ -264,7 +282,14 @@ export function useAppActions(state: AppState) {
     link.click()
     document.body.removeChild(link)
 
-    setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
+    const { start } = useTimeoutFn(
+      (objectUrl: string) => {
+        URL.revokeObjectURL(objectUrl)
+      },
+      TIMEOUTS_MS.OBJECT_URL_REVOKE,
+      { immediate: false },
+    )
+    start(url)
   }
 
   function getExportPagesForWarning(options: ExportOptions): PageReference[] {
@@ -323,7 +348,7 @@ export function useAppActions(state: AppState) {
     if (isMobile.value && canShareFiles.value) {
       await handleMobileExport()
     } else {
-      state.openExportModal(false)
+      openExportOptions(false)
     }
   }
 
@@ -332,7 +357,7 @@ export function useAppActions(state: AppState) {
    */
   async function handleMobileExport() {
     try {
-      state.setLoading(true, 'Generating PDF...')
+      ui.setLoading(true, 'Generating PDF...')
 
       const pagesToExport = store.contentPages
       if (pagesToExport.length === 0) {
@@ -350,7 +375,7 @@ export function useAppActions(state: AppState) {
         type: 'application/pdf',
       })
 
-      state.setLoading(false)
+      ui.setLoading(false)
 
       const result = await shareFile(file, filename)
       if (result.shared) {
@@ -359,7 +384,7 @@ export function useAppActions(state: AppState) {
         toast.success('PDF downloaded')
       }
     } catch (error) {
-      state.setLoading(false)
+      ui.setLoading(false)
       toast.error('Export failed', error instanceof Error ? error.message : 'Export failed')
     }
   }
@@ -371,7 +396,7 @@ export function useAppActions(state: AppState) {
     if (isMobile.value) {
       haptic('light')
     }
-    state.openExportModal(true)
+    openExportOptions(true)
   }
 
   /**
@@ -379,6 +404,11 @@ export function useAppActions(state: AppState) {
    */
   function handleExportSuccess() {
     toast.success('PDF Exported')
+  }
+
+  function openExportOptions(selectedOnly = false) {
+    blurActiveElement()
+    ui.openExportModal(selectedOnly)
   }
 
   // ============================================
@@ -390,15 +420,15 @@ export function useAppActions(state: AppState) {
    */
   function handlePagePreview(pageRef: PageReference) {
     store.selectPage(pageRef.id, false)
-    state.openPreviewModal(pageRef)
+    ui.openPreviewModal(pageRef)
   }
 
   function handleClosePreview() {
-    const pageRef = state.previewPageRef.value
+    const pageRef = ui.previewPageRef
     if (pageRef) {
       store.selectPage(pageRef.id, false)
     }
-    state.closePreviewModal()
+    ui.closePreviewModal()
   }
 
   /**
@@ -419,7 +449,7 @@ export function useAppActions(state: AppState) {
 
     if (isMobile.value) {
       haptic('medium')
-      state.exitMobileSelectionMode()
+      ui.exitMobileSelectionMode()
     }
 
     toast.success(
@@ -479,7 +509,7 @@ export function useAppActions(state: AppState) {
     const pageB = store.contentPages.find((p) => p.id === selectedIds[1])
 
     if (pageA && pageB) {
-      state.openDiffModal(pageA, pageB)
+      ui.openDiffModal(pageA, pageB)
     }
   }
 
@@ -495,19 +525,21 @@ export function useAppActions(state: AppState) {
     execute(new UpdateRedactionCommand(pageId, previous, next))
   }
 
-    function deleteRedaction(pageId: string, redaction: RedactionMark) {
-      execute(new DeleteRedactionCommand(pageId, redaction))
-    }
+  function deleteRedaction(pageId: string, redaction: RedactionMark) {
+    execute(new DeleteRedactionCommand(pageId, redaction))
+  }
 
-    function deleteRedactions(pageId: string, redactions: RedactionMark[]) {
-      if (!redactions || redactions.length === 0) return
-      if (redactions.length === 1) {
-        execute(new DeleteRedactionCommand(pageId, redactions[0]))
-        return
-      }
-      const commands = redactions.map((redaction) => new DeleteRedactionCommand(pageId, redaction))
-      execute(new BatchCommand(commands, `Delete ${redactions.length} redactions`))
+  function deleteRedactions(pageId: string, redactions: RedactionMark[]) {
+    if (!redactions || redactions.length === 0) return
+    if (redactions.length === 1) {
+      const first = redactions[0]
+      if (!first) return
+      execute(new DeleteRedactionCommand(pageId, first))
+      return
     }
+    const commands = redactions.map((redaction) => new DeleteRedactionCommand(pageId, redaction))
+    execute(new BatchCommand(commands, `Delete ${redactions.length} redactions`))
+  }
 
   // ============================================
   // Preflight Fixes
@@ -528,7 +560,7 @@ export function useAppActions(state: AppState) {
         break
       }
       case 'edit-metadata': {
-        state.setInspectorTab('metadata')
+        ui.setInspectorTab('metadata')
         break
       }
       default:
@@ -567,11 +599,11 @@ export function useAppActions(state: AppState) {
   // ============================================
 
   function resetWorkspaceUi() {
-    state.closeCommandPalette()
-    state.closePreflightPanel()
-    state.closeExportModal()
-    state.closePreviewModal()
-    state.closeDiffModal()
+    ui.closeCommandPalette()
+    ui.closePreflightPanel()
+    ui.closeExportModal()
+    ui.closePreviewModal()
+    ui.closeDiffModal()
   }
 
   /**
@@ -593,7 +625,7 @@ export function useAppActions(state: AppState) {
     toast.success('Project cleared')
 
     try {
-      await projectManager.persistActiveProject()
+      await projects.persistActiveProject()
     } catch (error) {
       console.error('Failed to persist cleared project:', error)
       toast.error('Failed to save cleared project')
@@ -604,14 +636,14 @@ export function useAppActions(state: AppState) {
    * Delete current project and return to dashboard
    */
   async function handleDeleteProject() {
-    const projectId = projectManager.activeProjectId.value
+    const projectId = activeProjectId.value
     if (!projectId) {
       toast.error('No active project to delete')
       return
     }
 
     const projectTitle = normalizeProjectTitle(
-      projectManager.activeProjectMeta.value?.title ?? store.projectTitle,
+      activeProjectMeta.value?.title ?? store.projectTitle,
     )
 
     const confirmed = await confirm({
@@ -622,7 +654,7 @@ export function useAppActions(state: AppState) {
     })
     if (!confirmed) return
 
-    await projectManager.deleteProject(projectId)
+    await projects.deleteProject(projectId)
     toast.success('Project deleted')
     await router.push('/')
   }
@@ -638,7 +670,7 @@ export function useAppActions(state: AppState) {
       variant: 'info',
     })
     if (!confirmed) return
-    const project = await projectManager.createProject({ title: 'Untitled Project' })
+    const project = await projects.createProject({ title: 'Untitled Project' })
     toast.success('New project created')
     await router.push(`/project/${project.id}`)
   }
@@ -690,11 +722,11 @@ export function useAppActions(state: AppState) {
    * Handle command palette action
    */
   function handleCommandAction(action: UserAction) {
-    state.closeCommandPalette()
+    ui.closeCommandPalette()
 
     switch (action) {
       case UserAction.ADD_FILES:
-        state.openFileDialog()
+        openFileDialog()
         break
       case UserAction.EXPORT:
         handleExport()
@@ -743,7 +775,7 @@ export function useAppActions(state: AppState) {
    * Handle mobile add files action
    */
   function handleMobileAddFiles() {
-    state.openFileDialog()
+    openFileDialog()
   }
 
   /**
@@ -766,11 +798,11 @@ export function useAppActions(state: AppState) {
   // ============================================
 
   function zoomIn() {
-    state.zoomIn()
+    ui.zoomIn()
   }
 
   function zoomOut() {
-    state.zoomOut()
+    ui.zoomOut()
   }
 
   // ============================================
@@ -785,7 +817,7 @@ export function useAppActions(state: AppState) {
     store.togglePageSelection(pageId)
     // Auto-exit selection mode when no pages selected
     if (isMobile.value && store.selectedCount === 0) {
-      state.exitMobileSelectionMode()
+      ui.exitMobileSelectionMode()
     }
   }
 
@@ -804,7 +836,7 @@ export function useAppActions(state: AppState) {
     store.clearSelection()
     if (isMobile.value) {
       haptic('light')
-      state.exitMobileSelectionMode()
+      ui.exitMobileSelectionMode()
     }
   }
 
@@ -816,22 +848,22 @@ export function useAppActions(state: AppState) {
   }
 
   function enterMobileSelectionMode() {
-    state.enterMobileSelectionMode()
+    ui.enterMobileSelectionMode()
   }
 
   function exitMobileSelectionMode() {
-    state.exitMobileSelectionMode()
+    ui.exitMobileSelectionMode()
     store.clearSelection()
   }
 
   function enterMobileMoveMode() {
     if (store.selectedCount === 0) return
-    state.enterMobileMoveMode()
+    ui.enterMobileMoveMode()
     haptic('medium')
   }
 
   function exitMobileMoveMode() {
-    state.exitMobileMoveMode()
+    ui.exitMobileMoveMode()
   }
 
   function enterMobileSplitMode() {
@@ -839,11 +871,11 @@ export function useAppActions(state: AppState) {
       haptic('medium')
     }
     exitMobileSelectionMode()
-    state.setCurrentTool('razor')
+    ui.setCurrentTool('razor')
   }
 
   function exitMobileSplitMode() {
-    state.setCurrentTool('select')
+    ui.setCurrentTool('select')
   }
 
   /**
@@ -878,13 +910,13 @@ export function useAppActions(state: AppState) {
       newOrder.every((page, index) => page.id === allPages[index]?.id)
 
     if (isSameOrder) {
-      state.exitMobileMoveMode()
+      ui.exitMobileMoveMode()
       return
     }
 
     handleReorderPages([...allPages], newOrder)
     haptic('light')
-    state.exitMobileMoveMode()
+    ui.exitMobileMoveMode()
   }
 
   // ============================================
@@ -902,7 +934,7 @@ export function useAppActions(state: AppState) {
   }
 
   function setCurrentTool(tool: 'select' | 'razor') {
-    state.setCurrentTool(tool)
+    ui.setCurrentTool(tool)
   }
 
   function setMetadata(next: Partial<DocumentMetadata>) {
@@ -948,6 +980,7 @@ export function useAppActions(state: AppState) {
     handleExport,
     handleExportSelected,
     handleExportSuccess,
+    openExportOptions,
     exportDocument,
     exportJob,
     getSuggestedFilename,
@@ -964,10 +997,10 @@ export function useAppActions(state: AppState) {
     handleRotateSelected,
     handleDiffSelected,
     applyPreflightFix,
-      addRedaction,
-      updateRedaction,
-      deleteRedaction,
-      deleteRedactions,
+    addRedaction,
+    updateRedaction,
+    deleteRedaction,
+    deleteRedactions,
 
     // Source Management
     handleRemoveSource,
@@ -1032,5 +1065,18 @@ export function useAppActions(state: AppState) {
   }
 }
 
-// Export type for use in layouts
-export type AppActions = ReturnType<typeof useAppActions>
+export type DocumentActions = ReturnType<typeof useDocumentActions>
+
+const documentActionsKey: InjectionKey<DocumentActions> = Symbol('document-actions')
+
+export function provideDocumentActions(actions: DocumentActions) {
+  provide(documentActionsKey, actions)
+}
+
+export function useDocumentActionsContext(): DocumentActions {
+  const actions = inject(documentActionsKey)
+  if (!actions) {
+    throw new Error('useDocumentActionsContext must be used within EditorView provider')
+  }
+  return actions
+}

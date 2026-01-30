@@ -1,4 +1,5 @@
-import { ref, shallowRef } from 'vue'
+import { shallowRef } from 'vue'
+import { useTimeoutFn } from '@vueuse/core'
 import { PROGRESS, TIMEOUTS_MS } from '@/constants'
 
 /**
@@ -28,10 +29,10 @@ export interface CompressionResult {
  * The WASM binary (~14MB) is loaded on first use.
  */
 export function usePdfCompression() {
-  const isCompressing = ref(false)
-  const compressionProgress = ref<number>(PROGRESS.MIN)
-  const compressionError = ref<string | null>(null)
-  const isWorkerReady = ref(false)
+  const isCompressing = shallowRef(false)
+  const compressionProgress = shallowRef<number>(PROGRESS.MIN)
+  const compressionError = shallowRef<string | null>(null)
+  const isWorkerReady = shallowRef(false)
 
   // Keep worker reference for cleanup
   const workerRef = shallowRef<Worker | null>(null)
@@ -89,7 +90,14 @@ export function usePdfCompression() {
         worker.removeEventListener('error', handleError)
         // Terminate worker if it wasn't preloaded
         if (!workerRef.value) {
-          setTimeout(() => worker.terminate(), TIMEOUTS_MS.WORKER_TERMINATE)
+          const { start } = useTimeoutFn(
+            (target: Worker) => {
+              target.terminate()
+            },
+            TIMEOUTS_MS.WORKER_TERMINATE,
+            { immediate: false },
+          )
+          start(worker)
         }
         isCompressing.value = false
       }

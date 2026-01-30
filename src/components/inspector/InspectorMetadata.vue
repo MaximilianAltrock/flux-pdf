@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { shallowRef, computed } from 'vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,27 +12,25 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { FileDown, Plus, X } from 'lucide-vue-next'
 import type { DocumentMetadata } from '@/types'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
-const keywordInput = ref('')
+const keywordInput = shallowRef('')
 
 const metadataTitle = computed({
-  get: () => props.state.document.metadata.title,
-  set: (value) => props.actions.setMetadata({ title: value }),
+  get: () => document.metadata.title,
+  set: (value) => actions.setMetadata({ title: value }),
 })
 const metadataAuthor = computed({
-  get: () => props.state.document.metadata.author,
-  set: (value) => props.actions.setMetadata({ author: value }),
+  get: () => document.metadata.author,
+  set: (value) => actions.setMetadata({ author: value }),
 })
 const metadataSubject = computed({
-  get: () => props.state.document.metadata.subject,
-  set: (value) => props.actions.setMetadata({ subject: value }),
+  get: () => document.metadata.subject,
+  set: (value) => actions.setMetadata({ subject: value }),
 })
 
 type ReadonlyMetadata = Omit<Readonly<DocumentMetadata>, 'keywords'> & {
@@ -50,20 +48,20 @@ function hasMeaningfulMetadata(metadata?: ReadonlyMetadata): metadata is Readonl
 }
 
 const metadataSources = computed(() =>
-  props.state.document.sourceFileList.filter((source) => hasMeaningfulMetadata(source.metadata)),
+  document.sourceFileList.filter((source) => hasMeaningfulMetadata(source.metadata)),
 )
 
 function applyMetadataFromSource(sourceId: string) {
-  props.actions.applyMetadataFromSource(sourceId)
+  actions.applyMetadataFromSource(sourceId)
 }
 
 function addKeyword() {
   const val = keywordInput.value.trim()
-  if (val) props.actions.addKeyword(val)
+  if (val) actions.addKeyword(val)
   keywordInput.value = ''
 }
 function removeKeyword(k: string) {
-  props.actions.removeKeyword(k)
+  actions.removeKeyword(k)
 }
 </script>
 
@@ -176,11 +174,11 @@ function removeKeyword(k: string) {
         </FieldLabel>
         <FieldContent class="space-y-3">
           <div
-            v-if="props.state.document.metadata.keywords.length > 0"
+            v-if="document.metadata.keywords.length > 0"
             class="flex flex-wrap gap-2 items-center min-h-[24px]"
           >
             <Badge
-              v-for="k in props.state.document.metadata.keywords"
+              v-for="k in document.metadata.keywords"
               :key="k"
               variant="secondary"
               class="pl-2 pr-0.5 h-6 gap-1 rounded-sm"

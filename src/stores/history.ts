@@ -1,35 +1,34 @@
-import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
+import { computed, ref, shallowRef } from 'vue'
 import { HISTORY } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { commandRegistry } from '@/commands'
-import {
-  type Command,
-  type HistoryEntry,
-  type HistoryDisplayEntry,
-  type SerializedCommand,
+import type {
+  Command,
+  HistoryEntry,
+  HistoryDisplayEntry,
+  SerializedCommand,
 } from '@/commands'
 
 /**
- * Global command history state (singleton)
- * Defined outside to persist across component mounts
- */
-const history = ref<HistoryEntry[]>([])
-const historyPointer = ref<number>(HISTORY.POINTER_START)
-const sessionStartTime = ref(Date.now())
-
-/**
- * Command Manager Composable
+ * Command History Store
  *
  * Manages the undo/redo command history stack.
  * Persists history to IndexedDB for session restoration.
  */
-export function useCommandManager() {
+export const useHistoryStore = defineStore('history', () => {
   const store = useDocumentStore()
+
+  // ============================================
+  // State
+  // ============================================
+  const history = ref<HistoryEntry[]>([])
+  const historyPointer = shallowRef<number>(HISTORY.POINTER_START)
+  const sessionStartTime = shallowRef<number>(Date.now())
 
   // ============================================
   // Serialization Helpers
   // ============================================
-
   function serializeHistory(): SerializedCommand[] {
     const toPlain = <T>(value: T): T => JSON.parse(JSON.stringify(value))
     return history.value.map((entry) => toPlain(entry.command.serialize()))
@@ -120,7 +119,7 @@ export function useCommandManager() {
       command: rootCommand,
       timestamp: sessionStartTime.value,
       isCurrent: historyPointer.value === HISTORY.POINTER_START,
-      isUndone: historyPointer.value < HISTORY.POINTER_START, // Never undone
+      isUndone: historyPointer.value < HISTORY.POINTER_START,
       pointer: HISTORY.POINTER_START,
     }
 
@@ -138,25 +137,18 @@ export function useCommandManager() {
   // Command Operations
   // ============================================
 
-  /**
-   * Execute a command and add it to history
-   */
   function execute(command: Command): void {
-    // If we're in the middle of history, discard the "future"
     if (historyPointer.value < history.value.length - 1) {
       history.value = history.value.slice(0, historyPointer.value + 1)
     }
 
-    // Execute the command
     command.execute()
 
-    // Add to history
     history.value.push({
       command,
       timestamp: command.createdAt,
     })
 
-    // Trim history if too long
     if (history.value.length > HISTORY.MAX_ENTRIES) {
       history.value = history.value.slice(-HISTORY.MAX_ENTRIES)
     }
@@ -164,10 +156,6 @@ export function useCommandManager() {
     historyPointer.value = history.value.length - 1
   }
 
-  /**
-   * Undo the last command
-   * @returns true if undo was performed
-   */
   function undo(): boolean {
     if (!canUndo.value) return false
 
@@ -180,10 +168,6 @@ export function useCommandManager() {
     return true
   }
 
-  /**
-   * Redo the next command
-   * @returns true if redo was performed
-   */
   function redo(): boolean {
     if (!canRedo.value) return false
 
@@ -196,22 +180,14 @@ export function useCommandManager() {
     return true
   }
 
-  /**
-   * Clear all history
-   */
   function clearHistory(): void {
     history.value = []
     historyPointer.value = HISTORY.POINTER_START
   }
 
-  /**
-   * Jump to a specific point in history
-   * @param index - Target history index
-   */
   function jumpTo(index: number): void {
     if (index < HISTORY.POINTER_START || index >= history.value.length) return
 
-    // Undo or redo to reach the target state
     while (historyPointer.value > index) {
       undo()
     }
@@ -222,6 +198,11 @@ export function useCommandManager() {
 
   return {
     // State
+    history,
+    historyPointer,
+    sessionStartTime,
+
+    // Computed
     canUndo,
     canRedo,
     undoName,
@@ -238,4 +219,4 @@ export function useCommandManager() {
     rehydrateHistory,
     getHistoryPointer,
   }
-}
+})

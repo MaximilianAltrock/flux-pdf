@@ -1,5 +1,5 @@
-import { computed, ref, type Ref, watch } from 'vue'
-import type { AppActions } from '@/composables/useAppActions'
+import { computed, ref, shallowRef, type Ref, watch } from 'vue'
+import type { DocumentActions } from '@/composables/useDocumentActions'
 import type { PageReference, RedactionMark } from '@/types'
 
 // --- Types ---
@@ -16,7 +16,7 @@ type UseRedactionOverlayOptions = {
   pageSize: Readonly<Ref<Size | null>>
   overlayRef: Readonly<Ref<HTMLDivElement | null>>
   overlayMetrics: Readonly<Ref<Rect>>
-  actions: AppActions
+  actions: DocumentActions
   syncOverlayMetrics?: () => void
 }
 
@@ -35,17 +35,17 @@ export function useRedactionOverlay(options: UseRedactionOverlayOptions) {
   } = options
 
   // --- State ---
-  const isRedactMode = ref(false)
-  const isDrawing = ref(false)
-  const interactionMode = ref<'draw' | 'move' | 'resize' | null>(null)
+  const isRedactMode = shallowRef(false)
+  const isDrawing = shallowRef(false)
+  const interactionMode = shallowRef<'draw' | 'move' | 'resize' | null>(null)
   const cachedBounds = ref<DOMRect | null>(null)
 
   // Selection
   const selectedIds = ref<Set<string>>(new Set())
 
   // Drag State
-  const draggingId = ref<string | null>(null)
-  const activeHandle = ref<Handle | null>(null)
+  const draggingId = shallowRef<string | null>(null)
+  const activeHandle = shallowRef<Handle | null>(null)
   const dragStartPoint = ref<Point | null>(null)
   const dragStartRect = ref<Rect | null>(null)
 
@@ -56,7 +56,7 @@ export function useRedactionOverlay(options: UseRedactionOverlayOptions) {
   const drawStart = ref<Point | null>(null)
   const drawCurrent = ref<Point | null>(null)
 
-  const redactionColor = ref<RedactionMark['color']>('black')
+  const redactionColor = shallowRef<RedactionMark['color']>('black')
 
   // --- Computed ---
 

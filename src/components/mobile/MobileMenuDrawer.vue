@@ -29,13 +29,11 @@ import {
 } from '@/components/ui/item'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
+defineProps<{
   open: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -46,15 +44,17 @@ const emit = defineEmits<{
   settings: []
 }>()
 
-const { historyList, jumpTo } = props.actions
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const { historyList, jumpTo } = actions
 const { haptic } = useMobile()
 const { toggleTheme } = useThemeToggle()
 
-const sources = computed(() => props.state.document.sourceFileList)
+const sources = computed(() => document.sourceFileList)
 
 const totalSize = computed(() => {
   let size = 0
-  for (const source of props.state.document.sources.values()) {
+  for (const source of document.sources.values()) {
     size += source.fileSize
   }
   return size
@@ -125,7 +125,7 @@ function handleSettings() {
               <Card class="rounded-lg shadow-none ui-panel-muted py-0">
                 <CardContent class="p-3">
                   <div class="text-2xl font-bold text-foreground">
-                    {{ props.state.document.pageCount }}
+                    {{ document.pageCount }}
                   </div>
                   <div class="ui-kicker">Pages</div>
                 </CardContent>

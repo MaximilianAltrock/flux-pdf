@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch, computed, nextTick, onUnmounted } from 'vue'
+import { ref, shallowRef, watch, computed, nextTick, onUnmounted, useTemplateRef } from 'vue'
 import {
   X,
   ChevronLeft,
@@ -15,12 +15,12 @@ import {
 } from 'lucide-vue-next'
 import { useSwipe, useEventListener, useResizeObserver } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
-import { useDocumentService } from '@/composables/useDocumentService'
+import { usePdfRepository } from '@/services/pdfRepository'
 import { useRedactionOverlay } from '@/composables/useRedactionOverlay'
 import type { PageReference } from '@/types'
 import { useMobile } from '@/composables/useMobile'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-import type { AppActions } from '@/composables/useAppActions'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 import { UserAction } from '@/types/actions'
 import {
   Dialog,
@@ -36,8 +36,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 const props = defineProps<{
   open: boolean
   pageRef: PageReference | null
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -46,16 +44,18 @@ const emit = defineEmits<{
 }>()
 
 const { renderThumbnail } = useThumbnailRenderer()
-const { getPdfDocument } = useDocumentService()
+const { getPdfDocument } = usePdfRepository()
 const { isMobile, onBackButton } = useMobile()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
 // --- State ---
 const previewUrl = shallowRef<string | null>(null)
 const isLoading = shallowRef(false)
 const zoom = shallowRef(1)
-const containerRef = ref<HTMLElement | null>(null)
-const imageRef = ref<HTMLImageElement | null>(null)
-const overlayRef = ref<HTMLDivElement | null>(null)
+const containerRef = useTemplateRef<HTMLElement>('containerRef')
+const imageRef = useTemplateRef<HTMLImageElement>('imageRef')
+const overlayRef = useTemplateRef<HTMLDivElement>('overlayRef')
 const pageViewportSize = ref<{ width: number; height: number } | null>(null)
 const overlayReady = shallowRef(false)
 
@@ -70,7 +70,7 @@ const overlayMetrics = ref<{ left: number; top: number; width: number; height: n
 let overlaySyncFrame: number | null = null
 
 // --- Computed Helpers ---
-const contentPages = computed(() => props.state.document.contentPages)
+const contentPages = computed(() => document.contentPages)
 const currentIndex = computed(() => {
   if (!props.pageRef) return -1
   return contentPages.value.findIndex((p) => p.id === props.pageRef!.id)
@@ -123,7 +123,7 @@ const {
   pageSize,
   overlayRef,
   overlayMetrics,
-  actions: props.actions,
+  actions,
   syncOverlayMetrics,
 })
 
@@ -258,7 +258,7 @@ function getPageSizePoints(
 ): { width: number; height: number } | null {
   if (!pageRef) return null
   if (pageViewportSize.value) return pageViewportSize.value
-  const source = props.state.document.sources.get(pageRef.sourceFileId)
+  const source = document.sources.get(pageRef.sourceFileId)
   const metrics = source?.pageMetaData?.[pageRef.sourcePageIndex]
   const baseWidth = pageRef.width ?? metrics?.width
   const baseHeight = pageRef.height ?? metrics?.height
@@ -281,7 +281,7 @@ function handleClose() {
 
 function handlePreviewAction(action: UserAction) {
   if (!props.pageRef) return
-  props.actions.handleContextAction(action, props.pageRef)
+  actions.handleContextAction(action, props.pageRef)
 }
 
 function handleDelete() {
@@ -361,8 +361,8 @@ function handleKeydown(event: KeyboardEvent) {
 
   if (isCmd && event.key.toLowerCase() === 'z') {
     event.preventDefault()
-    if (isShift) props.actions.redo()
-    else props.actions.undo()
+    if (isShift) actions.redo()
+    else actions.undo()
     return
   }
 

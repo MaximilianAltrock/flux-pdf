@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { useEventListener, useTimeoutFn } from '@vueuse/core'
 import { ArrowDown, Scissors } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
@@ -7,49 +7,48 @@ import { useGridLogic } from '@/composables/useGridLogic'
 import PdfThumbnail from '@/components/PdfThumbnail.vue'
 import PageDivider from '@/components/page-grid/PageDivider.vue'
 import { type PageReference, type PageEntry, isDividerEntry } from '@/types'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
+import { useUiStore } from '@/stores/ui'
+import { usePreflight } from '@/composables/usePreflight'
 
 const emit = defineEmits<{
   preview: [pageRef: PageReference]
 }>()
 
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const ui = useUiStore()
+const preflight = usePreflight()
 const { haptic } = useMobile()
-const { localPages, isSelected, contentPages, getContentPageNumber } = useGridLogic(
-  props.state.document,
-)
+const { localPages, isSelected, contentPages, getContentPageNumber } = useGridLogic(document)
 
 // Mode helpers
-const mode = computed(() => props.state.mobileMode.value)
-const isSplit = computed(() => props.state.currentTool.value === 'razor')
+const mode = computed(() => ui.mobileMode)
+const isSplit = computed(() => ui.currentTool === 'razor')
 const isBrowse = computed(() => mode.value === 'browse' && !isSplit.value)
 const isSelect = computed(() => mode.value === 'select')
 const isMove = computed(() => mode.value === 'move')
 
-const selectedCount = computed(() => props.state.document.selectedCount)
-const selectedIds = computed(() => props.state.document.selectedIds)
-const problemsByPageId = computed(() => props.state.preflight.problemsByPageId.value)
+const selectedCount = computed(() => document.selectedCount)
+const selectedIds = computed(() => document.selectedIds)
+const problemsByPageId = computed(() => preflight.problemsByPageId.value)
 
 // Mobile-specific state
-const columnCount = ref(2)
+const columnCount = shallowRef(2)
 const MIN_COLUMNS = 2
 const MAX_COLUMNS = 4
 
 // Long press for selection
 const LONG_PRESS_MS = 400
-const longPressPageId = ref<string | null>(null)
+const longPressPageId = shallowRef<string | null>(null)
 const { start: startLongPress, stop: stopLongPress } = useTimeoutFn(
   () => {
     const pageId = longPressPageId.value
     if (!pageId) return
     haptic('medium')
-    props.actions.enterMobileSelectionMode()
-    props.actions.selectPage(pageId, false)
+    actions.enterMobileSelectionMode()
+    actions.selectPage(pageId, false)
     longPressPageId.value = null
   },
   LONG_PRESS_MS,
@@ -57,8 +56,8 @@ const { start: startLongPress, stop: stopLongPress } = useTimeoutFn(
 )
 
 // Pinch zoom tracking
-const pinchStartDist = ref(0)
-const isPinching = ref(false)
+const pinchStartDist = shallowRef(0)
+const isPinching = shallowRef(false)
 
 // Dynamic grid style
 const gridStyle = computed(() => ({
@@ -149,7 +148,7 @@ function handlePageTap(page: PageEntry, event: Event) {
   if (isSelect.value) {
     // Toggle selection
     haptic('light')
-    props.actions.togglePageSelection(page.id)
+    actions.togglePageSelection(page.id)
   } else {
     // Browse mode: open preview
     emit('preview', page)
@@ -157,11 +156,11 @@ function handlePageTap(page: PageEntry, event: Event) {
 }
 
 function handleDropMarkerTap(index: number) {
-  props.actions.handleMoveSelectedToPosition(index)
+  actions.handleMoveSelectedToPosition(index)
 }
 
 function handleSplitMarkerTap(index: number) {
-  props.actions.handleSplitGroup(index)
+  actions.handleSplitGroup(index)
 }
 
 function getProblemSeverity(pageId: string) {
@@ -219,9 +218,9 @@ function preventContextMenu(e: Event) {
 }
 
 // === Lifecycle ===
-useEventListener(document, 'touchstart', handlePinchStart, { passive: false })
-useEventListener(document, 'touchmove', handlePinchMove, { passive: false })
-useEventListener(document, 'touchend', handlePinchEnd)
+useEventListener(window, 'touchstart', handlePinchStart, { passive: false })
+useEventListener(window, 'touchmove', handlePinchMove, { passive: false })
+useEventListener(window, 'touchend', handlePinchEnd)
 </script>
 
 <template>
@@ -304,7 +303,7 @@ useEventListener(document, 'touchend', handlePinchEnd)
             :selected="isSelect && isSelected(pageRef.id)"
             :fixed-size="false"
             :width="300"
-            :source-color="props.state.document.getSourceColor(pageRef.sourceFileId)"
+            :source-color="document.getSourceColor(pageRef.sourceFileId)"
             :is-start-of-file="false"
             :is-razor-active="false"
             :can-split="false"

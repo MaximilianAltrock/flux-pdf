@@ -2,21 +2,18 @@
 import { computed } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-
-const props = defineProps<{
-  state: FacadeState
-}>()
+import { useUiStore } from '@/stores/ui'
 
 const emit = defineEmits<{
   add: []
 }>()
 
 const { haptic } = useMobile()
+const ui = useUiStore()
 
 // FAB is only visible in Browse mode and not in Split mode
 const isVisible = computed(
-  () => props.state.mobileMode.value === 'browse' && props.state.currentTool.value !== 'razor',
+  () => ui.mobileMode === 'browse' && ui.currentTool !== 'razor',
 )
 
 function handleTap() {

@@ -1,55 +1,53 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { shallowRef, computed, watch } from 'vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Eye, EyeOff } from 'lucide-vue-next'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
-const showUserPassword = ref(false)
-const showOwnerPassword = ref(false)
+const showUserPassword = shallowRef(false)
+const showOwnerPassword = shallowRef(false)
 
 const securityEncrypted = computed({
-  get: () => props.state.document.security.isEncrypted,
-  set: (value) => props.actions.setSecurity({ isEncrypted: value }),
+  get: () => document.security.isEncrypted,
+  set: (value) => actions.setSecurity({ isEncrypted: value }),
 })
 
 const securityUserPassword = computed({
-  get: () => props.state.document.security.userPassword ?? '',
-  set: (value) => props.actions.setSecurity({ userPassword: value }),
+  get: () => document.security.userPassword ?? '',
+  set: (value) => actions.setSecurity({ userPassword: value }),
 })
 
 const securityOwnerPassword = computed({
-  get: () => props.state.document.security.ownerPassword ?? '',
-  set: (value) => props.actions.setSecurity({ ownerPassword: value }),
+  get: () => document.security.ownerPassword ?? '',
+  set: (value) => actions.setSecurity({ ownerPassword: value }),
 })
 
 const allowPrinting = computed({
-  get: () => props.state.document.security.allowPrinting,
-  set: (value) => props.actions.setSecurity({ allowPrinting: value }),
+  get: () => document.security.allowPrinting,
+  set: (value) => actions.setSecurity({ allowPrinting: value }),
 })
 
 const allowCopying = computed({
-  get: () => props.state.document.security.allowCopying,
-  set: (value) => props.actions.setSecurity({ allowCopying: value }),
+  get: () => document.security.allowCopying,
+  set: (value) => actions.setSecurity({ allowCopying: value }),
 })
 
 const allowModifying = computed({
-  get: () => props.state.document.security.allowModifying,
-  set: (value) => props.actions.setSecurity({ allowModifying: value }),
+  get: () => document.security.allowModifying,
+  set: (value) => actions.setSecurity({ allowModifying: value }),
 })
 
 watch(securityEncrypted, (isEncrypted) => {
   if (!isEncrypted) {
-    props.actions.setSecurity({ userPassword: '', ownerPassword: '' })
+    actions.setSecurity({ userPassword: '', ownerPassword: '' })
   }
 })
 </script>
@@ -57,9 +55,9 @@ watch(securityEncrypted, (isEncrypted) => {
 <template>
   <div class="space-y-6 pb-6">
     <div
-      class="ui-panel-muted rounded-md p-3 transition-colors"
-      :class="
-        props.state.document.security.isEncrypted ? 'border-primary/40 ring-1 ring-primary/20' : ''
+        class="ui-panel-muted rounded-md p-3 transition-colors"
+        :class="
+        document.security.isEncrypted ? 'border-primary/40 ring-1 ring-primary/20' : ''
       "
     >
       <Field orientation="horizontal" class="items-center justify-between gap-4">
@@ -67,7 +65,7 @@ watch(securityEncrypted, (isEncrypted) => {
           <FieldLabel
             for="security-encrypted"
             class="ui-kicker transition-colors"
-            :class="props.state.document.security.isEncrypted ? 'text-primary' : ''"
+            :class="document.security.isEncrypted ? 'text-primary' : ''"
           >
             Encryption
           </FieldLabel>
@@ -81,7 +79,7 @@ watch(securityEncrypted, (isEncrypted) => {
     <div
       class="space-y-6 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
       :class="
-        props.state.document.security.isEncrypted
+        document.security.isEncrypted
           ? 'opacity-100 max-h-[800px]'
           : 'opacity-0 max-h-0 pointer-events-none'
       "

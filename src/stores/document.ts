@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import { ROTATION_FULL_DEGREES, type RotationAngle, type RotationDelta } from '@/constants'
 import type {
   SourceFile,
@@ -37,13 +37,15 @@ export const useDocumentStore = defineStore('document', () => {
 
   const sources = ref<Map<string, SourceFile>>(new Map())
   const pages = ref<PageEntry[]>([])
+  const pagesStructureVersion = shallowRef(0)
+  const sourcesVersion = shallowRef(0)
   const metadata = ref<DocumentMetadata>({ ...DEFAULT_METADATA })
   const security = ref<SecurityMetadata>({ ...DEFAULT_SECURITY })
   const bookmarksTree = ref<BookmarkNode[]>([])
-  const bookmarksDirty = ref(false)
-  const metadataDirty = ref(false)
-  const projectTitle = ref('Untitled Project')
-  const isTitleLocked = ref(false)
+  const bookmarksDirty = shallowRef(false)
+  const metadataDirty = shallowRef(false)
+  const projectTitle = shallowRef('Untitled Project')
+  const isTitleLocked = shallowRef(false)
 
   const selection = ref<SelectionState>({
     selectedIds: new Set(),
@@ -77,21 +79,34 @@ export const useDocumentStore = defineStore('document', () => {
   // Actions
   // ============================================
 
+  function bumpPagesStructureVersion() {
+    pagesStructureVersion.value += 1
+  }
+
+  function bumpSourcesVersion() {
+    sourcesVersion.value += 1
+  }
+
   function addSourceFile(sourceFile: SourceFile) {
     sources.value.set(sourceFile.id, sourceFile)
+    bumpSourcesVersion()
   }
 
   function removeSourceFile(sourceFileId: string) {
     sources.value.delete(sourceFileId)
     pages.value = pages.value.filter((p) => (p.isDivider ? true : p.sourceFileId !== sourceFileId))
+    bumpSourcesVersion()
+    bumpPagesStructureVersion()
   }
 
   function removeSourceOnly(sourceFileId: string) {
     sources.value.delete(sourceFileId)
+    bumpSourcesVersion()
   }
 
   function addPages(newPages: PageReference[]) {
     pages.value.push(...newPages)
+    bumpPagesStructureVersion()
   }
 
   function insertPages(index: number, newPages: PageEntry[]) {
@@ -99,6 +114,7 @@ export const useDocumentStore = defineStore('document', () => {
     if (index > pages.value.length) index = pages.value.length
 
     pages.value.splice(index, 0, ...newPages)
+    bumpPagesStructureVersion()
   }
 
   // === HARD DELETE (The only delete now) ===
@@ -113,10 +129,12 @@ export const useDocumentStore = defineStore('document', () => {
     if (selection.value.lastSelectedId && idsSet.has(selection.value.lastSelectedId)) {
       selection.value.lastSelectedId = null
     }
+    bumpPagesStructureVersion()
   }
 
   function reorderPages(newOrder: PageEntry[]) {
     pages.value = newOrder
+    bumpPagesStructureVersion()
   }
 
   function rotatePage(pageId: string, degrees: RotationDelta) {
@@ -283,6 +301,7 @@ export const useDocumentStore = defineStore('document', () => {
 
   function setPages(newPages: PageEntry[]) {
     pages.value = newPages
+    bumpPagesStructureVersion()
   }
 
   function getSourceColor(sourceId: string, fallback = 'gray') {
@@ -310,6 +329,8 @@ export const useDocumentStore = defineStore('document', () => {
     resetMetadata()
     resetSecurity()
     resetBookmarks()
+    bumpSourcesVersion()
+    bumpPagesStructureVersion()
   }
 
   function setProjectTitle(value: string) {
@@ -321,18 +342,16 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
 
-  watch(
-    [pages, sources, bookmarksDirty],
-    () => {
-      if (bookmarksDirty.value) return
-      bookmarksTree.value = autoGenBookmarksFromPages(contentPages.value, sources.value)
-    },
-    { deep: true },
-  )
+  watch([pagesStructureVersion, sourcesVersion, bookmarksDirty], () => {
+    if (bookmarksDirty.value) return
+    bookmarksTree.value = autoGenBookmarksFromPages(contentPages.value, sources.value)
+  })
 
   return {
     sources,
     pages,
+    pagesStructureVersion,
+    sourcesVersion,
     selection,
     pageCount,
     contentPages,

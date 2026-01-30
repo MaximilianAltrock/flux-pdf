@@ -4,25 +4,29 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-vue-next'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-import type { AppActions } from '@/composables/useAppActions'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
+import { usePreflight } from '@/composables/usePreflight'
 import type { LintResult, Severity } from '@/types/linter'
 
-const props = defineProps<{
+defineProps<{
   open: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
 }>()
 
-const problems = computed(() => props.state.preflight.problems.value)
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const preflight = usePreflight()
+
+const problems = computed(() => preflight.problems.value)
+const ignoredCount = computed(() => preflight.ignoredRules.value.size)
 
 const pageNumberMap = computed(() => {
   const map = new Map<string, number>()
-  props.state.document.contentPages.forEach((page, index) => {
+  document.contentPages.forEach((page, index) => {
     map.set(page.id, index + 1)
   })
   return map
@@ -49,7 +53,16 @@ function severityClass(severity: Severity): string {
 
 function applyFix(problem: LintResult) {
   if (!problem.fix) return
-  props.actions.applyPreflightFix(problem.fix, problem.pageIds)
+  actions.applyPreflightFix(problem.fix, problem.pageIds)
+}
+
+function resetIgnored() {
+  preflight.resetIgnoredRules()
+}
+
+function ignoreProblem(problem: LintResult) {
+  if (!problem.ruleId) return
+  preflight.ignoreRule(problem.ruleId)
 }
 </script>
 
@@ -67,9 +80,20 @@ function applyFix(problem: LintResult) {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" class="text-xs" @click="emit('update:open', false)">
-          Close
-        </Button>
+        <div class="flex items-center gap-2">
+          <Button
+            v-if="ignoredCount > 0"
+            variant="ghost"
+            size="sm"
+            class="text-xs"
+            @click="resetIgnored"
+          >
+            Reset ignored ({{ ignoredCount }})
+          </Button>
+          <Button variant="ghost" size="sm" class="text-xs" @click="emit('update:open', false)">
+            Close
+          </Button>
+        </div>
       </div>
 
       <div class="p-6 space-y-4 overflow-auto">
@@ -94,14 +118,24 @@ function applyFix(problem: LintResult) {
               <p class="text-sm font-medium text-foreground">{{ problem.message }}</p>
             </div>
 
-            <Button
-              v-if="problem.fix"
-              size="sm"
-              class="shrink-0"
-              @click="applyFix(problem)"
-            >
-              {{ problem.fix.label }}
-            </Button>
+            <div class="flex items-center gap-2 shrink-0">
+              <Button
+                v-if="problem.fix"
+                size="sm"
+                class="shrink-0"
+                @click="applyFix(problem)"
+              >
+                {{ problem.fix.label }}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="text-xs"
+                @click="ignoreProblem(problem)"
+              >
+                Ignore
+              </Button>
+            </div>
           </div>
         </div>
       </div>

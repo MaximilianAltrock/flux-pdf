@@ -8,7 +8,7 @@ import { useDocumentStore } from '@/stores/document'
  * Command to remove a source file and all of its pages.
  *
  * Note: This only mutates in-memory store state. Persisted blobs are
- * removed separately (e.g., via useDocumentService).
+ * removed separately during storage GC.
  */
 export class RemoveSourceCommand extends BaseCommand {
   public readonly type = CommandType.REMOVE_SOURCE

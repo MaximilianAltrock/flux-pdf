@@ -11,22 +11,22 @@ import {
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
+defineProps<{
   open: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const { groupedSecondaryActions } = useMobileActionRegistry(props.actions)
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const { groupedSecondaryActions } = useMobileActionRegistry(actions)
 
-const selectedCount = computed(() => props.state.document.selectedCount)
+const selectedCount = computed(() => document.selectedCount)
 
 function handleActionTap(action: { execute: () => void; disabled?: boolean }) {
   if (action.disabled) return

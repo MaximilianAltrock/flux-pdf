@@ -1,4 +1,4 @@
-import { ref, watch, computed } from 'vue'
+import { ref, shallowRef, watch, computed } from 'vue'
 import { PAGE_NUMBER_BASE } from '@/constants'
 import type { DividerReference, PageEntry, PageReference } from '@/types'
 import { isDividerEntry, isPageEntry } from '@/types'
@@ -6,24 +6,25 @@ import { isDividerEntry, isPageEntry } from '@/types'
 type GridDocument = {
   pages: ReadonlyArray<PageEntry>
   selectedIds: ReadonlySet<string>
+  pagesStructureVersion: number
 }
 
 export function useGridLogic(document: GridDocument) {
   // Local state for drag-and-drop
   // We use this as the v-model for the draggable library
   const localPages = ref<PageEntry[]>([])
-  const isDragging = ref(false)
+  const isDragging = shallowRef(false)
 
   // Sync with store (One-way sync: Store -> Local)
   // We stop syncing while dragging to prevent stutter
   watch(
-    () => document.pages,
-    (newPages) => {
+    () => document.pagesStructureVersion,
+    () => {
       if (!isDragging.value) {
-        localPages.value = [...newPages]
+        localPages.value = [...document.pages]
       }
     },
-    { deep: true, immediate: true },
+    { immediate: true },
   )
 
   // Helpers

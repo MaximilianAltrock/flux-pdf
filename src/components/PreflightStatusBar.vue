@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { CheckCircle2, AlertTriangle } from 'lucide-vue-next'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { usePreflight } from '@/composables/usePreflight'
+import { useUiStore } from '@/stores/ui'
 
-const props = defineProps<{
-  state: FacadeState
-}>()
+const ui = useUiStore()
+const preflight = usePreflight()
 
-const problemCount = computed(() => props.state.preflight.problemCount.value)
-const isHealthy = computed(() => props.state.preflight.isHealthy.value)
+const problemCount = computed(() => preflight.problemCount.value)
+const isHealthy = computed(() => preflight.isHealthy.value)
 
 const label = computed(() =>
   isHealthy.value ? 'Preflight Passed' : `${problemCount.value} Problem${problemCount.value === 1 ? '' : 's'}`,
@@ -23,7 +23,7 @@ const label = computed(() =>
       type="button"
       class="flex items-center gap-2 text-xs font-semibold tracking-wide uppercase"
       :class="isHealthy ? 'text-emerald-500' : 'text-amber-500'"
-      @click="props.state.togglePreflightPanel"
+      @click="ui.togglePreflightPanel"
     >
       <CheckCircle2 v-if="isHealthy" class="w-4 h-4" />
       <AlertTriangle v-else class="w-4 h-4" />

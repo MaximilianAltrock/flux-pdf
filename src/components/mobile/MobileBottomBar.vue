@@ -4,13 +4,13 @@ import { MoreHorizontal, Download, Share2, Plus, SlidersHorizontal } from 'lucid
 import { useMobile } from '@/composables/useMobile'
 import { useMobileActionRegistry } from '@/composables/useMobileActionRegistry'
 import { Button } from '@/components/ui/button'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useUiStore } from '@/stores/ui'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const ui = useUiStore()
+const document = useDocumentStore()
 
 const emit = defineEmits<{
   export: []
@@ -20,16 +20,16 @@ const emit = defineEmits<{
 }>()
 
 const { haptic, canShareFiles } = useMobile()
-const { primaryActions } = useMobileActionRegistry(props.actions)
+const { primaryActions } = useMobileActionRegistry(actions)
 
 // Mode helpers
-const mode = computed(() => props.state.mobileMode.value)
-const isSplit = computed(() => props.state.currentTool.value === 'razor')
+const mode = computed(() => ui.mobileMode)
+const isSplit = computed(() => ui.currentTool === 'razor')
 const isBrowse = computed(() => mode.value === 'browse')
 const isSelect = computed(() => mode.value === 'select')
 const isMove = computed(() => mode.value === 'move')
 
-const hasPages = computed(() => props.state.document.pageCount > 0)
+const hasPages = computed(() => document.pageCount > 0)
 
 function handleExport() {
   haptic('light')

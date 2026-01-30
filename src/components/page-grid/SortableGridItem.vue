@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { shallowRef, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import {
   attachClosestEdge,
@@ -17,9 +17,9 @@ const props = defineProps<{
   isDivider: boolean
 }>()
 
-const elementRef = ref<HTMLElement | null>(null)
-const closestEdge = ref<Edge | null>(null)
-const isDragging = ref(false)
+const elementRef = useTemplateRef<HTMLElement>('elementRef')
+const closestEdge = shallowRef<Edge | null>(null)
+const isDragging = shallowRef(false)
 
 // Cleanup function
 let cleanup: (() => void) | null = null

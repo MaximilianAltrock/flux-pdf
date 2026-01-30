@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed } from 'vue'
+import { shallowRef, watch, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { ROTATION_DEFAULT_DEGREES } from '@/constants'
@@ -18,13 +18,13 @@ const props = defineProps<{
 
 const { renderThumbnail, cancelRender } = useThumbnailRenderer()
 
-const containerRef = ref<HTMLElement | null>(null)
-const thumbnailUrl = ref<string | null>(null)
-const isLoading = ref(false)
-const hasError = ref(false)
-const hasBeenVisible = ref(false)
-const renderRequestId = ref(0)
-const lastPageRefId = ref('')
+const containerRef = useTemplateRef<HTMLElement>('containerRef')
+const thumbnailUrl = shallowRef<string | null>(null)
+const isLoading = shallowRef(false)
+const hasError = shallowRef(false)
+const hasBeenVisible = shallowRef(false)
+const renderRequestId = shallowRef(0)
+const lastPageRefId = shallowRef('')
 
 const pageRefId = computed(() => `${props.sourceId}:${props.pageIndex}`)
 const pageRef = computed<PageReference>(() => ({

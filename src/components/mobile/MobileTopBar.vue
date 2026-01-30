@@ -3,13 +3,13 @@ import { computed } from 'vue'
 import { Menu, X, Undo2, Redo2, ArrowLeft } from 'lucide-vue-next'
 import { useMobile } from '@/composables/useMobile'
 import { Button } from '@/components/ui/button'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useUiStore } from '@/stores/ui'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const ui = useUiStore()
+const document = useDocumentStore()
 
 const emit = defineEmits<{
   menu: []
@@ -19,21 +19,21 @@ const emit = defineEmits<{
 const { haptic } = useMobile()
 
 // Mode helpers
-const mode = computed(() => props.state.mobileMode.value)
-const isSplit = computed(() => props.state.currentTool.value === 'razor')
+const mode = computed(() => ui.mobileMode)
+const isSplit = computed(() => ui.currentTool === 'razor')
 const isBrowse = computed(() => mode.value === 'browse' && !isSplit.value)
 const isSelect = computed(() => mode.value === 'select')
 const isMove = computed(() => mode.value === 'move')
 
-const selectedCount = computed(() => props.state.document.selectedCount)
-const displayTitle = computed(() => props.state.document.projectTitle || 'Untitled')
-const hasPages = computed(() => props.state.document.pageCount > 0)
-const pageCount = computed(() => props.state.document.pageCount)
+const selectedCount = computed(() => document.selectedCount)
+const displayTitle = computed(() => document.projectTitle || 'Untitled')
+const hasPages = computed(() => document.pageCount > 0)
+const pageCount = computed(() => document.pageCount)
 const isAllSelected = computed(
   () => pageCount.value > 0 && selectedCount.value === pageCount.value,
 )
-const canUndo = computed(() => props.actions.canUndo.value)
-const canRedo = computed(() => props.actions.canRedo.value)
+const canUndo = computed(() => actions.canUndo.value)
+const canRedo = computed(() => actions.canRedo.value)
 const showUndo = computed(() => isBrowse.value)
 const showRedo = computed(() => isBrowse.value)
 
@@ -51,42 +51,42 @@ function handleTitleTap() {
 
 function handleEnterSelect() {
   haptic('medium')
-  props.actions.enterMobileSelectionMode()
+  actions.enterMobileSelectionMode()
 }
 
 function handleExitSelect() {
   haptic('light')
-  props.actions.exitMobileSelectionMode()
+  actions.exitMobileSelectionMode()
 }
 
 function handleSelectAll() {
-  props.actions.selectAllPages()
+  actions.selectAllPages()
 }
 
 function handleDeselectAll() {
-  props.actions.clearSelectionKeepMode()
+  actions.clearSelectionKeepMode()
 }
 
 function handleCancelMove() {
   haptic('light')
-  props.actions.exitMobileMoveMode()
+  actions.exitMobileMoveMode()
 }
 
 function handleExitSplit() {
   haptic('light')
-  props.actions.exitMobileSplitMode()
+  actions.exitMobileSplitMode()
 }
 
 function handleUndo() {
   if (!canUndo.value) return
   haptic('light')
-  props.actions.undo()
+  actions.undo()
 }
 
 function handleRedo() {
   if (!canRedo.value) return
   haptic('light')
-  props.actions.redo()
+  actions.redo()
 }
 </script>
 

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, Clock, LayoutGrid } from 'lucide-vue-next'
-import { useProjectManager } from '@/composables/useProjectManager'
+import { useProjectsStore } from '@/stores/projects'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 import { Button } from '@/components/ui/button'
@@ -49,7 +49,7 @@ const sortOptions = [
 type SortKey = (typeof sortOptions)[number]['value']
 
 const router = useRouter()
-const projectManager = useProjectManager()
+const projectsStore = useProjectsStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 
@@ -77,7 +77,7 @@ async function refreshProjects() {
 
   try {
     // Artificial delay removed, logic stays same
-    projects.value = await projectManager.listRecentProjects(PROJECT_LIST_LIMIT)
+    projects.value = await projectsStore.listRecentProjects(PROJECT_LIST_LIMIT)
   } catch (error) {
     console.error('Failed to load projects:', error)
   } finally {
@@ -152,12 +152,12 @@ async function handleOpenProject(id: string) {
 }
 
 async function handleCreateProject() {
-  const meta = await projectManager.createProject({ title: 'Untitled Project' })
+  const meta = await projectsStore.createProject({ title: 'Untitled Project' })
   await router.push(`/project/${meta.id}`)
 }
 
 async function handleDuplicate(project: ProjectMeta) {
-  const created = await projectManager.duplicateProject(project.id)
+  const created = await projectsStore.duplicateProject(project.id)
   if (created) {
     toast.success('Project duplicated')
     await refreshProjects()
@@ -172,7 +172,7 @@ async function handleDelete(project: ProjectMeta) {
     variant: 'danger',
   })
   if (!confirmed) return
-  await projectManager.deleteProject(project.id)
+  await projectsStore.deleteProject(project.id)
   toast.success('Project deleted')
   await refreshProjects()
 }
@@ -186,7 +186,7 @@ async function handleRenameCommit(project: ProjectMeta, nextTitle: string) {
   editingId.value = null
   const trimmed = nextTitle.trim()
   if (!trimmed || trimmed === project.title) return
-  await projectManager.renameProject(project.id, trimmed)
+  await projectsStore.renameProject(project.id, trimmed)
   await refreshProjects()
 }
 </script>

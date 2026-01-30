@@ -1,20 +1,15 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { watch, nextTick, useTemplateRef } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Timeline, TimelineItem, TimelineTime, TimelineTitle } from '@/components/ui/timeline'
 import { History } from 'lucide-vue-next'
 import { formatTime } from '@/utils/format'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
-const { historyList, jumpTo } = props.actions
+const { historyList, jumpTo } = useDocumentActionsContext()
 
-const historyScrollArea = ref<InstanceType<typeof ScrollArea> | null>(null)
+const historyScrollArea = useTemplateRef<InstanceType<typeof ScrollArea>>('historyScrollArea')
 
 watch(
   () => historyList.value.length,

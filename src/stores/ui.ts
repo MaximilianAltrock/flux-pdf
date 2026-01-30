@@ -1,51 +1,63 @@
-import { ref, computed } from 'vue'
-import { ZOOM } from '@/constants'
-import { useMobile } from '@/composables/useMobile'
+import { defineStore } from 'pinia'
+import { computed, ref, shallowRef } from 'vue'
+import { PROGRESS, ZOOM } from '@/constants'
 import type { PageReference } from '@/types'
+import type { DocumentErrorCode } from '@/types/errors'
+
+export type JobStatus = 'idle' | 'running' | 'success' | 'error'
+
+export interface JobState {
+  status: JobStatus
+  progress: number
+  error: string | null
+  errorCode?: DocumentErrorCode | null
+}
+
+export function createJobState(): JobState {
+  return {
+    status: 'idle',
+    progress: PROGRESS.MIN,
+    error: null,
+    errorCode: null,
+  }
+}
 
 /**
- * Centralized app-level state management
- * Handles all modal/sheet visibility, selection modes, and UI state
+ * UI Store
+ * Centralized UI-only state (modals, sheets, zoom, tool selection, loading).
  */
-export function useAppState() {
-  const { isMobile } = useMobile()
-
+export const useUiStore = defineStore('ui', () => {
   // ============================================
   // UI-only Document State
   // ============================================
-  const isLoading = ref(false)
-  const loadingMessage = ref('')
+  const isLoading = shallowRef(false)
+  const loadingMessage = shallowRef('')
 
-  const zoom = ref<number>(ZOOM.DEFAULT)
+  const zoom = shallowRef<number>(ZOOM.DEFAULT)
 
   const zoomPercentage = computed(() =>
     Math.round((zoom.value / ZOOM.PERCENT_BASE) * ZOOM.PERCENT_MAX),
   )
 
-  const currentTool = ref<'select' | 'razor'>('select')
-  const inspectorTab = ref<'structure' | 'metadata' | 'security'>('structure')
-
-  // ============================================
-  // File Input Reference
-  // ============================================
-  const fileInputRef = ref<HTMLInputElement | null>(null)
+  const currentTool = shallowRef<'select' | 'razor'>('select')
+  const inspectorTab = shallowRef<'structure' | 'metadata' | 'security'>('structure')
 
   // ============================================
   // Desktop State
   // ============================================
-  const showCommandPalette = ref(false)
-  const showPreflightPanel = ref(false)
+  const showCommandPalette = shallowRef(false)
+  const showPreflightPanel = shallowRef(false)
 
   // ============================================
   // Mobile State
   // ============================================
-  const mobileSelectionMode = ref(false)
-  const mobileMoveMode = ref(false)
-  const showMenuDrawer = ref(false)
-  const showTitleSheet = ref(false)
-  const showAddSheet = ref(false)
-  const showSettingsSheet = ref(false)
-  const showActionSheet = ref(false)
+  const mobileSelectionMode = shallowRef(false)
+  const mobileMoveMode = shallowRef(false)
+  const showMenuDrawer = shallowRef(false)
+  const showTitleSheet = shallowRef(false)
+  const showAddSheet = shallowRef(false)
+  const showSettingsSheet = shallowRef(false)
+  const showActionSheet = shallowRef(false)
 
   // Mobile mode computed (Browse | Select | Move)
   const mobileMode = computed(() => {
@@ -57,12 +69,19 @@ export function useAppState() {
   // ============================================
   // Shared Modal State
   // ============================================
-  const showExportModal = ref(false)
-  const exportSelectedOnly = ref(false)
-  const showPreviewModal = ref(false)
+  const showExportModal = shallowRef(false)
+  const exportSelectedOnly = shallowRef(false)
+  const showPreviewModal = shallowRef(false)
   const previewPageRef = ref<PageReference | null>(null)
-  const showDiffModal = ref(false)
+  const showDiffModal = shallowRef(false)
   const diffPages = ref<[PageReference, PageReference] | null>(null)
+
+  // Preflight (per-project)
+  const ignoredPreflightRuleIds = ref<string[]>([])
+
+  // Jobs (import/export)
+  const importJob = ref<JobState>(createJobState())
+  const exportJob = ref<JobState>(createJobState())
 
   // Track if any modal is open (for blocking global shortcuts)
   const hasOpenModal = computed(
@@ -103,15 +122,8 @@ export function useAppState() {
     inspectorTab.value = tab
   }
 
-  function blurActiveElement() {
-    if (typeof document === 'undefined') return
-    const el = document.activeElement as HTMLElement | null
-    el?.blur?.()
-  }
   function openCommandPalette() {
-    if (!isMobile.value) {
-      showCommandPalette.value = true
-    }
+    showCommandPalette.value = true
   }
 
   function closeCommandPalette() {
@@ -119,9 +131,7 @@ export function useAppState() {
   }
 
   function toggleCommandPalette() {
-    if (!isMobile.value) {
-      showCommandPalette.value = !showCommandPalette.value
-    }
+    showCommandPalette.value = !showCommandPalette.value
   }
 
   function openPreflightPanel() {
@@ -137,7 +147,6 @@ export function useAppState() {
   }
 
   function openExportModal(selectedOnly = false) {
-    blurActiveElement()
     exportSelectedOnly.value = selectedOnly
     showExportModal.value = true
   }
@@ -170,6 +179,20 @@ export function useAppState() {
     diffPages.value = null
   }
 
+  function setIgnoredPreflightRuleIds(ids: string[]) {
+    ignoredPreflightRuleIds.value = Array.from(new Set(ids))
+  }
+
+  function ignorePreflightRule(ruleId: string) {
+    if (!ruleId) return
+    if (ignoredPreflightRuleIds.value.includes(ruleId)) return
+    ignoredPreflightRuleIds.value = [...ignoredPreflightRuleIds.value, ruleId]
+  }
+
+  function resetIgnoredPreflightRules() {
+    ignoredPreflightRuleIds.value = []
+  }
+
   // ============================================
   // Mobile State Management
   // ============================================
@@ -178,7 +201,7 @@ export function useAppState() {
   }
 
   function exitMobileSelectionMode() {
-    mobileMoveMode.value = false // Clear move mode when exiting selection
+    mobileMoveMode.value = false
     mobileSelectionMode.value = false
   }
 
@@ -232,19 +255,6 @@ export function useAppState() {
     showActionSheet.value = false
   }
 
-  // ============================================
-  // File Input Management
-  // ============================================
-  function openFileDialog() {
-    fileInputRef.value?.click()
-  }
-
-  function clearFileInput() {
-    if (fileInputRef.value) {
-      fileInputRef.value.value = ''
-    }
-  }
-
   return {
     // UI Document State
     isLoading,
@@ -253,9 +263,6 @@ export function useAppState() {
     zoomPercentage,
     currentTool,
     inspectorTab,
-
-    // Refs
-    fileInputRef,
 
     // Desktop State
     showCommandPalette,
@@ -276,10 +283,16 @@ export function useAppState() {
     exportSelectedOnly,
     showPreviewModal,
     previewPageRef,
+    showDiffModal,
+    diffPages,
+    ignoredPreflightRuleIds,
+
+    // Jobs
+    importJob,
+    exportJob,
 
     // Computed
     hasOpenModal,
-    isMobile,
 
     // Desktop Actions
     openCommandPalette,
@@ -306,6 +319,15 @@ export function useAppState() {
     closePreviewModal,
     navigatePreview,
 
+    // Diff Modal Actions
+    openDiffModal,
+    closeDiffModal,
+
+    // Preflight
+    setIgnoredPreflightRuleIds,
+    ignorePreflightRule,
+    resetIgnoredPreflightRules,
+
     // Mobile Actions
     enterMobileSelectionMode,
     exitMobileSelectionMode,
@@ -322,16 +344,5 @@ export function useAppState() {
     openActionSheet,
     closeActionSheet,
 
-    // File Input Actions
-    openFileDialog,
-    clearFileInput,
-
-    showDiffModal,
-    diffPages,
-    openDiffModal,
-    closeDiffModal,
   }
-}
-
-// Export type for use in layouts
-export type AppState = ReturnType<typeof useAppState>
+})

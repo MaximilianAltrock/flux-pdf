@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
@@ -10,8 +10,9 @@ import PageGridItem from './page-grid/PageGridItem.vue'
 import PageGridOverlay from './page-grid/PageGridOverlay.vue'
 import { UserAction } from '@/types/actions'
 import type { PageReference } from '@/types'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
+import { useUiStore } from '@/stores/ui'
 
 const emit = defineEmits<{
   filesDropped: [files: FileList]
@@ -22,30 +23,29 @@ const emit = defineEmits<{
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const ui = useUiStore()
 
-const { localPages, isDragging, isSelected, gridItems } = useGridLogic(props.state.document)
+const { localPages, isDragging, isSelected, gridItems } = useGridLogic(document)
 
 const activeDragIds = ref<string[]>([])
 
 // === File Drag Logic (with Counter to prevent flickering) ===
-const isFileDragOver = ref(false)
-const dragCounter = ref(0)
+const isFileDragOver = shallowRef(false)
+const dragCounter = shallowRef(0)
 
 const gridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(auto-fill, minmax(${props.state.zoom.value + 20}px, 1fr))`,
+  gridTemplateColumns: `repeat(auto-fill, minmax(${ui.zoom + 20}px, 1fr))`,
 }))
 
-const selectedCount = computed(() => props.state.document.selectedCount)
+const selectedCount = computed(() => document.selectedCount)
 
 function getOrderedSelectedPageIds(): string[] {
   if (selectedCount.value === 0) return []
   const ordered: string[] = []
   for (const entry of localPages.value) {
-    if (props.state.document.selectedIds.has(entry.id)) {
+    if (document.selectedIds.has(entry.id)) {
       ordered.push(entry.id)
     }
   }
@@ -66,11 +66,11 @@ function resetPageDragState() {
 
 function handleBackgroundClick(event: MouseEvent) {
   if (isDragging.value) return
-  if (props.state.document.selectedCount === 0) return
+  if (document.selectedCount === 0) return
   const target = event.target as HTMLElement | null
   if (!target) return
   if (target.closest('[data-grid-item="page"]')) return
-  props.actions.clearSelection()
+  actions.clearSelection()
 }
 
 // === Pdnd Logic (internal reordering) ===
@@ -95,7 +95,7 @@ onMounted(() => {
         return
       }
 
-      if (props.state.document.selectedIds.has(data.id) && selectedCount.value > 1) {
+      if (document.selectedIds.has(data.id) && selectedCount.value > 1) {
         activeDragIds.value = getOrderedSelectedPageIds()
       } else {
         activeDragIds.value = [data.id]
@@ -126,7 +126,7 @@ onMounted(() => {
         draggedIds = [sourceId]
       } else if (activeDragIds.value.length > 0 && activeDragIds.value.includes(sourceId)) {
         draggedIds = activeDragIds.value
-      } else if (props.state.document.selectedIds.has(sourceId) && selectedCount.value > 1) {
+      } else if (document.selectedIds.has(sourceId) && selectedCount.value > 1) {
         draggedIds = getOrderedSelectedPageIds()
       } else {
         draggedIds = [sourceId]
@@ -189,7 +189,7 @@ onMounted(() => {
         ...remaining.slice(destinationIndex),
       ]
 
-      props.actions.handleReorderPages(previousOrder, ordered)
+      actions.handleReorderPages(previousOrder, ordered)
       resetPageDragState()
     },
   })
@@ -311,7 +311,7 @@ useEventListener('dragleave', (event) => {
     <!-- Grid Layout -->
     <div
       class="grid gap-4 min-h-[50vh] pb-20"
-      :class="{ 'razor-mode': state.currentTool.value === 'razor' }"
+      :class="{ 'razor-mode': ui.currentTool === 'razor' }"
       :style="gridStyle"
     >
       <SortableGridItem
@@ -333,8 +333,6 @@ useEventListener('dragleave', (event) => {
           :page-number="item.pageNumber"
           :selected="isSelected(item.id)"
           :is-start-of-file="item.isStartOfFile"
-          :state="state"
-          :actions="actions"
           @preview="handlePreview"
           @context-action="handleContextAction"
         />

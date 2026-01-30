@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { ChevronRight, GripVertical, FileUp, X } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -9,15 +9,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { ResizablePanel } from '@/components/ui/resizable'
 import SourcePageGrid from '@/components/SourcePageGrid.vue'
 import { formatBytes } from '@/utils/format'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
-const files = computed(() => props.state.document.sourceFileList)
+const files = computed(() => document.sourceFileList)
 const expandedSources = ref<Record<string, boolean>>({})
 
 function handleDragStart(event: DragEvent, sourceId: string) {
@@ -51,7 +49,7 @@ function handleRemove(fileId: string, event: Event) {
   emit('removeSource', fileId)
 }
 
-const isDragOver = ref(false)
+const isDragOver = shallowRef(false)
 let dragCounter = 0
 
 function resetDragState() {
@@ -92,7 +90,7 @@ async function handleDrop(e: DragEvent) {
 
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
-    await props.actions.handleSourcesSelected(droppedFiles)
+    await actions.handleSourcesSelected(droppedFiles)
   }
 }
 
@@ -151,7 +149,7 @@ useEventListener('dragleave', handleWindowDragLeave)
               <!-- Color Indicator -->
               <div
                 class="w-1.5 shrink-0"
-                :style="{ backgroundColor: props.state.document.getSourceColor(file.id) }"
+                :style="{ backgroundColor: document.getSourceColor(file.id) }"
               ></div>
 
               <div class="flex-1 flex flex-col min-w-0 p-2.5 justify-center">
@@ -231,7 +229,7 @@ useEventListener('dragleave', handleWindowDragLeave)
               <SourcePageGrid
                 :source-id="file.id"
                 :page-count="file.pageCount"
-                :source-color="props.state.document.getSourceColor(file.id)"
+                :source-color="document.getSourceColor(file.id)"
                 :tile-width="84"
               />
             </div>

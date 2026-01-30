@@ -23,7 +23,7 @@ export function autoGenBookmarksFromPages(
 
   const roots: BookmarkNode[] = []
 
-  for (const block of blocks) {
+  for (const [blockIndex, block] of blocks.entries()) {
     const src = sources.get(block.sourceId)
     const filename = src?.filename ?? 'Unknown Source'
     const title = filename.replace(/\.pdf$/i, '')
@@ -39,14 +39,16 @@ export function autoGenBookmarksFromPages(
     }
 
     const outlineNodes = src?.outline ?? []
-    let children = outlineNodes.length ? mapOutlineToBookmarks(outlineNodes, pageIdByIndex) : []
+    let children = outlineNodes.length
+      ? mapOutlineToBookmarks(outlineNodes, pageIdByIndex, block.sourceId)
+      : []
 
     if (!children.length) {
       children = mapPagesToBookmarks(block.pages)
     }
 
     roots.push({
-      id: crypto.randomUUID(),
+      id: `root:${block.sourceId}:${blockIndex}`,
       title,
       pageId: rootPageId,
       children,
@@ -60,35 +62,43 @@ export function autoGenBookmarksFromPages(
 function mapOutlineToBookmarks(
   outline: PdfOutlineNode[],
   pageIdByIndex: Map<number, string>,
+  sourceId: string,
+  path: number[] = [],
 ): BookmarkNode[] {
   const nodes: BookmarkNode[] = []
 
-  for (const item of outline) {
-    const children = mapOutlineToBookmarks(item.children ?? [], pageIdByIndex)
+  outline.forEach((item, index) => {
+    const nextPath = [...path, index]
+    const children = mapOutlineToBookmarks(
+      item.children ?? [],
+      pageIdByIndex,
+      sourceId,
+      nextPath,
+    )
     const pageId = pageIdByIndex.get(item.pageIndex)
 
     if (!pageId) {
       if (children.length) nodes.push(...children)
-      continue
+      return
     }
 
     const title = item.title.trim() || `Page ${item.pageIndex + PAGE_NUMBER_BASE}`
 
     nodes.push({
-      id: crypto.randomUUID(),
+      id: `outline:${sourceId}:${nextPath.join('.')}:${pageId}`,
       title,
       pageId,
       children,
       expanded: true,
     })
-  }
+  })
 
   return nodes
 }
 
 function mapPagesToBookmarks(pages: PageReference[]): BookmarkNode[] {
   return pages.map((page) => ({
-    id: crypto.randomUUID(),
+    id: `page:${page.id}`,
     title: `Page ${page.sourcePageIndex + PAGE_NUMBER_BASE}`,
     pageId: page.id,
     children: [],

@@ -1,9 +1,5 @@
 // Core PDF functionality
-export { useDocumentService } from './useDocumentService'
 export { useThumbnailRenderer } from './useThumbnailRenderer'
-
-// Command system
-export { useCommandManager } from './useCommandManager'
 
 // UI feedback
 export { useToast } from './useToast'
@@ -11,6 +7,7 @@ export { useConfirm } from './useConfirm'
 
 // Input handling
 export { useKeyboardShortcuts } from './useKeyboardShortcuts'
+export { useFileInput } from './useFileInput'
 
 // Device & platform
 export { useMobile } from './useMobile'
@@ -19,7 +16,5 @@ export { useThemeToggle } from './useThemeToggle'
 // Grid logic
 export { useGridLogic } from './useGridLogic'
 
-// App-level state & actions
-export { useAppState, type AppState } from './useAppState'
-export { useAppActions, type AppActions } from './useAppActions'
-export { useDocumentFacade, type DocumentFacade, type FacadeState } from './useDocumentFacade'
+// App-level actions
+export { useDocumentActions, type DocumentActions } from './useDocumentActions'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { shallowRef, computed, nextTick, useTemplateRef } from 'vue'
 import { FilePlus, HelpCircle, MoreVertical, RotateCcw, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import {
@@ -14,23 +14,21 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import HeaderOmnibar from './header/HeaderOmnibar.vue'
 import HeaderControls from './header/HeaderControls.vue'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
-const isEditingTitle = ref(false)
-const titleInput = ref<InstanceType<typeof Input> | null>(null)
+const isEditingTitle = shallowRef(false)
+const titleInput = useTemplateRef<InstanceType<typeof Input>>('titleInput')
 const router = useRouter()
 
 // Computed for Title to handle store sync and validation
 const displayTitle = computed({
-  get: () => props.state.document.projectTitle,
+  get: () => document.projectTitle,
   set: (val) => {
-    props.actions.setProjectTitleDraft(val)
+    actions.setProjectTitleDraft(val)
   },
 })
 
@@ -45,7 +43,7 @@ async function startEditing() {
 
 function finishEditing() {
   isEditingTitle.value = false
-  props.actions.commitProjectTitle()
+  actions.commitProjectTitle()
 }
 
 function goToDashboard() {
@@ -127,12 +125,12 @@ const emit = defineEmits<{
           @keydown.enter.prevent="startEditing"
           @keydown.space.prevent="startEditing"
           class="ui-label text-foreground/80 px-2 py-1 rounded-sm cursor-text truncate transition-colors border border-transparent hover:bg-muted/40 hover:text-foreground inline-flex items-center gap-2 focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:outline-none"
-          :class="{ 'opacity-50 pointer-events-none': state.document.isTitleLocked }"
-          :title="state.document.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
+          :class="{ 'opacity-50 pointer-events-none': document.isTitleLocked }"
+          :title="document.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
           :aria-label="
-            state.document.isTitleLocked ? 'Title locked by import' : 'Edit project title'
+            document.isTitleLocked ? 'Title locked by import' : 'Edit project title'
           "
-          :tabindex="state.document.isTitleLocked ? -1 : 0"
+          :tabindex="document.isTitleLocked ? -1 : 0"
           role="button"
         >
           {{ displayTitle }}
@@ -141,12 +139,10 @@ const emit = defineEmits<{
     </div>
 
     <!-- Center: Omnibar -->
-    <HeaderOmnibar :state="state" @command="emit('command')" />
+    <HeaderOmnibar @command="emit('command')" />
 
     <!-- Right: Action Zone -->
     <HeaderControls
-      :state="state"
-      :actions="actions"
       @zoom-in="emit('zoom-in')"
       @zoom-out="emit('zoom-out')"
       @export="emit('export')"

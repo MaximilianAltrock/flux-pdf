@@ -1,32 +1,15 @@
-import { ref, computed, watch, type Ref } from 'vue'
+import { computed, onScopeDispose, watch, type Ref } from 'vue'
+import { createSharedComposable, useTimeoutFn, useWindowSize } from '@vueuse/core'
 import { HAPTIC_PATTERNS, MOBILE, TIMEOUTS_MS } from '@/constants'
-
-// Shared reactive state (singleton pattern)
-const screenWidth = ref(
-  typeof window !== 'undefined' ? window.innerWidth : MOBILE.FALLBACK_WIDTH_PX,
-)
-const screenHeight = ref(
-  typeof window !== 'undefined' ? window.innerHeight : MOBILE.FALLBACK_HEIGHT_PX,
-)
-
-let listenerAttached = false
-
-function updateDimensions() {
-  if (typeof window === 'undefined') return
-  screenWidth.value = window.innerWidth
-  screenHeight.value = window.innerHeight
-}
 
 /**
  * Composable for mobile detection, haptics, and sharing
  */
-export function useMobile() {
-  // Attach resize listener once (singleton)
-  if (typeof window !== 'undefined' && !listenerAttached) {
-    listenerAttached = true
-    updateDimensions()
-    window.addEventListener('resize', updateDimensions)
-  }
+const useSharedMobile = createSharedComposable(() => {
+  const { width: screenWidth, height: screenHeight } = useWindowSize({
+    initialWidth: MOBILE.FALLBACK_WIDTH_PX,
+    initialHeight: MOBILE.FALLBACK_HEIGHT_PX,
+  })
 
   const isMobile = computed(() => screenWidth.value < MOBILE.BREAKPOINT_PX)
 
@@ -96,7 +79,14 @@ export function useMobile() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
+    const { start } = useTimeoutFn(
+      (objectUrl: string) => {
+        URL.revokeObjectURL(objectUrl)
+      },
+      TIMEOUTS_MS.OBJECT_URL_REVOKE,
+      { immediate: false },
+    )
+    start(url)
 
     haptic('success')
     return { shared: false, downloaded: true }
@@ -136,7 +126,7 @@ export function useMobile() {
       }
     }
 
-    watch(isOpen, (active) => {
+    const stop = watch(isOpen, (active) => {
       if (active) {
         // Modal Opened: Push state and listen
         window.history.pushState({ modal: true, modalStateId }, '')
@@ -155,6 +145,14 @@ export function useMobile() {
         }
       }
     })
+
+    onScopeDispose(() => {
+      stop()
+      if (isListening) {
+        window.removeEventListener('popstate', onPop)
+        isListening = false
+      }
+    })
   }
 
   return {
@@ -168,4 +166,8 @@ export function useMobile() {
     shareUrl,
     onBackButton,
   }
+})
+
+export function useMobile() {
+  return useSharedMobile()
 }

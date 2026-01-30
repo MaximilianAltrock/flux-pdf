@@ -11,13 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import InspectorMetadata from '@/components/inspector/InspectorMetadata.vue'
 import InspectorSecurity from '@/components/inspector/InspectorSecurity.vue'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-
-const props = defineProps<{
+defineProps<{
   open: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -47,10 +42,10 @@ const emit = defineEmits<{
           <div class="flex-1 min-h-0 mt-4">
             <ScrollArea class="h-full">
               <TabsContent value="metadata" class="px-4 pb-6">
-                <InspectorMetadata :state="props.state" :actions="props.actions" />
+                <InspectorMetadata />
               </TabsContent>
               <TabsContent value="security" class="px-4 pb-6">
-                <InspectorSecurity :state="props.state" :actions="props.actions" />
+                <InspectorSecurity />
               </TabsContent>
             </ScrollArea>
           </div>

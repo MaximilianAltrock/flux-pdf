@@ -2,7 +2,7 @@
 import type { HTMLAttributes, Ref } from "vue"
 import { defaultDocument, useEventListener, useMediaQuery, useVModel } from "@vueuse/core"
 import { TooltipProvider } from "reka-ui"
-import { computed, ref } from "vue"
+import { computed, shallowRef } from 'vue'
 import { cn } from "@/lib/utils"
 import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from "./utils"
 
@@ -20,7 +20,7 @@ const emits = defineEmits<{
 }>()
 
 const isMobile = useMediaQuery("(max-width: 768px)")
-const openMobile = ref(false)
+const openMobile = shallowRef(false)
 
 const open = useVModel(props, "open", emits, {
   defaultValue: props.defaultOpen ?? false,

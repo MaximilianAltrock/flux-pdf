@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, shallowRef, computed } from 'vue'
+import { shallowRef, computed } from 'vue'
 import { FileText, Layers, Upload } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
+import { useFileInput } from '@/composables/useFileInput'
 
 const emit = defineEmits<{
   filesSelected: [files: FileList]
@@ -12,7 +13,6 @@ const emit = defineEmits<{
 
 const isDragging = shallowRef(false)
 const dragType = shallowRef<'files' | 'source' | 'page' | 'pages' | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 let dragCounter = 0
 
 // Computed for dynamic messaging
@@ -122,17 +122,10 @@ function handleDrop(event: DragEvent) {
   }
 }
 
-function handleFileInputChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  if (input.files && input.files.length > 0) {
-    emit('filesSelected', input.files)
-    // Reset input so same file can be selected again
-    input.value = ''
-  }
-}
+const { openFileDialog: openFileDialogShared } = useFileInput()
 
 function openFileDialog() {
-  fileInput.value?.click()
+  openFileDialogShared()
 }
 </script>
 
@@ -155,16 +148,6 @@ function openFileDialog() {
     @keydown.enter.prevent="openFileDialog"
     @keydown.space.prevent="openFileDialog"
   >
-    <!-- Hidden file input -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept="application/pdf,.pdf,image/jpeg,image/png"
-      multiple
-      class="hidden"
-      @change="handleFileInputChange"
-    />
-
     <!-- Icon -->
     <div
       class="mx-auto w-14 h-14 rounded-md flex items-center justify-center transition-colors"

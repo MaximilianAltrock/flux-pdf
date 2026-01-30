@@ -6,33 +6,31 @@ import { Badge } from '@/components/ui/badge'
 import { ChevronRight, Crosshair, FileText, Plus } from 'lucide-vue-next'
 import type { BookmarkNode } from '@/types'
 import { scrollToPageId } from '@/utils/scroll-to-page'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
-const bookmarksTree = computed(() => props.state.document.bookmarksTree as BookmarkNode[])
+const bookmarksTree = computed(() => document.bookmarksTree as BookmarkNode[])
 
 function scrollGridToPage(pageId: string) {
   const didScroll = scrollToPageId(pageId, { behavior: 'smooth', block: 'center' })
   if (didScroll) {
-    props.actions.selectPage(pageId, false)
+    actions.selectPage(pageId, false)
   }
 }
 
 function addCustomBookmark() {
-  const pageId = props.state.document.lastSelectedId
+  const pageId = document.lastSelectedId
   if (!pageId) return
-  props.actions.addBookmarkForPage(pageId)
+  actions.addBookmarkForPage(pageId)
 }
 </script>
 
 <template>
   <div class="flex-1 min-h-0">
-    <div v-if="props.state.document.pageCount === 0" class="p-12 text-center">
+    <div v-if="document.pageCount === 0" class="p-12 text-center">
       <div
         class="ui-panel-muted w-10 h-10 flex items-center justify-center mx-auto mb-3 rounded-md"
       >
@@ -57,7 +55,7 @@ function addCustomBookmark() {
         <Tree
           :items="bookmarksTree"
           :get-key="(item) => item.id"
-          @update:items="(val) => props.actions.setBookmarksTree(val as BookmarkNode[], true)"
+          @update:items="(val) => actions.setBookmarksTree(val as BookmarkNode[], true)"
           class="w-full px-2"
           v-slot="{ flattenItems }"
         >

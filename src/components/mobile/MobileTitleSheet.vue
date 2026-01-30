@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { shallowRef, watch, nextTick, useTemplateRef } from 'vue'
 import { useTimeoutFn } from '@vueuse/core'
 import { useMobile } from '@/composables/useMobile'
 import {
@@ -12,13 +12,11 @@ import {
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 
 const props = defineProps<{
   open: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -26,9 +24,11 @@ const emit = defineEmits<{
 }>()
 
 const { haptic } = useMobile()
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
 
-const inputRef = ref<InstanceType<typeof Input> | null>(null)
-const editedTitle = ref('')
+const inputRef = useTemplateRef<InstanceType<typeof Input>>('inputRef')
+const editedTitle = shallowRef('')
 const { start: startFocusTimer, stop: stopFocusTimer } = useTimeoutFn(
   () => {
     const el =
@@ -45,7 +45,7 @@ watch(
   async (isOpen) => {
     stopFocusTimer()
     if (isOpen) {
-      editedTitle.value = props.state.document.projectTitle
+      editedTitle.value = document.projectTitle
       await nextTick()
       // Small delay to let the drawer animate in
       // Since Input might be a functional component or nested, we try to find the actual input
@@ -56,7 +56,7 @@ watch(
 )
 
 function handleSave() {
-  props.actions.commitProjectTitle(editedTitle.value)
+  actions.commitProjectTitle(editedTitle.value)
   haptic('light')
   emit('update:open', false)
 }

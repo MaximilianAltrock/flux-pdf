@@ -1,6 +1,7 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ROTATION_DELTA_DEGREES } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
+import { useUiStore } from '@/stores/ui'
 import type { PageReference, SourceFile } from '@/types'
 import {
   type LintResult,
@@ -33,9 +34,6 @@ const GENERIC_TITLES = new Set([
   'new document',
   'print',
 ])
-
-// === SHARED STATE ===
-const ignoredRules = ref<Set<string>>(new Set())
 
 type DisplaySize = { width: number; height: number }
 type Orientation = 'portrait' | 'landscape'
@@ -294,13 +292,16 @@ function buildMetadataRule(title: string): LintResult[] {
 
 export function usePreflight() {
   const store = useDocumentStore()
+  const ui = useUiStore()
+
+  const ignoredRules = computed(() => new Set(ui.ignoredPreflightRuleIds))
 
   function ignoreRule(ruleId: string) {
-    ignoredRules.value.add(ruleId)
+    ui.ignorePreflightRule(ruleId)
   }
 
   function resetIgnoredRules() {
-    ignoredRules.value.clear()
+    ui.resetIgnoredPreflightRules()
   }
 
   const problems = computed<LintResult[]>(() => {

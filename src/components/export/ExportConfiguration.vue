@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch } from 'vue'
+import { shallowRef, computed, watch, useTemplateRef } from 'vue'
 import { FileText, Settings, ChevronDown } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,8 +16,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { formatBytes } from '@/utils/format'
 import type { PageReference } from '@/types'
 import type { CompressionQuality } from '@/composables/usePdfCompression'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-import type { AppActions } from '@/composables/useAppActions'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 import { useVModel } from '@vueuse/core'
 
 export interface ExportSettings {
@@ -29,8 +29,6 @@ export interface ExportSettings {
 }
 
 const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
   settings: ExportSettings
 }>()
 
@@ -39,10 +37,11 @@ const emit = defineEmits<{
   'update:valid': [value: boolean]
 }>()
 
-const document = props.state.document
-const { getEstimatedSize, parsePageRange, validatePageRange } = props.actions
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const { getEstimatedSize, parsePageRange, validatePageRange } = actions
 
-const filenameInputRef = ref<HTMLInputElement | null>(null)
+const filenameInputRef = useTemplateRef<HTMLInputElement>('filenameInputRef')
 const pageRangeError = shallowRef<string | null>(null)
 const showAdvanced = shallowRef(false)
 

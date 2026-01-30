@@ -6,13 +6,11 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useUiStore } from '@/stores/ui'
+import { useDocumentStore } from '@/stores/document'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const ui = useUiStore()
+const document = useDocumentStore()
 
 defineEmits<{
   'zoom-in': []
@@ -21,13 +19,13 @@ defineEmits<{
 }>()
 
 const currentTool = computed({
-  get: () => props.state.currentTool.value,
+  get: () => ui.currentTool,
   set: (val) => {
-    props.actions.setCurrentTool(val as 'select' | 'razor')
+    ui.setCurrentTool(val as 'select' | 'razor')
   },
 })
 
-const canExport = computed(() => props.state.document.pageCount > 0)
+const canExport = computed(() => document.pageCount > 0)
 </script>
 
 <template>
@@ -80,7 +78,7 @@ const canExport = computed(() => props.state.document.pageCount > 0)
       </Button>
 
       <span class="ui-caption ui-mono w-10 text-center select-none">
-        {{ Math.round(state.zoomPercentage.value) }}%
+        {{ Math.round(ui.zoomPercentage) }}%
       </span>
 
       <Button

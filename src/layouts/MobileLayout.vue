@@ -14,31 +14,30 @@ import MobileActionSheet from '@/components/mobile/MobileActionSheet.vue'
 import { Spinner } from '@/components/ui/spinner'
 
 import type { PageReference } from '@/types'
-import type { FacadeState } from '@/composables/useDocumentFacade'
-import type { AppActions } from '@/composables/useAppActions'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useUiStore } from '@/stores/ui'
+import { useDocumentStore } from '@/stores/document'
 
-// Props - receive state and actions from parent
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const ui = useUiStore()
+const document = useDocumentStore()
+const actions = useDocumentActionsContext()
 
 const router = useRouter()
 
 // Local computed for template readability
-const hasPages = computed(() => props.state.document.pageCount > 0)
-const isLoading = computed(() => props.state.isLoading.value)
-const loadingMessage = computed(() => props.state.loadingMessage.value)
-const mode = computed(() => props.state.mobileMode.value)
+const hasPages = computed(() => document.pageCount > 0)
+const isLoading = computed(() => ui.isLoading)
+const loadingMessage = computed(() => ui.loadingMessage)
+const mode = computed(() => ui.mobileMode)
 const isBrowse = computed(() => mode.value === 'browse')
 
 // Event handlers
 function onPreview(pageRef: PageReference) {
-  props.actions.handlePagePreview(pageRef)
+  actions.handlePagePreview(pageRef)
 }
 
 function onRemoveSource(sourceId: string) {
-  props.actions.handleRemoveSource(sourceId)
+  actions.handleRemoveSource(sourceId)
 }
 
 function onDashboard() {
@@ -51,10 +50,8 @@ function onDashboard() {
     <!-- Safe Area Top -->
     <div class="pt-[env(safe-area-inset-top)]">
       <MobileTopBar
-        :state="props.state"
-        :actions="props.actions"
-        @menu="props.state.openMenuDrawer"
-        @edit-title="props.state.openTitleSheet"
+        @menu="ui.openMenuDrawer"
+        @edit-title="ui.openTitleSheet"
       />
     </div>
 
@@ -82,7 +79,7 @@ function onDashboard() {
       </div>
 
       <!-- Page Grid -->
-      <MobilePageGrid v-else :state="props.state" :actions="props.actions" @preview="onPreview" />
+      <MobilePageGrid v-else @preview="onPreview" />
 
       <!-- Loading Overlay -->
       <Transition name="fade">
@@ -98,55 +95,44 @@ function onDashboard() {
 
     <!-- Safe Area Bottom -->
     <div class="pb-[env(safe-area-inset-bottom)]">
-    <MobileBottomBar
-      :state="props.state"
-      :actions="props.actions"
-      @add="props.state.openAddSheet"
-      @export="props.actions.handleExport"
-      @export-options="props.state.openExportModal(false)"
-      @more="props.state.openActionSheet"
+      <MobileBottomBar
+      @add="ui.openAddSheet"
+      @export="actions.handleExport"
+      @export-options="actions.openExportOptions(false)"
+      @more="ui.openActionSheet"
     />
   </div>
 
     <!-- Mobile Sheets & Drawers -->
     <MobileMenuDrawer
-      :open="props.state.showMenuDrawer.value"
-      :state="props.state"
-      :actions="props.actions"
-      @update:open="(val) => !val && props.state.closeMenuDrawer()"
+      :open="ui.showMenuDrawer"
+      @update:open="(val) => !val && ui.closeMenuDrawer()"
       @removeSource="onRemoveSource"
-      @new-project="props.actions.handleNewProject"
+      @new-project="actions.handleNewProject"
       @dashboard="onDashboard"
-      @settings="props.state.openSettingsSheet"
+      @settings="ui.openSettingsSheet"
     />
 
     <MobileTitleSheet
-      :open="props.state.showTitleSheet.value"
-      :state="props.state"
-      :actions="props.actions"
-      @update:open="(val) => !val && props.state.closeTitleSheet()"
+      :open="ui.showTitleSheet"
+      @update:open="(val) => !val && ui.closeTitleSheet()"
     />
 
     <MobileAddSheet
-      :open="props.state.showAddSheet.value"
-      :state="props.state"
-      @update:open="(val) => !val && props.state.closeAddSheet()"
-      @select-files="props.actions.handleMobileAddFiles"
-      @take-photo="props.actions.handleMobileTakePhoto"
+      :open="ui.showAddSheet"
+      @update:open="(val) => !val && ui.closeAddSheet()"
+      @select-files="actions.handleMobileAddFiles"
+      @take-photo="actions.handleMobileTakePhoto"
     />
 
     <MobileSettingsSheet
-      :open="props.state.showSettingsSheet.value"
-      :state="props.state"
-      :actions="props.actions"
-      @update:open="(val) => !val && props.state.closeSettingsSheet()"
+      :open="ui.showSettingsSheet"
+      @update:open="(val) => !val && ui.closeSettingsSheet()"
     />
 
     <MobileActionSheet
-      :open="props.state.showActionSheet.value"
-      :state="props.state"
-      :actions="props.actions"
-      @update:open="(val) => !val && props.state.closeActionSheet()"
+      :open="ui.showActionSheet"
+      @update:open="(val) => !val && ui.closeActionSheet()"
     />
   </div>
 </template>

@@ -13,8 +13,10 @@ import { RotateCw, RotateCcw, Trash2, Copy, Eye, CheckSquare, Download } from 'l
 import PdfThumbnail from '../PdfThumbnail.vue'
 import { UserAction } from '@/types/actions'
 import type { PageReference } from '@/types'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
+import { useUiStore } from '@/stores/ui'
+import { usePreflight } from '@/composables/usePreflight'
 
 const props = defineProps<{
   page: PageReference
@@ -22,8 +24,6 @@ const props = defineProps<{
   pageNumber: number
   selected: boolean
   isStartOfFile: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -31,8 +31,13 @@ const emit = defineEmits<{
   contextAction: [action: UserAction, pageRef: PageReference]
 }>()
 
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const ui = useUiStore()
+const preflight = usePreflight()
+
 const pageProblems = computed(
-  () => props.state.preflight.problemsByPageId.value.get(props.page.id) ?? [],
+  () => preflight.problemsByPageId.value.get(props.page.id) ?? [],
 )
 
 const problemSeverity = computed(() => {
@@ -45,31 +50,30 @@ const problemSeverity = computed(() => {
 const problemMessages = computed(() => pageProblems.value.map((p) => p.message))
 
 function handlePageClick(event: MouseEvent | KeyboardEvent) {
-  if (props.state.currentTool.value === 'razor') {
-    const pages = props.state.document.pages
+  if (ui.currentTool === 'razor') {
+    const pages = document.pages
     const index = pages.findIndex((p) => p.id === props.page.id)
     const prevPage = pages[index - 1]
 
     // Prevent invalid splits
     if (index > 0 && index < pages.length - 1 && prevPage && !prevPage.isDivider) {
-      props.actions.handleSplitGroup(index)
+      actions.handleSplitGroup(index)
     }
     return
   }
 
   // Selection Logic
   if (event.metaKey || event.ctrlKey) {
-    props.actions.togglePageSelection(props.page.id)
-  } else if (event.shiftKey && props.state.document.lastSelectedId) {
-    props.actions.selectRange(props.state.document.lastSelectedId, props.page.id)
+    actions.togglePageSelection(props.page.id)
+  } else if (event.shiftKey && document.lastSelectedId) {
+    actions.selectRange(document.lastSelectedId, props.page.id)
   } else {
     const isOnlySelected =
-      props.state.document.selectedIds.has(props.page.id) &&
-      props.state.document.selectedCount === 1
+      document.selectedIds.has(props.page.id) && document.selectedCount === 1
     if (isOnlySelected) {
-      props.actions.clearSelection()
+      actions.clearSelection()
     } else {
-      props.actions.selectPage(props.page.id, false)
+      actions.selectPage(props.page.id, false)
     }
   }
 }
@@ -95,10 +99,10 @@ function handleRotate() {
         :page-number="pageNumber"
         :selected="selected"
         :fixed-size="true"
-        :width="state.zoom.value"
-        :source-color="state.document.getSourceColor(page.sourceFileId)"
+        :width="ui.zoom"
+        :source-color="document.getSourceColor(page.sourceFileId)"
         :is-start-of-file="isStartOfFile"
-        :is-razor-active="state.currentTool.value === 'razor'"
+        :is-razor-active="ui.currentTool === 'razor'"
         :can-split="index > 0"
         :problem-severity="problemSeverity"
         :problem-messages="problemMessages"
@@ -115,8 +119,8 @@ function handleRotate() {
         class="text-xs text-muted-foreground font-medium border-b border-border px-3 py-2"
       >
         {{
-          state.document.selectedCount > 1
-            ? `${state.document.selectedCount} pages selected`
+          document.selectedCount > 1
+            ? `${document.selectedCount} pages selected`
             : `Page ${pageNumber}`
         }}
       </ContextMenuLabel>
@@ -148,7 +152,7 @@ function handleRotate() {
 
       <ContextMenuSeparator />
 
-      <template v-if="state.document.selectedCount > 0">
+      <template v-if="document.selectedCount > 0">
         <ContextMenuItem @select="emit('contextAction', UserAction.SELECT_ALL, page)">
           <CheckSquare class="w-4 h-4 mr-2 text-muted-foreground" />
           <span>Select All</span>

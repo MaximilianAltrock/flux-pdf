@@ -1,8 +1,9 @@
+import { defineStore } from 'pinia'
 import { effectScope, ref, shallowRef, watch } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
+import { useDebounceFn, useLocalStorage } from '@vueuse/core'
 import { HISTORY, TIMEOUTS_MS, ZOOM } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
+import { useHistoryStore } from '@/stores/history'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { db, type ProjectMeta, type ProjectState } from '@/db/db'
 import { buildProjectState, type ProjectSnapshot } from '@/domain/document/project'
@@ -10,45 +11,21 @@ import { evictPdfCache } from '@/domain/document/import'
 import { collectReachableSourceIdsFromState } from '@/domain/document/storage-gc'
 import type { SerializedCommand } from '@/commands'
 import type { BookmarkNode, DocumentMetadata, PageEntry, PageReference } from '@/types'
-import type { DocumentUiState } from '@/composables/useDocumentService'
+import type { DocumentUiState } from '@/types/ui'
 
 const LAST_ACTIVE_PROJECT_KEY = 'lastActiveProjectId'
-
-const activeProjectId = ref<string | null>(null)
-const activeProjectMeta = ref<ProjectMeta | null>(null)
-const isHydrating = ref(false)
-let autoSaveInitialized = false
-const boundUiState = shallowRef<DocumentUiState | null>(null)
-const autoSaveScope = effectScope(true)
-
-const thumbnailKeyByProject = new Map<string, string | null>()
-const thumbnailInFlight = new Map<string, Promise<Blob | undefined>>()
-const gcInFlight = ref(false)
-
-function getLocalStorage(): Storage | null {
-  if (typeof window === 'undefined') return null
-  return window.localStorage
-}
-
-function setLastActiveProjectId(id: string | null) {
-  const storage = getLocalStorage()
-  if (!storage) return
-  if (id) storage.setItem(LAST_ACTIVE_PROJECT_KEY, id)
-  else storage.removeItem(LAST_ACTIVE_PROJECT_KEY)
-}
-
-function getLastActiveProjectId(): string | null {
-  const storage = getLocalStorage()
-  if (!storage) return null
-  return storage.getItem(LAST_ACTIVE_PROJECT_KEY)
-}
 
 function normalizeTitle(title: string | undefined): string {
   const next = String(title ?? '').trim()
   return next.length > 0 ? next : 'Untitled Project'
 }
 
-function isDefaultMetadata(value: { title?: string; author?: string; subject?: string; keywords?: string[] }) {
+function isDefaultMetadata(value: {
+  title?: string
+  author?: string
+  subject?: string
+  keywords?: string[]
+}) {
   return (
     (value.title ?? '').trim() === 'Untitled Project' &&
     !(value.author ?? '').trim() &&
@@ -82,7 +59,12 @@ async function renderThumbnailBlob(page: PageReference | null): Promise<Blob | u
   return response.blob()
 }
 
-async function ensureThumbnail(meta: ProjectMeta, page: PageReference | null): Promise<Blob | undefined> {
+async function ensureThumbnail(
+  meta: ProjectMeta,
+  page: PageReference | null,
+  thumbnailKeyByProject: Map<string, string | null>,
+  thumbnailInFlight: Map<string, Promise<Blob | undefined>>,
+): Promise<Blob | undefined> {
   const key = getThumbnailKey(page)
   const existingKey = thumbnailKeyByProject.get(meta.id) ?? null
 
@@ -120,63 +102,76 @@ type GcStateSnapshot = {
   history: ReadonlyArray<SerializedCommand>
 }
 
-async function garbageCollectStoredSources(
-  currentState?: GcStateSnapshot,
-): Promise<void> {
-  if (gcInFlight.value) return
-  gcInFlight.value = true
-
-  try {
-    const states = await db.states.toArray()
-    const keepIds = new Set<string>()
-
-    for (const state of states) {
-      const ids = collectReachableSourceIdsFromState({
-        activeSourceIds: state.activeSourceIds ?? [],
-        pages: state.pageMap ?? [],
-        history: state.history ?? [],
-      })
-      for (const id of ids) keepIds.add(id)
-    }
-
-    if (currentState) {
-      const liveIds = collectReachableSourceIdsFromState({
-        activeSourceIds: currentState.activeSourceIds ?? [],
-        pages: currentState.pages,
-        history: currentState.history,
-      })
-      for (const id of liveIds) keepIds.add(id)
-    }
-
-    const storedKeys = await db.files.toCollection().primaryKeys()
-    const storedIds = storedKeys.map((key) => String(key))
-    const orphanIds = storedIds.filter((id) => !keepIds.has(id))
-
-    if (orphanIds.length === 0) return
-
-    await db.files.where('id').anyOf(orphanIds).delete()
-    evictPdfCache(orphanIds)
-  } catch (error) {
-    console.warn('Failed to garbage collect stored sources:', error)
-  } finally {
-    gcInFlight.value = false
-  }
-}
-
-export function useProjectManager(uiState?: DocumentUiState) {
-  if (uiState) {
-    boundUiState.value = uiState
-  }
-
+export const useProjectsStore = defineStore('projects', () => {
   const store = useDocumentStore()
-  const {
-    serializeHistory,
-    rehydrateHistory,
-    getHistoryPointer,
-    historyList,
-    clearHistory,
-  } = useCommandManager()
+  const historyStore = useHistoryStore()
   const { clearCache } = useThumbnailRenderer()
+
+  const activeProjectId = shallowRef<string | null>(null)
+  const activeProjectMeta = ref<ProjectMeta | null>(null)
+  const isHydrating = shallowRef(false)
+  const lastActiveProjectId = useLocalStorage<string | null>(LAST_ACTIVE_PROJECT_KEY, null)
+  const boundUiState = shallowRef<DocumentUiState | null>(null)
+
+  let autoSaveInitialized = false
+  const autoSaveScope = effectScope(true)
+
+  const thumbnailKeyByProject = new Map<string, string | null>()
+  const thumbnailInFlight = new Map<string, Promise<Blob | undefined>>()
+  const gcInFlight = shallowRef(false)
+
+  function bindUiState(uiState?: DocumentUiState) {
+    if (uiState) boundUiState.value = uiState
+  }
+
+  function setLastActiveProjectId(id: string | null) {
+    lastActiveProjectId.value = id
+  }
+
+  function getLastActiveProjectId(): string | null {
+    return lastActiveProjectId.value
+  }
+
+  async function garbageCollectStoredSources(currentState?: GcStateSnapshot): Promise<void> {
+    if (gcInFlight.value) return
+    gcInFlight.value = true
+
+    try {
+      const states = await db.states.toArray()
+      const keepIds = new Set<string>()
+
+      for (const state of states) {
+        const ids = collectReachableSourceIdsFromState({
+          activeSourceIds: state.activeSourceIds ?? [],
+          pages: state.pageMap ?? [],
+          history: state.history ?? [],
+        })
+        for (const id of ids) keepIds.add(id)
+      }
+
+      if (currentState) {
+        const liveIds = collectReachableSourceIdsFromState({
+          activeSourceIds: currentState.activeSourceIds ?? [],
+          pages: currentState.pages,
+          history: currentState.history,
+        })
+        for (const id of liveIds) keepIds.add(id)
+      }
+
+      const storedKeys = await db.files.toCollection().primaryKeys()
+      const storedIds = storedKeys.map((key) => String(key))
+      const orphanIds = storedIds.filter((id) => !keepIds.has(id))
+
+      if (orphanIds.length === 0) return
+
+      await db.files.where('id').anyOf(orphanIds).delete()
+      evictPdfCache(orphanIds)
+    } catch (error) {
+      console.warn('Failed to garbage collect stored sources:', error)
+    } finally {
+      gcInFlight.value = false
+    }
+  }
 
   function setupAutoSave() {
     if (autoSaveInitialized) return
@@ -192,7 +187,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
         const liveState: GcStateSnapshot = {
           activeSourceIds: Array.from(store.sources.keys()),
           pages: store.pages,
-          history: serializeHistory(),
+          history: historyStore.serializeHistory(),
         }
         await garbageCollectStoredSources(liveState)
       }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
@@ -202,23 +197,29 @@ export function useProjectManager(uiState?: DocumentUiState) {
         scheduleGC()
       }
 
-      const watchTargets = [
-        historyList,
-        () => store.pages,
-        () => store.projectTitle,
-        () => store.sourceFileList,
-        () => boundUiState.value?.zoom.value,
-        () => store.bookmarksTree,
-        () => store.bookmarksDirty,
-        () => store.metadata,
-        () => store.security,
-        () => store.metadataDirty,
+      // Deep watch only for structures that mutate in place.
+      const deepWatchSource = () => [
+        store.pages,
+        store.sourceFileList,
+        store.bookmarksTree,
+        store.metadata,
       ]
 
-      for (const target of watchTargets) {
-        // Pinia refs are reactive; we can watch with a deep flush using VueUse watchers
-        watch(target, triggerSave, { deep: true })
-      }
+      watch(deepWatchSource, triggerSave, { deep: true })
+
+      // Shallow watch for simple values or replaced objects.
+      const shallowWatchSource = () => [
+        historyStore.historyPointer,
+        historyStore.history.length,
+        store.projectTitle,
+        boundUiState.value?.zoom.value,
+        store.bookmarksDirty,
+        store.metadataDirty,
+        store.security,
+        boundUiState.value?.ignoredPreflightRuleIds.value,
+      ]
+
+      watch(shallowWatchSource, triggerSave)
     })
   }
 
@@ -258,6 +259,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
       metadata: undefined,
       security: undefined,
       metadataDirty: false,
+      ignoredPreflightRuleIds: [],
     }
 
     const state = buildProjectState(id, snapshot)
@@ -282,7 +284,12 @@ export function useProjectManager(uiState?: DocumentUiState) {
     const now = Date.now()
     const title = normalizeTitle(store.projectTitle)
     const firstPage = getFirstPageReference(store.contentPages as PageReference[])
-    const thumbnail = await ensureThumbnail(existingMeta, firstPage)
+    const thumbnail = await ensureThumbnail(
+      existingMeta,
+      firstPage,
+      thumbnailKeyByProject,
+      thumbnailInFlight,
+    )
 
     const meta: ProjectMeta = {
       ...existingMeta,
@@ -295,14 +302,15 @@ export function useProjectManager(uiState?: DocumentUiState) {
     const snapshot: ProjectSnapshot = {
       activeSourceIds: Array.from(store.sources.keys()),
       pageMap: store.pages,
-      history: serializeHistory(),
-      historyPointer: getHistoryPointer(),
+      history: historyStore.serializeHistory(),
+      historyPointer: historyStore.getHistoryPointer(),
       zoom: boundUiState.value?.zoom.value ?? ZOOM.DEFAULT,
       bookmarksTree: store.bookmarksTree,
       bookmarksDirty: store.bookmarksDirty,
       metadata: store.metadata,
       security: store.security,
       metadataDirty: store.metadataDirty,
+      ignoredPreflightRuleIds: boundUiState.value?.ignoredPreflightRuleIds.value ?? [],
     }
 
     const state = buildProjectState(id, snapshot)
@@ -316,7 +324,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
 
   async function hydrateStore(meta: ProjectMeta, state: ProjectState): Promise<void> {
     store.reset()
-    clearHistory()
+    historyStore.clearHistory()
     clearCache()
 
     const files = await db.files.where('id').anyOf(state.activeSourceIds ?? []).toArray()
@@ -339,6 +347,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
     boundUiState.value?.setZoom(state.zoom ?? ZOOM.DEFAULT)
     store.setBookmarksDirty(state.bookmarksDirty ?? false)
     store.setPages(state.pageMap ?? [])
+    boundUiState.value?.setIgnoredPreflightRuleIds(state.ignoredPreflightRuleIds ?? [])
 
     if (state.metadata) {
       store.setMetadata(state.metadata, false)
@@ -358,7 +367,11 @@ export function useProjectManager(uiState?: DocumentUiState) {
       store.setBookmarksTree(restoredTree, false)
     }
 
-    rehydrateHistory(state.history ?? [], state.historyPointer ?? HISTORY.POINTER_START, state.updatedAt)
+    historyStore.rehydrateHistory(
+      state.history ?? [],
+      state.historyPointer ?? HISTORY.POINTER_START,
+      state.updatedAt,
+    )
   }
 
   async function loadProject(id: string): Promise<boolean> {
@@ -367,10 +380,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
     boundUiState.value?.setLoading(true, 'Loading project...')
 
     try {
-      const [meta, rawState] = await Promise.all([
-        db.projects.get(id),
-        db.states.get(id),
-      ])
+      const [meta, rawState] = await Promise.all([db.projects.get(id), db.states.get(id)])
       if (!meta || !rawState) return false
 
       await hydrateStore(meta, rawState)
@@ -383,7 +393,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
       const liveState: GcStateSnapshot = {
         activeSourceIds: Array.from(store.sources.keys()),
         pages: store.pages,
-        history: serializeHistory(),
+        history: historyStore.serializeHistory(),
       }
       void garbageCollectStoredSources(liveState)
       return true
@@ -426,10 +436,7 @@ export function useProjectManager(uiState?: DocumentUiState) {
   }
 
   async function duplicateProject(id: string): Promise<ProjectMeta | null> {
-    const [meta, state] = await Promise.all([
-      db.projects.get(id),
-      db.states.get(id),
-    ])
+    const [meta, state] = await Promise.all([db.projects.get(id), db.states.get(id)])
     if (!meta || !state) return null
 
     const newId =
@@ -477,6 +484,10 @@ export function useProjectManager(uiState?: DocumentUiState) {
     activeProjectId,
     activeProjectMeta,
     isHydrating,
+    lastActiveProjectId,
+    boundUiState,
+    gcInFlight,
+    bindUiState,
     getLastActiveProjectId,
     listRecentProjects,
     loadProjectMeta,
@@ -489,4 +500,4 @@ export function useProjectManager(uiState?: DocumentUiState) {
     deleteProject,
     setLastActiveProjectId,
   }
-}
+})

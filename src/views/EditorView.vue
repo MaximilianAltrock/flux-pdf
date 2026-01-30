@@ -6,12 +6,16 @@
  */
 
 import { watch, watchEffect, useTemplateRef } from 'vue'
+import { storeToRefs } from 'pinia'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 // Composables
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
-import { useDocumentFacade } from '@/composables/useDocumentFacade'
-import { useProjectManager } from '@/composables/useProjectManager'
+import { provideDocumentActions, useDocumentActions } from '@/composables/useDocumentActions'
+import { useFileInput } from '@/composables/useFileInput'
+import { useMobile } from '@/composables/useMobile'
+import { useUiStore } from '@/stores/ui'
+import { useProjectsStore } from '@/stores/projects'
 
 // Layouts
 import DesktopLayout from '@/layouts/DesktopLayout.vue'
@@ -27,28 +31,37 @@ import PagePreviewModal from '@/components/PagePreviewModal.vue'
 // Initialization
 // ============================================
 
-// Initialize app state and actions
-const { state, actions } = useDocumentFacade()
+// Initialize stores and actions
+const ui = useUiStore()
+const actions = useDocumentActions()
+provideDocumentActions(actions)
+const projects = useProjectsStore()
+const { isMobile } = useMobile()
+const {
+  hasOpenModal,
+  showExportModal,
+  exportSelectedOnly,
+  showPreviewModal,
+  previewPageRef,
+  showDiffModal,
+  diffPages,
+} = storeToRefs(ui)
+const { setFileInputRef } = useFileInput()
 const route = useRoute()
 const router = useRouter()
-const projectManager = useProjectManager({
-  zoom: state.zoom,
-  setZoom: state.setZoom,
-  setLoading: state.setLoading,
-})
 
 // Initialize keyboard shortcuts (desktop only)
-useKeyboardShortcuts(actions, state, { isModalOpen: state.hasOpenModal })
+useKeyboardShortcuts(actions, { isModalOpen: hasOpenModal })
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
 watchEffect(() => {
-  state.fileInputRef.value = fileInput.value
+  setFileInputRef(fileInput.value ?? null)
 })
 
 async function loadFromRoute(param: string | string[] | undefined) {
   if (!param || Array.isArray(param)) return
-  const ok = await projectManager.switchProject(param)
+  const ok = await projects.switchProject(param)
   if (!ok) {
     await router.replace('/')
   }
@@ -65,7 +78,7 @@ watch(
 onBeforeRouteLeave(async () => {
   actions.commitProjectTitle()
   try {
-    await projectManager.persistActiveProject()
+    await projects.persistActiveProject()
   } catch (error) {
     console.error('Failed to persist project before leaving:', error)
   }
@@ -86,10 +99,10 @@ onBeforeRouteLeave(async () => {
     />
 
     <!-- Mobile Layout -->
-    <MobileLayout v-if="state.isMobile.value" :state="state" :actions="actions" />
+    <MobileLayout v-if="isMobile" />
 
     <!-- Desktop Layout -->
-    <DesktopLayout v-else :state="state" :actions="actions" />
+    <DesktopLayout v-else />
 
     <!-- ============================================
          Shared Overlays (render above both layouts)
@@ -97,40 +110,34 @@ onBeforeRouteLeave(async () => {
 
     <!-- Export Modal / Sheet -->
     <MobileExportSheet
-      v-if="state.isMobile.value"
-      :open="state.showExportModal.value"
-      :export-selected="state.exportSelectedOnly.value"
-      :state="state"
-      :actions="actions"
-      @close="state.closeExportModal"
+      v-if="isMobile"
+      :open="showExportModal"
+      :export-selected="exportSelectedOnly"
+      @close="ui.closeExportModal"
       @success="actions.handleExportSuccess"
     />
     <ExportModal
       v-else
-      :open="state.showExportModal.value"
-      :export-selected="state.exportSelectedOnly.value"
-      :state="state"
-      :actions="actions"
-      @close="state.closeExportModal"
+      :open="showExportModal"
+      :export-selected="exportSelectedOnly"
+      @close="ui.closeExportModal"
       @success="actions.handleExportSuccess"
     />
 
     <!-- Page Preview Modal -->
     <PagePreviewModal
-      :open="state.showPreviewModal.value"
+      :open="showPreviewModal"
       @update:open="(val: boolean) => !val && actions.handleClosePreview()"
-      :page-ref="state.previewPageRef.value"
-      :state="state"
-      :actions="actions"
-      @navigate="state.navigatePreview"
+      :page-ref="previewPageRef"
+      @navigate="ui.navigatePreview"
     />
 
     <!-- Ghost Overlay -->
     <DiffModal
-      :open="state.showDiffModal.value"
-      @update:open="(val: boolean) => !val && state.closeDiffModal()"
-      :pages="state.diffPages.value"
-      @close="state.closeDiffModal"
+      :open="showDiffModal"
+      @update:open="(val: boolean) => !val && ui.closeDiffModal()"
+      :pages="diffPages"
+      @close="ui.closeDiffModal"
     />
   </div>
 </template>

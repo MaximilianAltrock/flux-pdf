@@ -1,13 +1,16 @@
-import { ref, type Ref } from 'vue'
+import type { Ref } from 'vue'
 import JSZip from 'jszip'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { EXPORT_PROGRESS, PROGRESS } from '@/constants'
-import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
-import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
 import type { Command } from '@/commands/types'
+import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
 import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
 import type { Result } from '@/types/result'
-import { usePdfCompression } from '@/composables/usePdfCompression'
+import {
+  usePdfCompression,
+  type CompressionOptions,
+  type CompressionResult,
+} from '@/composables/usePdfCompression'
 import {
   generateRawPdf as generateRawPdfCore,
   parsePageRange,
@@ -25,46 +28,30 @@ import {
   makeDocumentError,
 } from '@/domain/document/errors'
 import type { DocumentError, ExportErrorCode } from '@/domain/document/errors'
-import type { DocumentErrorCode } from '@/types/errors'
-import { getPdfBlob, getPdfDocument, loadPdfFiles } from '@/domain/document/import'
+import { loadPdfFiles } from '@/domain/document/import'
+import type { JobState } from '@/stores/ui'
+import type { useDocumentStore } from '@/stores/document'
 
-type JobStatus = 'idle' | 'running' | 'success' | 'error'
-
-export interface JobState {
-  status: JobStatus
-  progress: number
-  error: string | null
-  errorCode?: DocumentErrorCode | null
+export interface PdfRepository {
+  getPdfDocument: (sourceFileId: string) => Promise<PDFDocumentProxy>
+  getPdfBlob: (sourceFileId: string) => Promise<ArrayBuffer | undefined>
 }
 
-function createJobState(): JobState {
-  return {
-    status: 'idle',
-    progress: PROGRESS.MIN,
-    error: null,
-    errorCode: null,
+export interface DocumentUiBindings {
+  setLoading?: (loading: boolean, message?: string) => void
+  importJob?: Ref<JobState>
+  exportJob?: Ref<JobState>
+}
+
+export interface DocumentServiceDeps {
+  documentStore: ReturnType<typeof useDocumentStore>
+  historyStore: { execute: (command: Command) => void }
+  pdfRepository: PdfRepository
+  ui?: DocumentUiBindings
+  compression?: {
+    compressPdf: (data: Uint8Array, options?: CompressionOptions) => Promise<CompressionResult>
   }
 }
-
-function getExportErrorCode(error: unknown): ExportErrorCode {
-  if (error instanceof Error) {
-    if (error.message.startsWith('Source file not found:')) {
-      return 'EXPORT_SOURCE_MISSING'
-    }
-  }
-  return 'EXPORT_FAILED'
-}
-
-const importJob = ref<JobState>(createJobState())
-const exportJob = ref<JobState>(createJobState())
-
-export type DocumentUiState = {
-  zoom: Ref<number>
-  setZoom: (level: number) => void
-  setLoading: (loading: boolean, message?: string) => void
-}
-
-let boundUiState: DocumentUiState | null = null
 
 export interface ImportSummary {
   results: FileUploadResult[]
@@ -77,16 +64,37 @@ export interface ImportOptions {
   addPages?: boolean
 }
 
-export function useDocumentService(uiState?: DocumentUiState) {
-  if (uiState) {
-    boundUiState = uiState
+function getExportErrorCode(error: unknown): ExportErrorCode {
+  if (error instanceof Error) {
+    if (error.message.startsWith('Source file not found:')) {
+      return 'EXPORT_SOURCE_MISSING'
+    }
+  }
+  return 'EXPORT_FAILED'
+}
+
+export function createDocumentService(deps: DocumentServiceDeps) {
+  const store = deps.documentStore
+  const history = deps.historyStore
+  const ui = deps.ui
+  const { getPdfDocument, getPdfBlob } = deps.pdfRepository
+  const compression = deps.compression ?? usePdfCompression()
+
+  const setLoading = (loading: boolean, message?: string) => {
+    ui?.setLoading?.(loading, message)
   }
 
-  const ui = boundUiState
-  const { compressPdf } = usePdfCompression()
+  const setImportJob = (job: JobState) => {
+    if (ui?.importJob) ui.importJob.value = job
+  }
 
-  const store = useDocumentStore()
-  const { execute } = useCommandManager()
+  const setExportJob = (job: JobState) => {
+    if (ui?.exportJob) ui.exportJob.value = job
+  }
+
+  const updateExportProgress = (progress: number) => {
+    if (ui?.exportJob) ui.exportJob.value.progress = progress
+  }
 
   function buildMetadataUpdates(metadata: DocumentMetadata): Partial<DocumentMetadata> {
     const updates: Partial<DocumentMetadata> = {}
@@ -116,7 +124,6 @@ export function useDocumentService(uiState?: DocumentUiState) {
     store.setMetadata(updates)
   }
 
-
   async function importFiles(
     files: FileList | File[],
     options: ImportOptions = {},
@@ -126,12 +133,12 @@ export function useDocumentService(uiState?: DocumentUiState) {
       return { ok: true, value: { results: [], successes: [], errors: [], totalPages: 0 } }
     }
 
-    importJob.value = { status: 'running', progress: PROGRESS.MIN, error: null }
+    setImportJob({ status: 'running', progress: PROGRESS.MIN, error: null })
     const loadingLabel =
       fileList.length === 1
         ? `Processing ${fileList[0]?.name ?? 'file'}...`
         : `Processing ${fileList.length} files...`
-    ui?.setLoading(true, loadingLabel)
+    setLoading(true, loadingLabel)
 
     try {
       const results = await loadPdfFiles(fileList, {
@@ -160,19 +167,19 @@ export function useDocumentService(uiState?: DocumentUiState) {
         }
 
         if (commandsToRun.length === 1) {
-          execute(commandsToRun[0]!)
+          history.execute(commandsToRun[0]!)
         } else if (commandsToRun.length > 1) {
           const batchName = addPages
             ? `Import ${commandsToRun.length} files`
             : `Register ${commandsToRun.length} sources`
           const batchCmd = new BatchCommand(commandsToRun, batchName)
-          execute(batchCmd)
+          history.execute(batchCmd)
         }
       }
 
       const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)
 
-      importJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
+      setImportJob({ status: 'success', progress: PROGRESS.COMPLETE, error: null })
       return { ok: true, value: { results, successes, errors, totalPages } }
     } catch (error) {
       const message = getImportErrorMessage(
@@ -180,25 +187,25 @@ export function useDocumentService(uiState?: DocumentUiState) {
         error instanceof Error ? error.message : undefined,
       )
       const importError = makeDocumentError('IMPORT_FAILED', message, error)
-      importJob.value = {
+      setImportJob({
         status: 'error',
         progress: PROGRESS.MIN,
         error: importError.message,
         errorCode: importError.code,
-      }
+      })
       return { ok: false, error: importError }
     } finally {
-      ui?.setLoading(false)
+      setLoading(false)
     }
   }
 
   function clearExportError(): void {
-    exportJob.value = {
+    setExportJob({
       status: 'idle',
       progress: PROGRESS.MIN,
       error: null,
       errorCode: null,
-    }
+    })
   }
 
   async function generateRawPdf(
@@ -233,16 +240,16 @@ export function useDocumentService(uiState?: DocumentUiState) {
 
     if (segments.length === 0) {
       const error = makeDocumentError('EXPORT_NO_PAGES')
-      exportJob.value = {
+      setExportJob({
         status: 'error',
         progress: PROGRESS.MIN,
         error: error.message,
         errorCode: error.code,
-      }
+      })
       return { ok: false, error }
     }
 
-    exportJob.value = { status: 'running', progress: PROGRESS.MIN, error: null }
+    setExportJob({ status: 'running', progress: PROGRESS.MIN, error: null })
 
     try {
       if (segments.length > 1) {
@@ -262,17 +269,15 @@ export function useDocumentService(uiState?: DocumentUiState) {
           })
 
           zip.file(`${filename}-part${i + 1}.pdf`, pdfBytes)
-          exportJob.value.progress = Math.round(
-            ((i + 1) / segments.length) * EXPORT_PROGRESS.ZIP_MAX,
-          )
+          updateExportProgress(Math.round(((i + 1) / segments.length) * EXPORT_PROGRESS.ZIP_MAX))
         }
 
-        exportJob.value.progress = EXPORT_PROGRESS.ZIP_FINALIZE
+        updateExportProgress(EXPORT_PROGRESS.ZIP_FINALIZE)
         const zipContent = await zip.generateAsync({ type: 'uint8array' })
-        exportJob.value.progress = PROGRESS.COMPLETE
+        updateExportProgress(PROGRESS.COMPLETE)
 
         const zipFilename = `${filename}.zip`
-        exportJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
+        setExportJob({ status: 'success', progress: PROGRESS.COMPLETE, error: null })
         return {
           ok: true,
           value: {
@@ -297,7 +302,7 @@ export function useDocumentService(uiState?: DocumentUiState) {
             options.compressionQuality && options.compressionQuality !== 'none'
               ? Math.round(val * EXPORT_PROGRESS.COMPRESSION_SCALE)
               : val
-          exportJob.value.progress = scaledProgress
+          updateExportProgress(scaledProgress)
         },
         getPdfBlob,
         getPdfDocument,
@@ -328,10 +333,10 @@ export function useDocumentService(uiState?: DocumentUiState) {
       }
 
       if (options.compressionQuality && options.compressionQuality !== 'none') {
-        exportJob.value.progress = EXPORT_PROGRESS.COMPRESSION_START
+        updateExportProgress(EXPORT_PROGRESS.COMPRESSION_START)
         let result
         try {
-          result = await compressPdf(pdfBytes, {
+          result = await compression.compressPdf(pdfBytes, {
             quality: options.compressionQuality,
           })
         } catch (error) {
@@ -353,13 +358,13 @@ export function useDocumentService(uiState?: DocumentUiState) {
         if (originalSize > 0) {
           compressionRatio = 1 - pdfBytes.byteLength / originalSize
         }
-        exportJob.value.progress = EXPORT_PROGRESS.COMPRESSION_END
+        updateExportProgress(EXPORT_PROGRESS.COMPRESSION_END)
       }
 
-      exportJob.value.progress = PROGRESS.COMPLETE
+      updateExportProgress(PROGRESS.COMPLETE)
 
       const pdfFilename = `${filename}.pdf`
-      exportJob.value = { status: 'success', progress: PROGRESS.COMPLETE, error: null }
+      setExportJob({ status: 'success', progress: PROGRESS.COMPLETE, error: null })
       return {
         ok: true,
         value: {
@@ -385,12 +390,12 @@ export function useDocumentService(uiState?: DocumentUiState) {
         documentError = makeDocumentError(code, message, error)
       }
 
-      exportJob.value = {
+      setExportJob({
         status: 'error',
         progress: PROGRESS.MIN,
         error: documentError.message,
         errorCode: documentError.code,
-      }
+      })
       return { ok: false, error: documentError }
     }
   }
@@ -437,13 +442,10 @@ export function useDocumentService(uiState?: DocumentUiState) {
     return totalEstimatedSize
   }
 
-
   return {
-    importJob,
-    exportJob,
     importFiles,
-    generateRawPdf,
     exportDocument,
+    generateRawPdf,
     clearExportError,
     getSuggestedFilename,
     getEstimatedSize,
@@ -451,13 +453,10 @@ export function useDocumentService(uiState?: DocumentUiState) {
     validatePageRange,
     getPdfDocument,
     getPdfBlob,
+    importJob: ui?.importJob,
+    exportJob: ui?.exportJob,
   }
 }
 
-export type DocumentService = ReturnType<typeof useDocumentService>
-export type {
-  ExportOptions,
-  ExportResult,
-  ExportMetadata,
-  GeneratorOptions,
-} from '@/domain/document/export'
+export type DocumentService = ReturnType<typeof createDocumentService>
+export type { ExportOptions, ExportResult, GeneratorOptions }

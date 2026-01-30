@@ -70,6 +70,9 @@ export interface ProjectState {
 
   /** Whether user has customized metadata (prevents auto-apply on import) */
   metadataDirty?: boolean
+
+  /** Persisted ignored preflight rule ids (per project) */
+  ignoredPreflightRuleIds?: string[]
 }
 
 /**

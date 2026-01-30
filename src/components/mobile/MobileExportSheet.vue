@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import { Download } from 'lucide-vue-next'
 import {
   Drawer,
@@ -12,17 +12,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/composables'
-import type { ExportOptions } from '@/composables/useDocumentService'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import type { ExportOptions } from '@/services/documentService'
+import { useDocumentActionsContext } from '@/composables/useDocumentActions'
+import { useDocumentStore } from '@/stores/document'
 import ExportConfiguration, { type ExportSettings } from '@/components/export/ExportConfiguration.vue'
 import ExportStatus, { type ExportStats } from '@/components/export/ExportStatus.vue'
 
 const props = defineProps<{
   open: boolean
   exportSelected?: boolean
-  state: FacadeState
-  actions: AppActions
 }>()
 
 const emit = defineEmits<{
@@ -30,9 +28,10 @@ const emit = defineEmits<{
   success: [filename: string, sizeKB: number, durationMs: number]
 }>()
 
-const document = props.state.document
-const exportJob = props.actions.exportJob
-const { getSuggestedFilename, clearExportError } = props.actions
+const actions = useDocumentActionsContext()
+const document = useDocumentStore()
+const exportJob = actions.exportJob
+const { getSuggestedFilename, clearExportError } = actions
 
 const isExporting = computed(() => exportJob.value.status === 'running')
 const exportProgress = computed(() => exportJob.value.progress)
@@ -41,9 +40,9 @@ const exportError = computed(() => exportJob.value.error)
 const { onBackButton } = useMobile()
 
 // Export state
-const exportComplete = ref(false)
+const exportComplete = shallowRef(false)
 const exportStats = ref<ExportStats | null>(null)
-const isConfigValid = ref(false)
+const isConfigValid = shallowRef(false)
 
 // Settings state
 const settings = ref<ExportSettings>({
@@ -98,7 +97,7 @@ async function handleExport() {
       options.pageRange = settings.value.customPageRange
     }
 
-    const result = await props.actions.exportDocument(options)
+    const result = await actions.exportDocument(options)
     if (!result.ok) return
 
     const endTime = performance.now()
@@ -173,8 +172,6 @@ onBackButton(
 
             <ExportConfiguration
               v-else
-              :state="props.state"
-              :actions="props.actions"
               v-model:settings="settings"
               @update:valid="isConfigValid = $event"
             />

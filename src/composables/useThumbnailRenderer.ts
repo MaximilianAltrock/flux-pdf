@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { PDF_PAGE_INDEX_BASE, THUMBNAIL } from '@/constants'
-import { useDocumentService } from './useDocumentService'
+import { usePdfRepository } from '@/services/pdfRepository'
 import type { PageReference } from '@/types'
 
 /**
@@ -81,7 +81,7 @@ const thumbnailCache = new ThumbnailCache(THUMBNAIL.CACHE_MAX)
  * Composable for rendering PDF page thumbnails
  */
 export function useThumbnailRenderer() {
-  const { getPdfDocument } = useDocumentService()
+  const { getPdfDocument } = usePdfRepository()
   const renderQueue = ref<Map<string, AbortController>>(new Map())
   const renderTasks = new Map<string, { cancel: () => void }>()
 

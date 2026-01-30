@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 
 export type ConfirmVariant = 'danger' | 'warning' | 'info'
 
@@ -14,7 +14,7 @@ interface ConfirmState extends ConfirmOptions {
   resolve: (value: boolean) => void
 }
 
-const isOpen = ref(false)
+const isOpen = shallowRef(false)
 const state = ref<ConfirmState | null>(null)
 
 /**

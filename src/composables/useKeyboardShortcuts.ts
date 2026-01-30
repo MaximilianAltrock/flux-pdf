@@ -1,10 +1,12 @@
-import { onMounted, onUnmounted, type Ref } from 'vue'
+import { type Ref } from 'vue'
+import { useEventListener } from '@vueuse/core'
 import { GRID_NAVIGATION } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
-import { useCommandManager } from '@/composables/useCommandManager'
+import { useHistoryStore } from '@/stores/history'
+import { useUiStore } from '@/stores/ui'
+import { useMobile } from '@/composables/useMobile'
 import { UserAction } from '@/types/actions'
-import type { AppActions } from '@/composables/useAppActions'
-import type { AppState } from '@/composables/useAppState'
+import type { DocumentActions } from '@/composables/useDocumentActions'
 
 type KeyboardShortcutOptions = {
   /** When true, all shortcuts are blocked (e.g., when a modal is open) */
@@ -12,12 +14,14 @@ type KeyboardShortcutOptions = {
 }
 
 export function useKeyboardShortcuts(
-  actions: AppActions,
-  state: AppState,
+  actions: DocumentActions,
   options?: KeyboardShortcutOptions,
 ) {
   const store = useDocumentStore()
-  const { undo, redo } = useCommandManager()
+  const history = useHistoryStore()
+  const ui = useUiStore()
+  const { isMobile } = useMobile()
+  const { undo, redo } = history
   let rangeAnchorId: string | null = null
 
   function resetRangeAnchor() {
@@ -86,7 +90,9 @@ export function useKeyboardShortcuts(
     // Command Palette: Cmd+K or /
     if ((isCmd && e.key === 'k') || e.key === '/') {
       e.preventDefault()
-      state.openCommandPalette()
+      if (!isMobile.value) {
+        ui.openCommandPalette()
+      }
       return
     }
 
@@ -150,7 +156,7 @@ export function useKeyboardShortcuts(
       if (e.key.toLowerCase() === 'd' && !isCmd) {
         e.preventDefault()
         // We trigger the action regardless of count.
-        // The Action Handler (useAppActions) is responsible for
+        // The Action Handler (useDocumentActions) is responsible for
         // checking the count and showing a Toast error if != 2.
         actions.handleCommandAction(UserAction.DIFF)
         return
@@ -229,7 +235,7 @@ export function useKeyboardShortcuts(
       if (gridContainer) {
         const containerWidth = gridContainer.clientWidth - GRID_NAVIGATION.CONTAINER_PADDING_PX
         const thumbnailWidth =
-          state.zoom.value + GRID_NAVIGATION.THUMBNAIL_OFFSET_PX + GRID_NAVIGATION.GAP_PX
+          ui.zoom + GRID_NAVIGATION.THUMBNAIL_OFFSET_PX + GRID_NAVIGATION.GAP_PX
         columns = Math.max(GRID_NAVIGATION.MIN_COLUMNS, Math.floor(containerWidth / thumbnailWidth))
       }
 
@@ -288,11 +294,5 @@ export function useKeyboardShortcuts(
     }
   }
 
-  onMounted(() => {
-    window.addEventListener('keydown', handleKeydown)
-  })
-
-  onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeydown)
-  })
+  useEventListener('keydown', handleKeydown)
 }

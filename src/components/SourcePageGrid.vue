@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useEventListener } from '@vueuse/core'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch, useTemplateRef } from 'vue'
+import { useEventListener, useResizeObserver, useTimeoutFn } from '@vueuse/core'
 import SourcePageThumbnail from '@/components/SourcePageThumbnail.vue'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { ROTATION_DEFAULT_DEGREES } from '@/constants'
@@ -15,26 +15,36 @@ const props = defineProps<{
 }>()
 
 const selectedPages = ref<Set<number>>(new Set())
-const lastSelectedIndex = ref<number | null>(null)
-const hoveredIndex = ref<number | null>(null)
-const previewIndex = ref<number | null>(null)
-const showPreview = ref(false)
-const previewUrl = ref<string | null>(null)
+const lastSelectedIndex = shallowRef<number | null>(null)
+const hoveredIndex = shallowRef<number | null>(null)
+const previewIndex = shallowRef<number | null>(null)
+const showPreview = shallowRef(false)
+const previewUrl = shallowRef<string | null>(null)
 const previewStyle = ref<{ top: string; left: string }>({ top: '0px', left: '0px' })
 const previewWidth = 320
-const previewRequestId = ref(0)
-const lastPreviewId = ref<string | null>(null)
-const isModifierDown = ref(false)
+const previewRequestId = shallowRef(0)
+const lastPreviewId = shallowRef<string | null>(null)
+const isModifierDown = shallowRef(false)
 const tileRefs = ref(new Map<number, HTMLElement>())
 const previewDelayMs = 320
-let previewTimer: number | null = null
+const { start: startPreviewTimer, stop: stopPreviewTimer } = useTimeoutFn(
+  () => {
+    showPreview.value = true
+    positionPreview()
+    if (previewIndex.value !== null) {
+      void loadPreview(previewIndex.value)
+    }
+  },
+  previewDelayMs,
+  { immediate: false },
+)
 
 const { renderThumbnail, cancelRender } = useThumbnailRenderer()
 
-const viewportRef = ref<HTMLElement | null>(null)
-const viewportWidth = ref(0)
-const viewportHeight = ref(0)
-const scrollTop = ref(0)
+const viewportRef = useTemplateRef<HTMLElement>('viewportRef')
+const viewportWidth = shallowRef(0)
+const viewportHeight = shallowRef(0)
+const scrollTop = shallowRef(0)
 
 const gap = 16
 const tileWidth = computed(() => props.tileWidth ?? 84)
@@ -77,21 +87,18 @@ function setViewportSize(width: number, height: number) {
   viewportHeight.value = height
 }
 
-let resizeObserver: ResizeObserver | null = null
 onMounted(() => {
   if (!viewportRef.value) return
-  resizeObserver = new ResizeObserver((entries) => {
-    const entry = entries[0]
-    if (entry) setViewportSize(entry.contentRect.width, entry.contentRect.height)
-  })
-  resizeObserver.observe(viewportRef.value)
   const rect = viewportRef.value.getBoundingClientRect()
   setViewportSize(rect.width, rect.height)
 })
 
+useResizeObserver(viewportRef, (entries) => {
+  const entry = entries[0]
+  if (entry) setViewportSize(entry.contentRect.width, entry.contentRect.height)
+})
+
 onUnmounted(() => {
-  resizeObserver?.disconnect()
-  resizeObserver = null
   if (lastPreviewId.value) {
     cancelRender(lastPreviewId.value)
   }
@@ -188,10 +195,7 @@ function canShowPreview() {
 }
 
 function clearPreviewTimer() {
-  if (previewTimer !== null) {
-    window.clearTimeout(previewTimer)
-    previewTimer = null
-  }
+  stopPreviewTimer()
 }
 
 function hidePreview() {
@@ -206,11 +210,7 @@ function schedulePreview(index: number) {
   clearPreviewTimer()
   previewIndex.value = index
   previewUrl.value = null
-  previewTimer = window.setTimeout(() => {
-    showPreview.value = true
-    positionPreview()
-    loadPreview(index)
-  }, previewDelayMs)
+  startPreviewTimer()
 }
 
 function handleTileEnter(index: number) {

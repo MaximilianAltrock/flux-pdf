@@ -5,8 +5,7 @@ import { FileText, Tag, Lock } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { AppActions } from '@/composables/useAppActions'
-import type { FacadeState } from '@/composables/useDocumentFacade'
+import { useUiStore } from '@/stores/ui'
 
 // Sub-components
 import InspectorStructure from './inspector/InspectorStructure.vue'
@@ -14,16 +13,23 @@ import InspectorMetadata from './inspector/InspectorMetadata.vue'
 import InspectorSecurity from './inspector/InspectorSecurity.vue'
 import InspectorHistory from './inspector/InspectorHistory.vue'
 
-const props = defineProps<{
-  state: FacadeState
-  actions: AppActions
-}>()
+const ui = useUiStore()
+
+type InspectorTab = 'structure' | 'metadata' | 'security'
+const inspectorTabs = new Set<InspectorTab>(['structure', 'metadata', 'security'])
 
 const inspectorLabelMinSize = 15
 const showTabLabels = shallowRef(true)
 
 function handleInspectorResize(size: number) {
   showTabLabels.value = size >= inspectorLabelMinSize
+}
+
+function handleInspectorTabChange(value: string | number) {
+  if (typeof value !== 'string') return
+  if (inspectorTabs.has(value as InspectorTab)) {
+    ui.setInspectorTab(value as InspectorTab)
+  }
 }
 </script>
 
@@ -44,8 +50,8 @@ function handleInspectorResize(size: number) {
           <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
             <!-- TAB BAR -->
             <Tabs
-              :value="props.state.inspectorTab.value"
-              @update:value="props.state.setInspectorTab"
+              :model-value="ui.inspectorTab"
+              @update:model-value="handleInspectorTabChange"
               class="flex-1 min-h-0 gap-0"
             >
               <div
@@ -86,17 +92,17 @@ function handleInspectorResize(size: number) {
               <ScrollArea class="flex-1 min-h-0 bg-sidebar">
                 <!-- A. STRUCTURE TAB -->
                 <TabsContent value="structure">
-                  <InspectorStructure :state="props.state" :actions="props.actions" />
+                  <InspectorStructure />
                 </TabsContent>
 
                 <!-- B. METADATA TAB -->
                 <TabsContent value="metadata" class="p-5">
-                  <InspectorMetadata :state="props.state" :actions="props.actions" />
+                  <InspectorMetadata />
                 </TabsContent>
 
                 <!-- C. SECURITY TAB -->
                 <TabsContent value="security" class="p-5">
-                  <InspectorSecurity :state="props.state" :actions="props.actions" />
+                  <InspectorSecurity />
                 </TabsContent>
               </ScrollArea>
             </Tabs>
@@ -107,7 +113,7 @@ function handleInspectorResize(size: number) {
 
         <!-- Bottom Half: History -->
         <ResizablePanel :default-size="40" :min-size="20" class="flex flex-col">
-          <InspectorHistory :state="props.state" :actions="props.actions" />
+          <InspectorHistory />
         </ResizablePanel>
       </ResizablePanelGroup>
     </aside>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, nextTick, ref, render, watchEffect } from 'vue'
+import { computed, h, nextTick, ref, shallowRef, render, watchEffect, useTemplateRef } from 'vue'
 import { TreeItem as RekaTreeItem, type FlattenedItem } from 'reka-ui'
 import {
   draggable,
@@ -29,11 +29,11 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Separate refs: one for the DOM element (drag/drop), one for the component API
-const wrapperRef = ref<HTMLDivElement | null>(null)
-const componentRef = ref<{ isExpanded: boolean; handleToggle: () => void } | null>(null)
-const isDragging = ref(false)
-const isDraggedOver = ref(false)
-const isInitialExpanded = ref(false)
+const wrapperRef = useTemplateRef<HTMLDivElement>('wrapperRef')
+const componentRef = useTemplateRef<{ isExpanded: boolean; handleToggle: () => void }>('componentRef')
+const isDragging = shallowRef(false)
+const isDraggedOver = shallowRef(false)
+const isInitialExpanded = shallowRef(false)
 const instruction = ref<Extract<
   Instruction,
   { type: 'reorder-above' | 'reorder-below' | 'make-child' }

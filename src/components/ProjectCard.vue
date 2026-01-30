@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, shallowRef, watch, useTemplateRef, type ComponentPublicInstance } from 'vue'
 import { FileText, MoreHorizontal } from 'lucide-vue-next'
 import { formatRelativeTime } from '@/utils/relative-time'
 import { Button } from '@/components/ui/button'
@@ -37,9 +37,9 @@ const emit = defineEmits<{
   (e: 'delete', project: ProjectMeta): void
 }>()
 
-const menuOpen = ref(false)
-const draftTitle = ref(props.project.title)
-const inputRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
+const menuOpen = shallowRef(false)
+const draftTitle = shallowRef(props.project.title)
+const inputRef = useTemplateRef<ComponentPublicInstance | HTMLElement>('inputRef')
 
 const pageLabel = computed(() => {
   const count = props.project.pageCount
