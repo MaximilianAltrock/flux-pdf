@@ -1,5 +1,5 @@
 import { computed, onScopeDispose, watch, type Ref } from 'vue'
-import { createSharedComposable, useTimeoutFn, useWindowSize } from '@vueuse/core'
+import { createSharedComposable, useWindowSize } from '@vueuse/core'
 import { HAPTIC_PATTERNS, MOBILE, TIMEOUTS_MS } from '@/constants'
 
 /**
@@ -79,14 +79,7 @@ const useSharedMobile = createSharedComposable(() => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    const { start } = useTimeoutFn(
-      (objectUrl: string) => {
-        URL.revokeObjectURL(objectUrl)
-      },
-      TIMEOUTS_MS.OBJECT_URL_REVOKE,
-      { immediate: false },
-    )
-    start(url)
+    setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
 
     haptic('success')
     return { shared: false, downloaded: true }

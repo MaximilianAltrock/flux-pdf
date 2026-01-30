@@ -1,6 +1,5 @@
 import { storeToRefs } from 'pinia'
 import { inject, provide, type InjectionKey } from 'vue'
-import { useTimeoutFn } from '@vueuse/core'
 import { useDocumentStore } from '@/stores/document'
 import { useHistoryStore } from '@/stores/history'
 import { useUiStore } from '@/stores/ui'
@@ -282,14 +281,7 @@ export function useDocumentActions() {
     link.click()
     document.body.removeChild(link)
 
-    const { start } = useTimeoutFn(
-      (objectUrl: string) => {
-        URL.revokeObjectURL(objectUrl)
-      },
-      TIMEOUTS_MS.OBJECT_URL_REVOKE,
-      { immediate: false },
-    )
-    start(url)
+    setTimeout(() => URL.revokeObjectURL(url), TIMEOUTS_MS.OBJECT_URL_REVOKE)
   }
 
   function getExportPagesForWarning(options: ExportOptions): PageReference[] {

@@ -1,5 +1,4 @@
 import { shallowRef } from 'vue'
-import { useTimeoutFn } from '@vueuse/core'
 import { PROGRESS, TIMEOUTS_MS } from '@/constants'
 
 /**
@@ -90,14 +89,7 @@ export function usePdfCompression() {
         worker.removeEventListener('error', handleError)
         // Terminate worker if it wasn't preloaded
         if (!workerRef.value) {
-          const { start } = useTimeoutFn(
-            (target: Worker) => {
-              target.terminate()
-            },
-            TIMEOUTS_MS.WORKER_TERMINATE,
-            { immediate: false },
-          )
-          start(worker)
+          setTimeout(() => worker.terminate(), TIMEOUTS_MS.WORKER_TERMINATE)
         }
         isCompressing.value = false
       }
