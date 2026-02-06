@@ -9,9 +9,9 @@ import {
 } from '@/components/ui/drawer'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import InspectorMetadata from '@/components/inspector/InspectorMetadata.vue'
-import InspectorSecurity from '@/components/inspector/InspectorSecurity.vue'
-import InspectorSettings from '@/components/inspector/InspectorSettings.vue'
+import InspectorMetadata from '@/components/editor/inspector/InspectorMetadata.vue'
+import InspectorSecurity from '@/components/editor/inspector/InspectorSecurity.vue'
+import InspectorSettings from '@/components/editor/inspector/InspectorSettings.vue'
 defineProps<{
   open: boolean
 }>()

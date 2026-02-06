@@ -15,8 +15,8 @@ import { useMobile } from '@/composables'
 import type { ExportOptions } from '@/services/documentService'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
-import ExportConfiguration, { type ExportSettings } from '@/components/export/ExportConfiguration.vue'
-import ExportStatus, { type ExportStats } from '@/components/export/ExportStatus.vue'
+import ExportConfiguration, { type ExportSettings } from '@/components/editor/export/ExportConfiguration.vue'
+import ExportStatus, { type ExportStats } from '@/components/editor/export/ExportStatus.vue'
 
 const props = defineProps<{
   open: boolean

@@ -2,14 +2,14 @@
 import { computed } from 'vue'
 
 // Components
-import MicroHeader from '@/components/MicroHeader.vue'
+import MicroHeader from '@/components/editor/MicroHeader.vue'
 import SourceRail from '@/components/editor/SourceRail.vue'
-import InspectorPanel from '@/components/inspector/InspectorPanel.vue'
+import InspectorPanel from '@/components/editor/inspector/InspectorPanel.vue'
 import PageGrid from '@/components/editor/PageGrid.vue'
 import FileDropzone from '@/components/editor/FileDropzone.vue'
-import CommandPalette from '@/components/CommandPalette.vue'
-import PreflightStatusBar from '@/components/preflight/PreflightStatusBar.vue'
-import PreflightPanel from '@/components/preflight/PreflightPanel.vue'
+import CommandPalette from '@/components/editor/CommandPalette.vue'
+import PreflightStatusBar from '@/components/editor/preflight/PreflightStatusBar.vue'
+import PreflightPanel from '@/components/editor/preflight/PreflightPanel.vue'
 import { Spinner } from '@/components/ui/spinner'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 

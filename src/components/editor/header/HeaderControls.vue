@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Download, MousePointer2, Scissors, Minus, Plus } from 'lucide-vue-next'
-import ThemeToggle from '@/components/ThemeToggle.vue'
+import ThemeToggle from '../ThemeToggle.vue'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
