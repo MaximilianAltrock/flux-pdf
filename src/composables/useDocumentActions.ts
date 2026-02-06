@@ -4,6 +4,7 @@ import { useDocumentStore } from '@/stores/document'
 import { useHistoryStore } from '@/stores/history'
 import { useUiStore } from '@/stores/ui'
 import { useProjectsStore } from '@/stores/projects'
+import { useSettingsStore } from '@/stores/settings'
 import { useRouter } from 'vue-router'
 import {
   DIFF_REQUIRED_SELECTION,
@@ -20,6 +21,15 @@ import { usePdfRepository } from '@/services/pdfRepository'
 import { createDocumentService, type ExportOptions } from '@/services/documentService'
 import { useFileInput } from '@/composables/useFileInput'
 import { getImportErrorMessage } from '@/domain/document/errors'
+import { autoGenOutlineFromPages } from '@/utils/auto-gen-tree'
+import {
+  removeOutlineNode,
+  removeBrokenOutlineTargets,
+  setOutlineNodeDest,
+  setOutlineNodeExpanded,
+  setOutlineNodeStyle,
+  setOutlineNodeTitle,
+} from '@/utils/outline-tree'
 import {
   RotatePagesCommand,
   DuplicatePagesCommand,
@@ -32,11 +42,12 @@ import {
   AddRedactionCommand,
   UpdateRedactionCommand,
   DeleteRedactionCommand,
+  UpdateOutlineCommand,
   BatchCommand,
 } from '@/commands'
 import { UserAction } from '@/types/actions'
 import type {
-  BookmarkNode,
+  OutlineNode,
   DocumentMetadata,
   PageEntry,
   PageReference,
@@ -55,12 +66,14 @@ export function useDocumentActions() {
   const history = useHistoryStore()
   const ui = useUiStore()
   const projects = useProjectsStore()
+  const settings = useSettingsStore()
   const {
     zoom,
     importJob: uiImportJob,
     exportJob: uiExportJob,
     ignoredPreflightRuleIds,
   } = storeToRefs(ui)
+  const { autoGenerateOutlineSinglePage } = storeToRefs(settings)
   const { activeProjectId, activeProjectMeta } = storeToRefs(projects)
   const { openFileDialog, clearFileInput } = useFileInput()
   const { execute, undo, redo, jumpTo, clearHistory } = history
@@ -97,6 +110,7 @@ export function useDocumentActions() {
       importJob: uiImportJob,
       exportJob: uiExportJob,
     },
+    settings: { autoGenerateOutlineSinglePage },
   })
   const exportJob = uiExportJob
 
@@ -951,12 +965,125 @@ export function useDocumentActions() {
     store.setSecurity(next)
   }
 
-  function setBookmarksTree(tree: BookmarkNode[], markDirty = true) {
-    store.setBookmarksTree(tree, markDirty)
+  function updateOutlineTree(
+    nextTree: OutlineNode[],
+    options?: { name?: string; nextDirty?: boolean },
+  ) {
+    const previousTree = store.outlineTree
+    const previousDirty = store.outlineDirty
+    const name = options?.name ?? 'Update outline'
+    const nextDirty = options?.nextDirty ?? true
+    execute(new UpdateOutlineCommand(previousTree, nextTree, previousDirty, nextDirty, name))
   }
 
-  function addBookmarkForPage(pageId: string, title?: string) {
-    store.addBookmarkForPage(pageId, title)
+  function createOutlineNodeForPage(pageId: string, title = 'New Bookmark'): OutlineNode {
+    return {
+      id: crypto.randomUUID(),
+      parentId: null,
+      title,
+      expanded: true,
+      dest: {
+        type: 'page',
+        targetPageId: pageId,
+        fit: 'Fit',
+      },
+      children: [],
+    }
+  }
+
+  function addOutlineNodeForPage(pageId: string, title?: string) {
+    const node = createOutlineNodeForPage(pageId, title ?? 'New Bookmark')
+    updateOutlineTree([...store.outlineTree, node], { name: 'Add outline node' })
+  }
+
+  function renameOutlineNode(nodeId: string, title: string) {
+    const trimmed = title.trim()
+    if (!trimmed) return
+    updateOutlineTree(setOutlineNodeTitle(store.outlineTree, nodeId, trimmed), {
+      name: 'Rename outline node',
+    })
+  }
+
+  function setOutlineNodeTarget(nodeId: string, targetPageId: string) {
+    updateOutlineTree(
+      setOutlineNodeDest(store.outlineTree, nodeId, {
+        type: 'page',
+        targetPageId,
+        fit: 'Fit',
+      }),
+      { name: 'Set outline target' },
+    )
+  }
+
+  function setOutlineNodeUrl(nodeId: string, url: string) {
+    const trimmed = url.trim()
+    if (!trimmed) return
+    updateOutlineTree(
+      setOutlineNodeDest(store.outlineTree, nodeId, {
+        type: 'external-url',
+        url: trimmed,
+      }),
+      { name: 'Set outline URL' },
+    )
+  }
+
+  function clearOutlineNodeTarget(nodeId: string) {
+    updateOutlineTree(setOutlineNodeDest(store.outlineTree, nodeId, { type: 'none' }), {
+      name: 'Clear outline target',
+    })
+  }
+
+  function updateOutlineNodeStyle(
+    nodeId: string,
+    style: { color?: string; isBold?: boolean; isItalic?: boolean },
+  ) {
+    updateOutlineTree(setOutlineNodeStyle(store.outlineTree, nodeId, style), {
+      name: 'Update outline style',
+    })
+  }
+
+  function deleteOutlineNode(nodeId: string) {
+    updateOutlineTree(removeOutlineNode(store.outlineTree, nodeId, 'node'), {
+      name: 'Remove outline node',
+    })
+  }
+
+  function deleteOutlineBranch(nodeId: string) {
+    updateOutlineTree(removeOutlineNode(store.outlineTree, nodeId, 'branch'), {
+      name: 'Remove outline branch',
+    })
+  }
+
+  function toggleOutlineExpanded(nodeId: string, expanded: boolean) {
+    const nextTree = setOutlineNodeExpanded(store.outlineTree, nodeId, expanded)
+    store.setOutlineTree(nextTree, false)
+  }
+
+  function resetOutlineToFileStructure() {
+    const nextTree = autoGenOutlineFromPages(
+      store.contentPages as PageReference[],
+      store.sources,
+    )
+    updateOutlineTree(nextTree, { name: 'Reset outline', nextDirty: false })
+  }
+
+  function cleanBrokenOutlineNodes() {
+    const validPageIds = new Set(store.contentPages.map((p) => p.id))
+    const nextTree = removeBrokenOutlineTargets(store.outlineTree, validPageIds)
+    updateOutlineTree(nextTree, { name: 'Clean broken outline links' })
+  }
+
+  function beginOutlineTargeting(nodeId: string) {
+    ui.beginOutlineTargeting(nodeId)
+  }
+
+  function completeOutlineTargeting(targetPageId: string): boolean {
+    const nodeId = ui.outlineTargetNodeId
+    if (!nodeId) return false
+    ui.endOutlineTargeting()
+    setOutlineNodeTarget(nodeId, targetPageId)
+    toast.success('Outline target updated')
+    return true
   }
 
   return {
@@ -1052,8 +1179,20 @@ export function useDocumentActions() {
     addKeyword,
     removeKeyword,
     setSecurity,
-    setBookmarksTree,
-    addBookmarkForPage,
+    updateOutlineTree,
+    addOutlineNodeForPage,
+    renameOutlineNode,
+    setOutlineNodeTarget,
+    setOutlineNodeUrl,
+    clearOutlineNodeTarget,
+    updateOutlineNodeStyle,
+    deleteOutlineNode,
+    deleteOutlineBranch,
+    toggleOutlineExpanded,
+    resetOutlineToFileStructure,
+    cleanBrokenOutlineNodes,
+    beginOutlineTargeting,
+    completeOutlineTargeting,
   }
 }
 

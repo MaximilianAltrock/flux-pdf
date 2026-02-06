@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { shallowRef, watchEffect, useTemplateRef } from 'vue'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import {
   attachClosestEdge,
@@ -10,25 +10,29 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview'
 import type { PageEntry } from '@/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   entry: PageEntry
   index: number
   dragLabel: string
   isDivider: boolean
-}>()
+  dragDisabled?: boolean
+}>(), {
+  dragDisabled: false,
+})
 
 const elementRef = useTemplateRef<HTMLElement>('elementRef')
 const closestEdge = shallowRef<Edge | null>(null)
 const isDragging = shallowRef(false)
 
-// Cleanup function
-let cleanup: (() => void) | null = null
-
-onMounted(() => {
+watchEffect((onCleanup) => {
   const el = elementRef.value
-  if (!el) return
+  if (!el || props.dragDisabled) {
+    isDragging.value = false
+    closestEdge.value = null
+    return
+  }
 
-  cleanup = combine(
+  const cleanup = combine(
     draggable({
       element: el,
       getInitialData: () => ({
@@ -100,21 +104,22 @@ onMounted(() => {
       },
     }),
   )
-})
 
-onUnmounted(() => {
-  cleanup?.()
+  onCleanup(() => cleanup())
 })
 </script>
 
 <template>
   <div
     ref="elementRef"
-    class="relative group h-full transition-all duration-200 cursor-grab active:cursor-grabbing"
-    :class="{
-      'opacity-20 scale-95 grayscale': isDragging,
-      'z-50': isDragging,
-    }"
+    class="relative group h-full transition-all duration-200"
+    :class="[
+      props.dragDisabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
+      {
+        'opacity-20 scale-95 grayscale': isDragging,
+        'z-50': isDragging,
+      },
+    ]"
   >
     <slot />
 

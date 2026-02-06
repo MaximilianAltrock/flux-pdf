@@ -15,13 +15,14 @@ import {
 import { pointerOutsideOfPreview } from '@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview'
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview'
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
+import type { ClassValue } from 'clsx'
 import { cn } from '@/lib/utils'
 import type { TreeNode } from './utils'
 
 interface Props {
   item: FlattenedItem<TreeNode>
   indentPerLevel?: number
-  class?: string
+  class?: ClassValue
 }
 
 const props = withDefaults(defineProps<Props>(), {

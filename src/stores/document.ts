@@ -1,18 +1,17 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef, computed, watch } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import { ROTATION_FULL_DEGREES, type RotationAngle, type RotationDelta } from '@/constants'
 import type {
   SourceFile,
   PageReference,
   PageEntry,
   SelectionState,
-  BookmarkNode,
+  OutlineNode,
   DocumentMetadata,
   SecurityMetadata,
   RedactionMark,
 } from '@/types'
 import { isPageEntry } from '@/types'
-import { autoGenBookmarksFromPages } from '@/utils/auto-gen-tree'
 
 export const useDocumentStore = defineStore('document', () => {
   // ============================================
@@ -41,8 +40,8 @@ export const useDocumentStore = defineStore('document', () => {
   const sourcesVersion = shallowRef(0)
   const metadata = ref<DocumentMetadata>({ ...DEFAULT_METADATA })
   const security = ref<SecurityMetadata>({ ...DEFAULT_SECURITY })
-  const bookmarksTree = ref<BookmarkNode[]>([])
-  const bookmarksDirty = shallowRef(false)
+  const outlineTree = ref<OutlineNode[]>([])
+  const outlineDirty = shallowRef(false)
   const metadataDirty = shallowRef(false)
   const projectTitle = shallowRef('Untitled Project')
   const isTitleLocked = shallowRef(false)
@@ -51,6 +50,7 @@ export const useDocumentStore = defineStore('document', () => {
     selectedIds: new Set(),
     lastSelectedId: null,
   })
+  const activePageId = shallowRef<string | null>(null)
 
 
   // ============================================
@@ -242,6 +242,10 @@ export const useDocumentStore = defineStore('document', () => {
     selection.value.lastSelectedId = null
   }
 
+  function setActivePageId(pageId: string | null) {
+    activePageId.value = pageId
+  }
+
   // === META ===
 
   function setMetadata(next: Partial<DocumentMetadata>, markDirty = true) {
@@ -281,22 +285,36 @@ export const useDocumentStore = defineStore('document', () => {
     security.value = { ...DEFAULT_SECURITY }
   }
 
-  function setBookmarksTree(tree: BookmarkNode[], markDirty = false) {
-    bookmarksTree.value = tree
-    if (markDirty) bookmarksDirty.value = true
+  function normalizeOutlineTree(
+    nodes: OutlineNode[],
+    parentId: string | null = null,
+  ): OutlineNode[] {
+    return (nodes ?? []).map((node) => {
+      const children = normalizeOutlineTree(node.children ?? [], node.id)
+      return {
+        ...node,
+        parentId,
+        children,
+      }
+    })
   }
 
-  function markBookmarksDirty() {
-    bookmarksDirty.value = true
+  function setOutlineTree(tree: OutlineNode[], markDirty = false) {
+    outlineTree.value = normalizeOutlineTree(tree)
+    if (markDirty) outlineDirty.value = true
   }
 
-  function resetBookmarks() {
-    bookmarksTree.value = []
-    bookmarksDirty.value = false
+  function markOutlineDirty() {
+    outlineDirty.value = true
   }
 
-  function setBookmarksDirty(value: boolean) {
-    bookmarksDirty.value = value
+  function resetOutline() {
+    outlineTree.value = []
+    outlineDirty.value = false
+  }
+
+  function setOutlineDirty(value: boolean) {
+    outlineDirty.value = value
   }
 
   function setPages(newPages: PageEntry[]) {
@@ -308,27 +326,33 @@ export const useDocumentStore = defineStore('document', () => {
     return sources.value.get(sourceId)?.color ?? fallback
   }
 
-  function addBookmarkForPage(pageId: string, title = 'New Bookmark') {
-    const node: BookmarkNode = {
+  function addOutlineNodeForPage(pageId: string, title = 'New Bookmark') {
+    const node: OutlineNode = {
       id: crypto.randomUUID(),
+      parentId: null,
       title,
-      pageId,
-      children: [],
       expanded: true,
+      dest: {
+        type: 'page',
+        targetPageId: pageId,
+        fit: 'Fit',
+      },
+      children: [],
     }
 
-    setBookmarksTree([...bookmarksTree.value, node], true)
+    setOutlineTree([...outlineTree.value, node], true)
   }
 
   function reset() {
     sources.value.clear()
     pages.value = []
     clearSelection()
+    activePageId.value = null
     projectTitle.value = 'Untitled Project'
     isTitleLocked.value = false
     resetMetadata()
     resetSecurity()
-    resetBookmarks()
+    resetOutline()
     bumpSourcesVersion()
     bumpPagesStructureVersion()
   }
@@ -342,10 +366,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
 
-  watch([pagesStructureVersion, sourcesVersion, bookmarksDirty], () => {
-    if (bookmarksDirty.value) return
-    bookmarksTree.value = autoGenBookmarksFromPages(contentPages.value, sources.value)
-  })
+  // Outline is updated explicitly during import or reset actions.
 
   return {
     sources,
@@ -353,6 +374,7 @@ export const useDocumentStore = defineStore('document', () => {
     pagesStructureVersion,
     sourcesVersion,
     selection,
+    activePageId,
     pageCount,
     contentPages,
     contentPageCount,
@@ -385,19 +407,20 @@ export const useDocumentStore = defineStore('document', () => {
     selectRange,
     selectAll,
     clearSelection,
+    setActivePageId,
     reset,
     setPages,
     getSourceColor,
     projectTitle,
     isTitleLocked,
     setProjectTitle,
-    bookmarksTree,
-    bookmarksDirty,
-    setBookmarksTree,
-    markBookmarksDirty,
-    resetBookmarks,
-    setBookmarksDirty,
-    addBookmarkForPage,
+    outlineTree,
+    outlineDirty,
+    setOutlineTree,
+    markOutlineDirty,
+    resetOutline,
+    setOutlineDirty,
+    addOutlineNodeForPage,
     metadata,
     metadataDirty,
     setMetadataDirty,

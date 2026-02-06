@@ -51,6 +51,9 @@ const settings = ref<ExportSettings>({
   customPageRange: '',
   compress: false,
   compressionQuality: 'none',
+  outlineInclude: true,
+  outlineFlatten: false,
+  outlineExpandAll: false,
 })
 
 watch(
@@ -63,6 +66,9 @@ watch(
         customPageRange: '',
         compress: false,
         compressionQuality: 'none',
+        outlineInclude: true,
+        outlineFlatten: false,
+        outlineExpandAll: false,
       }
 
       exportComplete.value = false
@@ -81,6 +87,11 @@ async function handleExport() {
       filename: settings.value.filename.trim(),
       compress: settings.value.compress,
       compressionQuality: settings.value.compressionQuality,
+      outline: {
+        include: settings.value.outlineInclude,
+        flatten: settings.value.outlineFlatten,
+        expandAll: settings.value.outlineExpandAll,
+      },
       metadata: {
         ...document.metadata,
         keywords: [...document.metadata.keywords],

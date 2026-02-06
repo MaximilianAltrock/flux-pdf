@@ -26,6 +26,9 @@ export interface ExportSettings {
   customPageRange: string
   compress: boolean
   compressionQuality: CompressionQuality | 'none'
+  outlineInclude: boolean
+  outlineFlatten: boolean
+  outlineExpandAll: boolean
 }
 
 const props = defineProps<{
@@ -291,6 +294,60 @@ function validateForm() {
       <CollapsibleContent>
         <!-- Advanced Options -->
         <div class="p-5 pt-0 grid grid-cols-1 gap-4">
+          <!-- Outline Options -->
+          <div class="ui-panel rounded-md p-4 space-y-3">
+            <div class="space-y-0.5">
+              <Label class="ui-label">Outline</Label>
+              <p class="ui-caption">
+                Include bookmarks in the exported PDF.
+              </p>
+            </div>
+            <div class="grid gap-2">
+              <label
+                for="opt-outline-include"
+                class="flex items-center gap-3 p-2 rounded-sm hover:bg-muted/20 transition-colors cursor-pointer group"
+              >
+                <Checkbox
+                  id="opt-outline-include"
+                  v-model="localSettings.outlineInclude"
+                />
+                <span class="ui-label">Include outline</span>
+              </label>
+              <label
+                for="opt-outline-flatten"
+                class="flex items-center gap-3 p-2 rounded-sm transition-colors"
+                :class="
+                  localSettings.outlineInclude
+                    ? 'cursor-pointer hover:bg-muted/20'
+                    : 'opacity-50 cursor-not-allowed'
+                "
+              >
+                <Checkbox
+                  id="opt-outline-flatten"
+                  v-model="localSettings.outlineFlatten"
+                  :disabled="!localSettings.outlineInclude"
+                />
+                <span class="ui-label">Flatten outline</span>
+              </label>
+              <label
+                for="opt-outline-expand"
+                class="flex items-center gap-3 p-2 rounded-sm transition-colors"
+                :class="
+                  localSettings.outlineInclude
+                    ? 'cursor-pointer hover:bg-muted/20'
+                    : 'opacity-50 cursor-not-allowed'
+                "
+              >
+                <Checkbox
+                  id="opt-outline-expand"
+                  v-model="localSettings.outlineExpandAll"
+                  :disabled="!localSettings.outlineInclude"
+                />
+                <span class="ui-label">Auto-expand all</span>
+              </label>
+            </div>
+          </div>
+
           <!-- Object Stream Compression -->
           <div
             class="ui-panel rounded-md p-4 flex items-center justify-between"

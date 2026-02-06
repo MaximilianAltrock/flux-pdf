@@ -17,6 +17,7 @@ export const CommandType = {
   REDACT: 'AddRedaction',
   UPDATE_REDACTION: 'UpdateRedaction',
   DELETE_REDACTION: 'DeleteRedaction',
+  UPDATE_OUTLINE: 'UpdateOutline',
   BATCH: 'BatchCommand',
 } as const
 

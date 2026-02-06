@@ -168,14 +168,26 @@ export interface SelectionState {
 }
 
 /**
- * bookmark node used by the Structure panel.
+ * Outline node used by the Structure panel.
+ * Stored as a tree; parentId is normalized when setting the tree.
  */
-export interface BookmarkNode {
+export interface OutlineNode {
   id: string
+  parentId: string | null
   title: string
-  pageId: string
-  children: BookmarkNode[]
   expanded: boolean
+  color?: string
+  isBold?: boolean
+  isItalic?: boolean
+  dest: {
+    type: 'page' | 'external-url' | 'none'
+    targetPageId?: string
+    fit?: 'Fit' | 'XYZ'
+    zoom?: number
+    y?: number
+    url?: string
+  }
+  children: OutlineNode[]
 }
 
 /**

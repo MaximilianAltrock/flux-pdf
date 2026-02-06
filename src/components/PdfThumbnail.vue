@@ -17,6 +17,8 @@ const props = defineProps<{
   isStartOfFile?: boolean
   isRazorActive?: boolean
   canSplit?: boolean
+  actionsDisabled?: boolean
+  hoverDisabled?: boolean
   sourceColor?: string
   problemSeverity?: 'error' | 'warning' | 'info'
   problemMessages?: string[]
@@ -27,6 +29,7 @@ const emit = defineEmits<{
   preview: []
   rotate: []
   delete: []
+  visible: [pageId: string, ratio: number]
 }>()
 
 const { renderThumbnail, cancelRender } = useThumbnailRenderer()
@@ -43,6 +46,7 @@ const renderRequestId = shallowRef(0)
 
 const sourceColor = computed(() => props.sourceColor || 'gray')
 const problemCount = computed(() => props.problemMessages?.length ?? 0)
+const hoverEnabled = computed(() => !props.hoverDisabled)
 
 const problemClass = computed(() => {
   if (props.problemSeverity === 'error') return 'bg-destructive/15 text-destructive'
@@ -60,10 +64,13 @@ const { stop: stopObserver } = useIntersectionObserver(
       hasBeenVisible.value = true
       loadThumbnail()
     }
+    if (entry?.isIntersecting && entry.intersectionRatio >= 0.6) {
+      emit('visible', props.pageRef.id, entry.intersectionRatio)
+    }
   },
   {
     rootMargin: '200px',
-    threshold: 0,
+    threshold: [0, 0.6],
   },
 )
 
@@ -134,12 +141,13 @@ function handleRetry() {
   <div
     ref="containerRef"
     :data-page-id="pageRef.id"
-    class="flex flex-col items-center gap-2 p-2 cursor-pointer select-none relative group/thumbnail h-fit transition-colors duration-200 rounded-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+    class="flex flex-col items-center gap-2 p-2 cursor-pointer select-none relative h-fit transition-colors duration-200 rounded-md focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
     :class="{
       'w-full': !fixedSize,
       'bg-primary/5 ring-1 ring-primary/20': selected,
-      'hover:bg-muted/20': !selected,
+      'hover:bg-muted/20': !selected && hoverEnabled,
       'opacity-60': isRazorActive && !canSplit,
+      'group/thumbnail': hoverEnabled,
     }"
     role="button"
     tabindex="0"
@@ -223,7 +231,7 @@ function handleRetry() {
 
         <!-- Action Toolbar (Simplified for High-Fi) -->
       <div
-        v-if="!isLoading && !hasError && !isRazorActive"
+        v-if="!isLoading && !hasError && !isRazorActive && !actionsDisabled"
         class="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-card/85 backdrop-blur-sm border border-border/70 p-1 shadow-sm opacity-0 group-hover/thumbnail:opacity-100 group-focus-within/thumbnail:opacity-100 translate-y-1 group-hover/thumbnail:translate-y-0 transition-all duration-300 z-20"
       >
           <Tooltip>

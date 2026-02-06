@@ -21,6 +21,7 @@ defineEmits<{
 const currentTool = computed({
   get: () => ui.currentTool,
   set: (val) => {
+    if (val === 'target') return
     ui.setCurrentTool(val as 'select' | 'razor')
   },
 })

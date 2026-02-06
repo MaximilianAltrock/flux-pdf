@@ -39,8 +39,9 @@ export const useUiStore = defineStore('ui', () => {
     Math.round((zoom.value / ZOOM.PERCENT_BASE) * ZOOM.PERCENT_MAX),
   )
 
-  const currentTool = shallowRef<'select' | 'razor'>('select')
-  const inspectorTab = shallowRef<'structure' | 'metadata' | 'security'>('structure')
+  const currentTool = shallowRef<'select' | 'razor' | 'target'>('select')
+  const previousTool = shallowRef<'select' | 'razor'>('select')
+  const inspectorTab = shallowRef<'structure' | 'metadata' | 'security' | 'settings'>('structure')
 
   // ============================================
   // Desktop State
@@ -58,6 +59,7 @@ export const useUiStore = defineStore('ui', () => {
   const showAddSheet = shallowRef(false)
   const showSettingsSheet = shallowRef(false)
   const showActionSheet = shallowRef(false)
+  const showOutlineUrlDialog = shallowRef(false)
 
   // Mobile mode computed (Browse | Select | Move)
   const mobileMode = computed(() => {
@@ -76,6 +78,10 @@ export const useUiStore = defineStore('ui', () => {
   const showDiffModal = shallowRef(false)
   const diffPages = ref<[PageReference, PageReference] | null>(null)
 
+  // Outline targeting mode
+  const outlineTargetNodeId = shallowRef<string | null>(null)
+  const isOutlineTargeting = computed(() => currentTool.value === 'target')
+
   // Preflight (per-project)
   const ignoredPreflightRuleIds = ref<string[]>([])
 
@@ -90,6 +96,7 @@ export const useUiStore = defineStore('ui', () => {
       showPreviewModal.value ||
       showDiffModal.value ||
       showCommandPalette.value ||
+      showOutlineUrlDialog.value ||
       showSettingsSheet.value ||
       showPreflightPanel.value,
   )
@@ -114,11 +121,17 @@ export const useUiStore = defineStore('ui', () => {
     setZoom(zoom.value - ZOOM.STEP)
   }
 
-  function setCurrentTool(tool: 'select' | 'razor') {
+  function setCurrentTool(tool: 'select' | 'razor' | 'target') {
+    if (tool !== 'target' && currentTool.value === 'target') {
+      outlineTargetNodeId.value = null
+    }
+    if (tool !== 'target') {
+      previousTool.value = tool
+    }
     currentTool.value = tool
   }
 
-  function setInspectorTab(tab: 'structure' | 'metadata' | 'security') {
+  function setInspectorTab(tab: 'structure' | 'metadata' | 'security' | 'settings') {
     inspectorTab.value = tab
   }
 
@@ -177,6 +190,21 @@ export const useUiStore = defineStore('ui', () => {
   function closeDiffModal() {
     showDiffModal.value = false
     diffPages.value = null
+  }
+
+  function beginOutlineTargeting(nodeId: string) {
+    if (currentTool.value !== 'target') {
+      previousTool.value = currentTool.value
+    }
+    outlineTargetNodeId.value = nodeId
+    currentTool.value = 'target'
+  }
+
+  function endOutlineTargeting() {
+    outlineTargetNodeId.value = null
+    if (currentTool.value === 'target') {
+      currentTool.value = previousTool.value
+    }
   }
 
   function setIgnoredPreflightRuleIds(ids: string[]) {
@@ -255,6 +283,14 @@ export const useUiStore = defineStore('ui', () => {
     showActionSheet.value = false
   }
 
+  function openOutlineUrlDialog() {
+    showOutlineUrlDialog.value = true
+  }
+
+  function closeOutlineUrlDialog() {
+    showOutlineUrlDialog.value = false
+  }
+
   return {
     // UI Document State
     isLoading,
@@ -277,6 +313,7 @@ export const useUiStore = defineStore('ui', () => {
     showAddSheet,
     showSettingsSheet,
     showActionSheet,
+    showOutlineUrlDialog,
 
     // Shared Modal State
     showExportModal,
@@ -286,6 +323,8 @@ export const useUiStore = defineStore('ui', () => {
     showDiffModal,
     diffPages,
     ignoredPreflightRuleIds,
+    outlineTargetNodeId,
+    isOutlineTargeting,
 
     // Jobs
     importJob,
@@ -322,6 +361,8 @@ export const useUiStore = defineStore('ui', () => {
     // Diff Modal Actions
     openDiffModal,
     closeDiffModal,
+    beginOutlineTargeting,
+    endOutlineTargeting,
 
     // Preflight
     setIgnoredPreflightRuleIds,
@@ -343,6 +384,8 @@ export const useUiStore = defineStore('ui', () => {
     closeSettingsSheet,
     openActionSheet,
     closeActionSheet,
+    openOutlineUrlDialog,
+    closeOutlineUrlDialog,
 
   }
 })

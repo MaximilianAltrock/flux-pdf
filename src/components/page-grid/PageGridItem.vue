@@ -17,6 +17,7 @@ import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
 import { useUiStore } from '@/stores/ui'
 import { usePreflight } from '@/composables/usePreflight'
+import type { GridInteractionPolicy } from '@/composables/useGridInteractionPolicy'
 
 const props = defineProps<{
   page: PageReference
@@ -24,6 +25,7 @@ const props = defineProps<{
   pageNumber: number
   selected: boolean
   isStartOfFile: boolean
+  interactionPolicy: GridInteractionPolicy
 }>()
 
 const emit = defineEmits<{
@@ -50,7 +52,10 @@ const problemSeverity = computed(() => {
 const problemMessages = computed(() => pageProblems.value.map((p) => p.message))
 
 function handlePageClick(event: MouseEvent | KeyboardEvent) {
-  if (ui.currentTool === 'razor') {
+  if (actions.completeOutlineTargeting(props.page.id)) {
+    return
+  }
+  if (props.interactionPolicy.tool === 'razor') {
     const pages = document.pages
     const index = pages.findIndex((p) => p.id === props.page.id)
     const prevPage = pages[index - 1]
@@ -59,6 +64,9 @@ function handlePageClick(event: MouseEvent | KeyboardEvent) {
     if (index > 0 && index < pages.length - 1 && prevPage && !prevPage.isDivider) {
       actions.handleSplitGroup(index)
     }
+    return
+  }
+  if (!props.interactionPolicy.allowSelection) {
     return
   }
 
@@ -89,6 +97,16 @@ function handleDelete() {
 function handleRotate() {
   emit('contextAction', UserAction.ROTATE_RIGHT, props.page)
 }
+
+function handleVisible(pageId: string) {
+  document.setActivePageId(pageId)
+}
+
+function handleContextMenu(event: MouseEvent) {
+  if (props.interactionPolicy.allowContextMenu) return
+  event.preventDefault()
+  event.stopPropagation()
+}
 </script>
 
 <template>
@@ -102,18 +120,22 @@ function handleRotate() {
         :width="ui.zoom"
         :source-color="document.getSourceColor(page.sourceFileId)"
         :is-start-of-file="isStartOfFile"
-        :is-razor-active="ui.currentTool === 'razor'"
+        :is-razor-active="interactionPolicy.tool === 'razor'"
+        :actions-disabled="!interactionPolicy.allowThumbnailActions"
+        :hover-disabled="!interactionPolicy.showHoverEffects"
         :can-split="index > 0"
         :problem-severity="problemSeverity"
         :problem-messages="problemMessages"
+        @contextmenu="handleContextMenu"
         @click="handlePageClick"
         @preview="handlePreview"
         @delete="handleDelete"
         @rotate="handleRotate"
+        @visible="handleVisible"
       />
     </ContextMenuTrigger>
 
-    <ContextMenuContent>
+    <ContextMenuContent v-if="interactionPolicy.allowContextMenu">
       <!-- Header/Label -->
       <ContextMenuLabel
         class="text-xs text-muted-foreground font-medium border-b border-border px-3 py-2"

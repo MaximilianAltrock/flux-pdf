@@ -21,6 +21,7 @@ import {
   type ExportResult,
   type GeneratorOptions,
 } from '@/domain/document/export'
+import { buildOutlineForImport } from '@/domain/document/outline'
 import {
   getExportErrorMessage,
   getImportErrorMessage,
@@ -43,6 +44,10 @@ export interface DocumentUiBindings {
   exportJob?: Ref<JobState>
 }
 
+export interface DocumentServiceSettings {
+  autoGenerateOutlineSinglePage: Ref<boolean>
+}
+
 export interface DocumentServiceDeps {
   documentStore: ReturnType<typeof useDocumentStore>
   historyStore: { execute: (command: Command) => void }
@@ -51,6 +56,7 @@ export interface DocumentServiceDeps {
   compression?: {
     compressPdf: (data: Uint8Array, options?: CompressionOptions) => Promise<CompressionResult>
   }
+  settings: DocumentServiceSettings
 }
 
 export interface ImportSummary {
@@ -77,6 +83,7 @@ export function createDocumentService(deps: DocumentServiceDeps) {
   const store = deps.documentStore
   const history = deps.historyStore
   const ui = deps.ui
+  const settings = deps.settings
   const { getPdfDocument, getPdfBlob } = deps.pdfRepository
   const compression = deps.compression ?? usePdfCompression()
 
@@ -175,6 +182,23 @@ export function createDocumentService(deps: DocumentServiceDeps) {
           const batchCmd = new BatchCommand(commandsToRun, batchName)
           history.execute(batchCmd)
         }
+
+        if (addPages) {
+          const autoGenerateSinglePage = settings.autoGenerateOutlineSinglePage.value
+          const outlineAdditions = successes.flatMap((result) => {
+            if (!result.sourceFile || !result.pageRefs?.length) return []
+            return buildOutlineForImport({
+              filename: result.sourceFile.filename,
+              outline: result.sourceFile.outline ?? [],
+              pageRefs: result.pageRefs,
+              autoGenerateSinglePage,
+            })
+          })
+
+          if (outlineAdditions.length > 0) {
+            store.setOutlineTree([...store.outlineTree, ...outlineAdditions], false)
+          }
+        }
       }
 
       const totalPages = successes.reduce((sum, r) => sum + (r.sourceFile?.pageCount ?? 0), 0)
@@ -210,14 +234,17 @@ export function createDocumentService(deps: DocumentServiceDeps) {
 
   async function generateRawPdf(
     pages: PageReference[],
-    options: GeneratorOptions = {},
+    options: GeneratorOptions & { outline?: ExportOptions['outline'] } = {},
   ): Promise<Result<Uint8Array>> {
     try {
+      const pageIdToDocIndex = new Map(store.contentPages.map((page, index) => [page.id, index]))
       const pdfBytes = await generateRawPdfCore(pages, {
         ...options,
         getPdfBlob,
         getPdfDocument,
-        bookmarks: store.bookmarksTree,
+        bookmarks: store.outlineTree,
+        pageIdToDocIndex,
+        outline: options.outline,
       })
       return { ok: true, value: pdfBytes }
     } catch (error) {
@@ -227,7 +254,8 @@ export function createDocumentService(deps: DocumentServiceDeps) {
   }
 
   async function exportDocument(options: ExportOptions): Promise<Result<ExportResult>> {
-    const { filename, pageRange, metadata, compress } = options
+    const { filename, pageRange, metadata, compress, outline } = options
+    const pageIdToDocIndex = new Map(store.contentPages.map((page, index) => [page.id, index]))
 
     const pagesToExport: PageEntry[] = resolvePagesToExport({
       pageRange,
@@ -265,7 +293,9 @@ export function createDocumentService(deps: DocumentServiceDeps) {
             onProgress: undefined,
             getPdfBlob,
             getPdfDocument,
-            bookmarks: store.bookmarksTree,
+            bookmarks: store.outlineTree,
+            pageIdToDocIndex,
+            outline,
           })
 
           zip.file(`${filename}-part${i + 1}.pdf`, pdfBytes)
@@ -306,7 +336,9 @@ export function createDocumentService(deps: DocumentServiceDeps) {
         },
         getPdfBlob,
         getPdfDocument,
-        bookmarks: store.bookmarksTree,
+        bookmarks: store.outlineTree,
+        pageIdToDocIndex,
+        outline,
       })
 
       let originalSize = pdfBytes.byteLength

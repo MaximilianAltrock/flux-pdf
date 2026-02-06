@@ -4,6 +4,7 @@ import { useEventListener } from '@vueuse/core'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { useGridLogic, type GridItem } from '@/composables/useGridLogic'
+import { useGridInteractionPolicy } from '@/composables/useGridInteractionPolicy'
 import SortableGridItem from './page-grid/SortableGridItem.vue'
 import PageDivider from './page-grid/PageDivider.vue'
 import PageGridItem from './page-grid/PageGridItem.vue'
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 const actions = useDocumentActionsContext()
 const document = useDocumentStore()
 const ui = useUiStore()
+const { policy } = useGridInteractionPolicy()
 
 const { localPages, isDragging, isSelected, gridItems } = useGridLogic(document)
 
@@ -40,6 +42,8 @@ const gridStyle = computed(() => ({
 }))
 
 const selectedCount = computed(() => document.selectedCount)
+const isTargeting = computed(() => policy.value.tool === 'target')
+const isRazor = computed(() => policy.value.tool === 'razor')
 
 function getOrderedSelectedPageIds(): string[] {
   if (selectedCount.value === 0) return []
@@ -66,6 +70,7 @@ function resetPageDragState() {
 
 function handleBackgroundClick(event: MouseEvent) {
   if (isDragging.value) return
+  if (!policy.value.allowSelection) return
   if (document.selectedCount === 0) return
   const target = event.target as HTMLElement | null
   if (!target) return
@@ -79,6 +84,11 @@ let cleanup: (() => void) | null = null
 onMounted(() => {
   cleanup = monitorForElements({
     onDragStart: ({ source }) => {
+      if (!policy.value.allowDrag) {
+        isDragging.value = false
+        activeDragIds.value = []
+        return
+      }
       isDragging.value = true
       const data = source.data as {
         type?: string
@@ -102,6 +112,11 @@ onMounted(() => {
       }
     },
     onDrop: ({ source, location }) => {
+      if (!policy.value.allowDrag) {
+        isDragging.value = false
+        resetPageDragState()
+        return
+      }
       if (source.data.type !== 'grid-item') return
 
       isDragging.value = false
@@ -202,6 +217,7 @@ onUnmounted(() => {
 // === File Drop Handlers ===
 function handleFileDragEnter(event: DragEvent) {
   event.preventDefault()
+  if (!policy.value.allowDropFiles) return
   if (isDragging.value) return
 
   const types = event.dataTransfer?.types
@@ -213,6 +229,7 @@ function handleFileDragEnter(event: DragEvent) {
 
 function handleFileDragOver(event: DragEvent) {
   event.preventDefault()
+  if (!policy.value.allowDropFiles) return
 }
 
 function resetFileDragState() {
@@ -222,6 +239,7 @@ function resetFileDragState() {
 
 function handleFileDragLeave(event: DragEvent) {
   event.preventDefault()
+  if (!policy.value.allowDropFiles) return
   if (isDragging.value) return
 
   dragCounter.value--
@@ -233,6 +251,7 @@ function handleFileDragLeave(event: DragEvent) {
 
 async function handleFileDrop(event: DragEvent) {
   event.preventDefault()
+  if (!policy.value.allowDropFiles) return
   resetFileDragState()
   if (isDragging.value) return
 
@@ -289,6 +308,11 @@ useEventListener('dragend', resetFileDragState)
 useEventListener('drop', resetFileDragState)
 useEventListener('dragend', resetPageDragState)
 useEventListener('drop', resetPageDragState)
+useEventListener('keydown', (event) => {
+  if (!isTargeting.value) return
+  if (event.key !== 'Escape') return
+  ui.endOutlineTargeting()
+})
 useEventListener('dragleave', (event) => {
   if (event.relatedTarget === null) {
     resetFileDragState()
@@ -308,10 +332,32 @@ useEventListener('dragleave', (event) => {
     <!-- Drop Overlay (Glassmorphism + Icon) -->
     <PageGridOverlay :visible="isFileDragOver" />
 
+    <div
+      v-if="isTargeting"
+      class="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center"
+    >
+      <div
+        class="pointer-events-auto flex items-center gap-4 rounded-md border border-primary/30 bg-background/95 px-4 py-2 shadow-sm"
+      >
+        <div>
+          <p class="text-sm font-semibold text-foreground">Outline targeting mode</p>
+          <p class="text-xs text-muted-foreground">
+            Click a page to set the target. Press Esc to cancel.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" class="h-7 px-2" @click="ui.endOutlineTargeting">
+          Cancel
+        </Button>
+      </div>
+    </div>
+
     <!-- Grid Layout -->
     <div
       class="grid gap-4 min-h-[50vh] pb-20"
-      :class="{ 'razor-mode': ui.currentTool === 'razor' }"
+      :class="{
+        'razor-mode': isRazor && !isTargeting,
+        'outline-targeting': isTargeting,
+      }"
       :style="gridStyle"
     >
       <SortableGridItem
@@ -321,6 +367,7 @@ useEventListener('dragleave', (event) => {
         :index="item.index"
         :drag-label="getDragLabel(item)"
         :is-divider="item.kind === 'divider'"
+        :drag-disabled="!policy.allowDrag"
         :data-grid-item="item.kind"
         :class="{ 'col-span-full': item.kind === 'divider' }"
       >
@@ -333,6 +380,7 @@ useEventListener('dragleave', (event) => {
           :page-number="item.pageNumber"
           :selected="isSelected(item.id)"
           :is-start-of-file="item.isStartOfFile"
+          :interaction-policy="policy"
           @preview="handlePreview"
           @context-action="handleContextAction"
         />
@@ -343,7 +391,12 @@ useEventListener('dragleave', (event) => {
       v-if="localPages.length > 0"
       class="text-center ui-caption ui-mono mt-6 opacity-60 uppercase tracking-[0.2em]"
     >
-      Drag to reorder / Double-click to preview / Right-click for options
+      <span v-if="isTargeting">
+        Outline targeting active — click a page to set target / Esc to cancel
+      </span>
+      <span v-else>
+        Drag to reorder / Double-click to preview / Right-click for options
+      </span>
     </p>
   </div>
 </template>
@@ -369,5 +422,13 @@ useEventListener('dragleave', (event) => {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cline x1='20' y1='4' x2='8.12' y2='15.88'/%3E%3Cline x1='14.47' y1='14.48' x2='20' y2='20'/%3E%3Cline x1='8.12' y1='8.12' x2='12' y2='12'/%3E%3C/svg%3E")
       12 12,
     crosshair;
+}
+
+.outline-targeting {
+  cursor: crosshair;
+}
+
+.outline-targeting [data-grid-item='page'] {
+  cursor: crosshair;
 }
 </style>

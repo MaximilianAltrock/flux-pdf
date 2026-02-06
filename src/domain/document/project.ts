@@ -8,8 +8,8 @@ export interface ProjectSnapshot {
   history: SerializedCommand[]
   historyPointer: number
   zoom: number
-  bookmarksTree?: unknown[]
-  bookmarksDirty?: boolean
+  outlineTree?: unknown[]
+  outlineDirty?: boolean
   metadata?: DocumentMetadata
   security?: SecurityMetadata
   metadataDirty?: boolean
@@ -29,8 +29,8 @@ export function buildProjectState(id: string, snapshot: ProjectSnapshot): Projec
     historyPointer: snapshot.historyPointer,
     zoom: Number(snapshot.zoom),
     updatedAt: Date.now(),
-    bookmarksTree: snapshot.bookmarksDirty ? toPlain(snapshot.bookmarksTree ?? []) : [],
-    bookmarksDirty: Boolean(snapshot.bookmarksDirty),
+    outlineTree: toPlain(snapshot.outlineTree ?? []),
+    outlineDirty: Boolean(snapshot.outlineDirty),
     metadata: snapshot.metadata ? toPlain(snapshot.metadata) : undefined,
     security: snapshot.security ? toPlain(snapshot.security) : undefined,
     metadataDirty: Boolean(snapshot.metadataDirty),

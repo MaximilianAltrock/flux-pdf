@@ -56,11 +56,11 @@ export interface ProjectState {
   /** Last update timestamp */
   updatedAt: number
 
-  /** Persisted bookmark tree (custom only) */
-  bookmarksTree?: unknown[] // stored as plain JSON
+  /** Persisted outline tree (custom only) */
+  outlineTree?: unknown[] // stored as plain JSON
 
-  /** Whether user has customized bookmarks (stops auto-gen overwrite) */
-  bookmarksDirty?: boolean
+  /** Whether user has customized outline (stops auto-gen overwrite) */
+  outlineDirty?: boolean
 
   /** Document metadata persisted with the project */
   metadata?: DocumentMetadata

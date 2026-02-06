@@ -1,7 +1,17 @@
-import { PDFDocument, PDFName, PDFNumber, PDFArray, PDFString, PDFRef, PDFDict, degrees } from 'pdf-lib'
+import {
+  PDFDocument,
+  PDFName,
+  PDFNumber,
+  PDFArray,
+  PDFString,
+  PDFRef,
+  PDFDict,
+  PDFNull,
+  degrees,
+} from 'pdf-lib'
 import { EXPORT_PROGRESS, PAGE_NUMBER_BASE, PDF_PAGE_INDEX_BASE } from '@/constants'
 import type { PDFPage } from 'pdf-lib'
-import type { BookmarkNode, PageEntry, PageReference, DocumentMetadata, RedactionMark } from '@/types'
+import type { OutlineNode, PageEntry, PageReference, DocumentMetadata, RedactionMark } from '@/types'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
 /**
@@ -30,6 +40,11 @@ export interface ExportOptions {
   metadata?: ExportMetadata
   compress?: boolean
   compressionQuality?: import('@/composables/usePdfCompression').CompressionQuality | 'none'
+  outline?: {
+    include?: boolean
+    flatten?: boolean
+    expandAll?: boolean
+  }
 }
 
 /**
@@ -45,7 +60,13 @@ export interface GenerateRawPdfOptions extends GeneratorOptions {
   getPdfBlob: (sourceFileId: string) => Promise<ArrayBuffer | undefined>
   getPdfDocument?: (sourceFileId: string) => Promise<PDFDocumentProxy>
   burnScale?: number
-  bookmarks?: BookmarkNode[]
+  bookmarks?: OutlineNode[]
+  pageIdToDocIndex?: Map<string, number>
+  outline?: {
+    include?: boolean
+    flatten?: boolean
+    expandAll?: boolean
+  }
 }
 
 export interface ResolveExportPagesOptions {
@@ -275,7 +296,17 @@ export async function generateRawPdf(
   pages: PageReference[],
   options: GenerateRawPdfOptions,
 ): Promise<Uint8Array> {
-  const { metadata, compress, onProgress, getPdfBlob, getPdfDocument, burnScale, bookmarks } = options
+  const {
+    metadata,
+    compress,
+    onProgress,
+    getPdfBlob,
+    getPdfDocument,
+    burnScale,
+    bookmarks,
+    pageIdToDocIndex,
+    outline,
+  } = options
   const exportMetadata = normalizeExportMetadata(metadata)
 
   const finalPdf = await PDFDocument.create()
@@ -369,8 +400,20 @@ export async function generateRawPdf(
     pageIdToIndex.set(p.id, idx++)
   }
 
-  const exportBookmarks = mapBookmarksToExport(bookmarks ?? [], pageIdToIndex)
-  await addBookmarks(finalPdf, exportBookmarks)
+  if (outline?.include !== false) {
+    let exportBookmarks = mapBookmarksToExport(
+      bookmarks ?? [],
+      pageIdToIndex,
+      pageIdToDocIndex,
+    )
+    if (outline?.flatten) {
+      exportBookmarks = flattenExportBookmarks(exportBookmarks)
+    }
+    if (outline?.expandAll) {
+      exportBookmarks = applyExpandedState(exportBookmarks, true)
+    }
+    await addBookmarks(finalPdf, exportBookmarks)
+  }
 
   return await finalPdf.save({
     useObjectStreams: compress ?? false,
@@ -380,32 +423,136 @@ export async function generateRawPdf(
 
 export interface ExportBookmarkNode {
   title: string
-  pageIndex: number
+  dest:
+    | { type: 'page'; pageIndex: number; fit?: 'Fit' | 'XYZ'; zoom?: number; y?: number }
+    | { type: 'external-url'; url: string }
+    | { type: 'none' }
+  color?: string
+  isBold?: boolean
+  isItalic?: boolean
   children?: ExportBookmarkNode[]
   expanded?: boolean
 }
 
 export function mapBookmarksToExport(
-  uiNodes: BookmarkNode[],
+  uiNodes: OutlineNode[],
   pageIdToIndex: Map<string, number>,
+  pageIdToDocIndex?: Map<string, number>,
 ): ExportBookmarkNode[] {
-  const mapNode = (n: BookmarkNode): ExportBookmarkNode | null => {
-    const pageIndex = pageIdToIndex.get(n.pageId)
-    if (pageIndex == null) return null
+  const exportDocOrder = buildExportDocOrder(pageIdToIndex, pageIdToDocIndex)
 
-    const children = (n.children ?? [])
-      .map(mapNode)
-      .filter((x): x is ExportBookmarkNode => x !== null)
+  const resolvePageIndex = (pageId: string): number | null => {
+    const direct = pageIdToIndex.get(pageId)
+    if (direct != null) return direct
+    if (!pageIdToDocIndex) return null
+    const docIndex = pageIdToDocIndex.get(pageId)
+    if (docIndex == null) return null
+    return findNearestExportIndex(docIndex, exportDocOrder)
+  }
 
-    return {
-      title: n.title,
-      pageIndex,
-      expanded: n.expanded,
-      children: children.length ? children : undefined,
+  const mapNode = (node: OutlineNode): ExportBookmarkNode[] => {
+    const children = (node.children ?? []).flatMap(mapNode)
+
+    if (node.dest.type === 'page') {
+      const pageId = node.dest.targetPageId
+      if (!pageId) return children
+      const pageIndex = resolvePageIndex(pageId)
+      if (pageIndex == null) return children
+      return [
+        {
+          title: node.title,
+          dest: {
+            type: 'page',
+            pageIndex,
+            fit: node.dest.fit ?? 'Fit',
+            zoom: node.dest.zoom,
+            y: node.dest.y,
+          },
+          color: node.color,
+          isBold: node.isBold,
+          isItalic: node.isItalic,
+          expanded: node.expanded,
+          children: children.length ? children : undefined,
+        },
+      ]
+    }
+
+    if (node.dest.type === 'external-url' && node.dest.url) {
+      return [
+        {
+          title: node.title,
+          dest: { type: 'external-url', url: node.dest.url },
+          color: node.color,
+          isBold: node.isBold,
+          isItalic: node.isItalic,
+          expanded: node.expanded,
+          children: children.length ? children : undefined,
+        },
+      ]
+    }
+
+    return [
+      {
+        title: node.title,
+        dest: { type: 'none' },
+        color: node.color,
+        isBold: node.isBold,
+        isItalic: node.isItalic,
+        expanded: node.expanded,
+        children: children.length ? children : undefined,
+      },
+    ]
+  }
+
+  return (uiNodes ?? []).flatMap(mapNode)
+}
+
+function buildExportDocOrder(
+  pageIdToIndex: Map<string, number>,
+  pageIdToDocIndex?: Map<string, number>,
+): Array<{ docIndex: number; exportIndex: number }> {
+  if (!pageIdToDocIndex) return []
+  const order: Array<{ docIndex: number; exportIndex: number }> = []
+  for (const [pageId, exportIndex] of pageIdToIndex) {
+    const docIndex = pageIdToDocIndex.get(pageId)
+    if (docIndex == null) continue
+    order.push({ docIndex, exportIndex })
+  }
+  order.sort((a, b) => a.docIndex - b.docIndex)
+  return order
+}
+
+function findNearestExportIndex(
+  docIndex: number,
+  exportDocOrder: Array<{ docIndex: number; exportIndex: number }>,
+): number | null {
+  if (!exportDocOrder.length) return null
+  let low = 0
+  let high = exportDocOrder.length - 1
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2)
+    const midDocIndex = exportDocOrder[mid]!.docIndex
+    if (midDocIndex === docIndex) {
+      return exportDocOrder[mid]!.exportIndex
+    }
+    if (midDocIndex < docIndex) {
+      low = mid + 1
+    } else {
+      high = mid - 1
     }
   }
 
-  return (uiNodes ?? []).map(mapNode).filter((x): x is ExportBookmarkNode => x !== null)
+  const before = exportDocOrder[low - 1]
+  const after = exportDocOrder[low]
+
+  if (!before) return after?.exportIndex ?? null
+  if (!after) return before.exportIndex
+
+  const beforeDistance = Math.abs(before.docIndex - docIndex)
+  const afterDistance = Math.abs(after.docIndex - docIndex)
+
+  return beforeDistance <= afterDistance ? before.exportIndex : after.exportIndex
 }
 
 export async function addBookmarks(pdfDoc: PDFDocument, bookmarks: ExportBookmarkNode[]) {
@@ -444,20 +591,55 @@ async function createOutlineItems(
     const prev = i > 0 ? refs[i - 1] : undefined
     const next = i < nodes.length - 1 ? refs[i + 1] : undefined
 
-    const page = pdfDoc.getPage(node.pageIndex)
-
-    const dest = PDFArray.withContext(ctx)
-    dest.push(page.ref)
-    dest.push(PDFName.of('FitH'))
-    dest.push(PDFNumber.of(page.getHeight()))
-
     const itemDict = ctx.obj({
       Title: PDFString.of(node.title),
       Parent: parentRef,
-      Dest: dest,
       ...(prev ? { Prev: prev } : {}),
       ...(next ? { Next: next } : {}),
     }) as PDFDict
+
+    if (node.dest.type === 'page') {
+      const page = pdfDoc.getPage(node.dest.pageIndex)
+      const dest = PDFArray.withContext(ctx)
+      dest.push(page.ref)
+      if (node.dest.fit === 'XYZ') {
+        dest.push(PDFName.of('XYZ'))
+        dest.push(PDFNull)
+        dest.push(
+          typeof node.dest.y === 'number'
+            ? PDFNumber.of(node.dest.y)
+            : PDFNumber.of(page.getHeight()),
+        )
+        dest.push(
+          typeof node.dest.zoom === 'number' ? PDFNumber.of(node.dest.zoom) : PDFNull,
+        )
+      } else {
+        dest.push(PDFName.of('Fit'))
+      }
+      itemDict.set(PDFName.of('Dest'), dest)
+    } else if (node.dest.type === 'external-url') {
+      const action = ctx.obj({
+        S: PDFName.of('URI'),
+        URI: PDFString.of(node.dest.url),
+      }) as PDFDict
+      itemDict.set(PDFName.of('A'), action)
+    }
+
+    if (node.color) {
+      const rgb = parseOutlineColor(node.color)
+      if (rgb) {
+        const color = PDFArray.withContext(ctx)
+        color.push(PDFNumber.of(rgb[0]))
+        color.push(PDFNumber.of(rgb[1]))
+        color.push(PDFNumber.of(rgb[2]))
+        itemDict.set(PDFName.of('C'), color)
+      }
+    }
+
+    const flags = (node.isItalic ? 1 : 0) | (node.isBold ? 2 : 0)
+    if (flags > 0) {
+      itemDict.set(PDFName.of('F'), PDFNumber.of(flags))
+    }
 
     if (node.children?.length) {
       const { firstRef, lastRef } = await createOutlineItems(pdfDoc, node.children, ref)
@@ -474,6 +656,39 @@ async function createOutlineItems(
   }
 
   return { firstRef: refs[0]!, lastRef: refs[refs.length - 1]! }
+}
+
+function flattenExportBookmarks(nodes: ExportBookmarkNode[]): ExportBookmarkNode[] {
+  const result: ExportBookmarkNode[] = []
+  const walk = (items: ExportBookmarkNode[]) => {
+    for (const item of items) {
+      result.push({ ...item, children: undefined })
+      if (item.children?.length) walk(item.children)
+    }
+  }
+  walk(nodes)
+  return result
+}
+
+function applyExpandedState(
+  nodes: ExportBookmarkNode[],
+  expanded: boolean,
+): ExportBookmarkNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    expanded,
+    children: node.children ? applyExpandedState(node.children, expanded) : undefined,
+  }))
+}
+
+function parseOutlineColor(value: string): [number, number, number] | null {
+  const hex = value.trim().replace('#', '')
+  if (hex.length !== 6) return null
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  if ([r, g, b].some((v) => Number.isNaN(v))) return null
+  return [r / 255, g / 255, b / 255]
 }
 
 function countDescendants(nodes: ExportBookmarkNode[]): number {

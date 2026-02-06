@@ -9,8 +9,9 @@ import { db, type ProjectMeta, type ProjectState } from '@/db/db'
 import { buildProjectState, type ProjectSnapshot } from '@/domain/document/project'
 import { evictPdfCache } from '@/domain/document/import'
 import { collectReachableSourceIdsFromState } from '@/domain/document/storage-gc'
+import { autoGenOutlineFromPages } from '@/utils/auto-gen-tree'
 import type { SerializedCommand } from '@/commands'
-import type { BookmarkNode, DocumentMetadata, PageEntry, PageReference } from '@/types'
+import type { OutlineNode, DocumentMetadata, PageEntry, PageReference } from '@/types'
 import type { DocumentUiState } from '@/types/ui'
 
 const LAST_ACTIVE_PROJECT_KEY = 'lastActiveProjectId'
@@ -34,9 +35,9 @@ function isDefaultMetadata(value: {
   )
 }
 
-function coerceBookmarkTree(value: unknown): BookmarkNode[] {
+function coerceOutlineTree(value: unknown): OutlineNode[] {
   if (!Array.isArray(value)) return []
-  return value as BookmarkNode[]
+  return value as OutlineNode[]
 }
 
 function getFirstPageReference(pages: ReadonlyArray<PageReference>): PageReference | null {
@@ -201,7 +202,7 @@ export const useProjectsStore = defineStore('projects', () => {
       const deepWatchSource = () => [
         store.pages,
         store.sourceFileList,
-        store.bookmarksTree,
+        store.outlineTree,
         store.metadata,
       ]
 
@@ -213,7 +214,7 @@ export const useProjectsStore = defineStore('projects', () => {
         historyStore.history.length,
         store.projectTitle,
         boundUiState.value?.zoom.value,
-        store.bookmarksDirty,
+        store.outlineDirty,
         store.metadataDirty,
         store.security,
         boundUiState.value?.ignoredPreflightRuleIds.value,
@@ -254,8 +255,8 @@ export const useProjectsStore = defineStore('projects', () => {
       history: [],
       historyPointer: HISTORY.POINTER_START,
       zoom: boundUiState.value?.zoom.value ?? ZOOM.DEFAULT,
-      bookmarksTree: [],
-      bookmarksDirty: false,
+      outlineTree: [],
+      outlineDirty: false,
       metadata: undefined,
       security: undefined,
       metadataDirty: false,
@@ -305,8 +306,8 @@ export const useProjectsStore = defineStore('projects', () => {
       history: historyStore.serializeHistory(),
       historyPointer: historyStore.getHistoryPointer(),
       zoom: boundUiState.value?.zoom.value ?? ZOOM.DEFAULT,
-      bookmarksTree: store.bookmarksTree,
-      bookmarksDirty: store.bookmarksDirty,
+      outlineTree: store.outlineTree,
+      outlineDirty: store.outlineDirty,
       metadata: store.metadata,
       security: store.security,
       metadataDirty: store.metadataDirty,
@@ -345,7 +346,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
     store.setProjectTitle(meta.title)
     boundUiState.value?.setZoom(state.zoom ?? ZOOM.DEFAULT)
-    store.setBookmarksDirty(state.bookmarksDirty ?? false)
+    store.setOutlineDirty(Boolean(state.outlineDirty))
     store.setPages(state.pageMap ?? [])
     boundUiState.value?.setIgnoredPreflightRuleIds(state.ignoredPreflightRuleIds ?? [])
 
@@ -362,9 +363,21 @@ export const useProjectsStore = defineStore('projects', () => {
       store.setSecurity(state.security)
     }
 
-    if (store.bookmarksDirty) {
-      const restoredTree = coerceBookmarkTree(state.bookmarksTree)
-      store.setBookmarksTree(restoredTree, false)
+    let restoredTree: OutlineNode[] = []
+    if (state.outlineTree?.length) {
+      restoredTree = coerceOutlineTree(state.outlineTree)
+    }
+
+    if (restoredTree.length > 0) {
+      store.setOutlineTree(restoredTree, false)
+    } else if (!state.outlineTree?.length && !state.outlineDirty) {
+      const autoOutline = autoGenOutlineFromPages(
+        store.contentPages as PageReference[],
+        store.sources,
+      )
+      if (autoOutline.length > 0) {
+        store.setOutlineTree(autoOutline, false)
+      }
     }
 
     historyStore.rehydrateHistory(
