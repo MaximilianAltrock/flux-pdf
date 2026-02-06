@@ -37,7 +37,11 @@ export const useDocumentStore = defineStore('document', () => {
   const sources = ref<Map<string, SourceFile>>(new Map())
   const pages = ref<PageEntry[]>([])
   const pagesStructureVersion = shallowRef(0)
+  const pagesVersion = shallowRef(0)
   const sourcesVersion = shallowRef(0)
+  const outlineVersion = shallowRef(0)
+  const metadataVersion = shallowRef(0)
+  const securityVersion = shallowRef(0)
   const metadata = ref<DocumentMetadata>({ ...DEFAULT_METADATA })
   const security = ref<SecurityMetadata>({ ...DEFAULT_SECURITY })
   const outlineTree = ref<OutlineNode[]>([])
@@ -81,10 +85,27 @@ export const useDocumentStore = defineStore('document', () => {
 
   function bumpPagesStructureVersion() {
     pagesStructureVersion.value += 1
+    bumpPagesVersion()
+  }
+
+  function bumpPagesVersion() {
+    pagesVersion.value += 1
   }
 
   function bumpSourcesVersion() {
     sourcesVersion.value += 1
+  }
+
+  function bumpOutlineVersion() {
+    outlineVersion.value += 1
+  }
+
+  function bumpMetadataVersion() {
+    metadataVersion.value += 1
+  }
+
+  function bumpSecurityVersion() {
+    securityVersion.value += 1
   }
 
   function addSourceFile(sourceFile: SourceFile) {
@@ -144,6 +165,7 @@ export const useDocumentStore = defineStore('document', () => {
       const newRotation =
         ((current + degrees + ROTATION_FULL_DEGREES) % ROTATION_FULL_DEGREES) as RotationAngle
       page.rotation = newRotation
+      bumpPagesVersion()
     }
   }
 
@@ -158,6 +180,7 @@ export const useDocumentStore = defineStore('document', () => {
     } else {
       page.targetDimensions = undefined
     }
+    bumpPagesVersion()
   }
 
   function addRedaction(pageId: string, redaction: RedactionMark) {
@@ -165,6 +188,7 @@ export const useDocumentStore = defineStore('document', () => {
     if (!page) return
     if (!page.redactions) page.redactions = []
     page.redactions.push({ ...redaction })
+    bumpPagesVersion()
   }
 
   function addRedactions(pageId: string, redactions: RedactionMark[]) {
@@ -173,12 +197,14 @@ export const useDocumentStore = defineStore('document', () => {
     if (!page) return
     if (!page.redactions) page.redactions = []
     page.redactions.push(...redactions.map((r) => ({ ...r })))
+    bumpPagesVersion()
   }
 
   function updateRedaction(pageId: string, redaction: RedactionMark) {
     const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (!page?.redactions?.length) return
     page.redactions = page.redactions.map((r) => (r.id === redaction.id ? { ...redaction } : r))
+    bumpPagesVersion()
   }
 
   function removeRedaction(pageId: string, redactionId: string) {
@@ -191,12 +217,14 @@ export const useDocumentStore = defineStore('document', () => {
     if (!page?.redactions?.length) return
     const removeSet = new Set(redactionIds)
     page.redactions = page.redactions.filter((r) => !removeSet.has(r.id))
+    bumpPagesVersion()
   }
 
   function clearRedactions(pageId: string) {
     const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (!page) return
     page.redactions = []
+    bumpPagesVersion()
   }
 
   // === SELECTION ===
@@ -250,6 +278,7 @@ export const useDocumentStore = defineStore('document', () => {
 
   function setMetadata(next: Partial<DocumentMetadata>, markDirty = true) {
     metadata.value = { ...metadata.value, ...next }
+    bumpMetadataVersion()
     if (markDirty) metadataDirty.value = true
   }
 
@@ -258,31 +287,40 @@ export const useDocumentStore = defineStore('document', () => {
     if (!k) return
     if (!metadata.value.keywords.includes(k)) {
       metadata.value.keywords.push(k)
+      bumpMetadataVersion()
       metadataDirty.value = true
     }
   }
 
   function removeKeyword(keyword: string) {
-    metadata.value.keywords = metadata.value.keywords.filter((k) => k !== keyword)
+    const nextKeywords = metadata.value.keywords.filter((k) => k !== keyword)
+    if (nextKeywords.length === metadata.value.keywords.length) return
+    metadata.value.keywords = nextKeywords
+    bumpMetadataVersion()
     metadataDirty.value = true
   }
 
   function clearKeywords() {
+    if (metadata.value.keywords.length === 0) return
     metadata.value.keywords = []
+    bumpMetadataVersion()
     metadataDirty.value = true
   }
 
   function resetMetadata() {
     metadata.value = { ...DEFAULT_METADATA }
+    bumpMetadataVersion()
     metadataDirty.value = false
   }
 
   function setSecurity(next: Partial<SecurityMetadata>) {
     security.value = { ...security.value, ...next }
+    bumpSecurityVersion()
   }
 
   function resetSecurity() {
     security.value = { ...DEFAULT_SECURITY }
+    bumpSecurityVersion()
   }
 
   function normalizeOutlineTree(
@@ -301,6 +339,7 @@ export const useDocumentStore = defineStore('document', () => {
 
   function setOutlineTree(tree: OutlineNode[], markDirty = false) {
     outlineTree.value = normalizeOutlineTree(tree)
+    bumpOutlineVersion()
     if (markDirty) outlineDirty.value = true
   }
 
@@ -310,6 +349,7 @@ export const useDocumentStore = defineStore('document', () => {
 
   function resetOutline() {
     outlineTree.value = []
+    bumpOutlineVersion()
     outlineDirty.value = false
   }
 
@@ -372,7 +412,11 @@ export const useDocumentStore = defineStore('document', () => {
     sources,
     pages,
     pagesStructureVersion,
+    pagesVersion,
     sourcesVersion,
+    outlineVersion,
+    metadataVersion,
+    securityVersion,
     selection,
     activePageId,
     pageCount,

@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import ProjectCard from '@/components/ProjectCard.vue'
+import ProjectCard from '@/components/dashboard/ProjectCard.vue'
 import type { ProjectMeta } from '@/db/db'
 
 const PROJECT_LIST_LIMIT = 50

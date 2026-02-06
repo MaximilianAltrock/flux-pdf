@@ -22,10 +22,10 @@ import DesktopLayout from '@/layouts/DesktopLayout.vue'
 import MobileLayout from '@/layouts/MobileLayout.vue'
 
 // Shared Overlays (used by both layouts)
-import ExportModal from '@/components/ExportModal.vue'
+import ExportModal from '@/components/export/ExportModal.vue'
 import MobileExportSheet from '@/components/mobile/MobileExportSheet.vue'
 import DiffModal from '@/components/DiffModal.vue'
-import PagePreviewModal from '@/components/PagePreviewModal.vue'
+import PagePreviewModal from '@/components/editor/PagePreviewModal.vue'
 
 // ============================================
 // Initialization

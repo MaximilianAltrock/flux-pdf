@@ -2,45 +2,16 @@
 import { computed, nextTick, ref, type ComponentPublicInstance } from 'vue'
 import { Tree, TreeItem } from '@/components/ui/tree'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { ColorPicker } from '@/components/ui/color-picker'
-import {
-  ContextMenu,
-  ContextMenuCheckboxItem,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  ChevronRight,
-  Crosshair,
-  FileText,
-  Link2Off,
-  Plus,
-  RefreshCcw,
-  Wrench,
-} from 'lucide-vue-next'
+import { FileText, Plus } from 'lucide-vue-next'
 import type { OutlineNode } from '@/types'
 import { scrollToPageId } from '@/utils/scroll-to-page'
 import { setOutlineNodeStyle } from '@/utils/outline-tree'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
 import { useUiStore } from '@/stores/ui'
+import InspectorStructureHeader from './structure/InspectorStructureHeader.vue'
+import InspectorStructureNode from './structure/InspectorStructureNode.vue'
+import InspectorStructureUrlDialog from './structure/InspectorStructureUrlDialog.vue'
 
 const actions = useDocumentActionsContext()
 const document = useDocumentStore()
@@ -54,7 +25,6 @@ const editingTitle = ref('')
 const renameInputRefs = new Map<string, HTMLInputElement>()
 const urlEditorNodeId = ref<string | null>(null)
 const urlDraft = ref('')
-const urlInputRef = ref<HTMLInputElement | null>(null)
 const originalColorByNodeId = new Map<string, string | undefined>()
 const pendingColorByNodeId = new Map<string, string | undefined>()
 
@@ -140,12 +110,25 @@ function findNodeById(nodes: OutlineNode[], nodeId: string): OutlineNode | null 
   return null
 }
 
-function setRenameInputRef(nodeId: string, el: ComponentPublicInstance | null) {
-  if (el) {
-    renameInputRefs.set(nodeId, el.$el as HTMLInputElement)
-  } else {
+function setRenameInputRef(nodeId: string, el: Element | ComponentPublicInstance | null) {
+  if (!el) {
     renameInputRefs.delete(nodeId)
+    return
   }
+
+  const inputEl =
+    el instanceof HTMLInputElement
+      ? el
+      : '$el' in el && el.$el instanceof HTMLInputElement
+        ? el.$el
+        : null
+
+  if (inputEl) {
+    renameInputRefs.set(nodeId, inputEl)
+    return
+  }
+
+  renameInputRefs.delete(nodeId)
 }
 
 function startRename(node: OutlineNode) {
@@ -211,10 +194,6 @@ function openUrlEditor(node: OutlineNode) {
   urlEditorNodeId.value = node.id
   urlDraft.value = node.dest.type === 'external-url' ? (node.dest.url ?? '') : ''
   ui.openOutlineUrlDialog()
-  nextTick(() => {
-    urlInputRef.value?.focus()
-    urlInputRef.value?.select()
-  })
 }
 
 function closeUrlEditor() {
@@ -281,65 +260,15 @@ function handlePreviewColor(node: OutlineNode, color: string) {
     </div>
 
     <div v-else class="flex flex-col min-h-0">
-      <div class="px-4 py-3 border-b border-border bg-sidebar">
-        <div class="flex items-center justify-between gap-2">
-          <p class="ui-kicker flex items-center gap-2">
-            Document Structure
-            <Badge variant="outline" class="ui-mono ui-2xs h-4 px-1.5">
-              {{ document.outlineDirty ? 'Custom' : 'Auto' }}
-            </Badge>
-          </p>
-          <div class="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              class="h-6 px-2 text-xs"
-              @click="actions.resetOutlineToFileStructure"
-            >
-              <RefreshCcw class="w-3 h-3 mr-1" />
-              Reset
-            </Button>
-            <Button
-              v-if="hasBrokenLinks"
-              variant="ghost"
-              size="sm"
-              class="h-6 px-2 text-xs text-destructive"
-              @click="actions.cleanBrokenOutlineNodes"
-            >
-              <Wrench class="w-3 h-3 mr-1" />
-              Clean
-            </Button>
-          </div>
-        </div>
-        <p class="ui-caption mt-1.5 leading-relaxed">
-          Drag & drop to reorder entries. Nest items to create hierarchies.
-        </p>
-        <div
-          v-if="ui.isOutlineTargeting"
-          class="mt-2 flex items-center justify-between ui-panel-muted rounded-sm px-2 py-1"
-        >
-          <span class="ui-caption text-muted-foreground">
-            <template v-if="outlineTargetNode">
-              Targeting
-              <span class="font-medium text-foreground">
-                {{ outlineTargetNode.title }}
-              </span>
-              . Click a page to set the outline target.
-            </template>
-            <template v-else>
-              Select an outline item, then click a page to set the target.
-            </template>
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            class="h-6 px-2 text-xs"
-            @click="ui.endOutlineTargeting"
-          >
-            Cancel
-          </Button>
-        </div>
-      </div>
+      <InspectorStructureHeader
+        :outline-dirty="document.outlineDirty"
+        :has-broken-links="hasBrokenLinks"
+        :is-targeting="ui.isOutlineTargeting"
+        :target-node-title="outlineTargetNode?.title ?? null"
+        @reset="actions.resetOutlineToFileStructure"
+        @clean="actions.cleanBrokenOutlineNodes"
+        @cancel-targeting="ui.endOutlineTargeting"
+      />
 
       <div class="flex-1 min-h-0 py-2">
         <Tree
@@ -363,200 +292,35 @@ function handlePreviewColor(node: OutlineNode, color: string) {
             }"
             :style="{ marginLeft: `${item.level * 12}px` }"
           >
-            <div
-              v-if="isEditing(item.value as OutlineNode)"
-              class="flex items-center w-full h-full gap-0"
-            >
-              <!-- Expander -->
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="mr-1 h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-foreground"
-                :style="{ visibility: item.hasChildren ? 'visible' : 'hidden' }"
-                aria-label="Toggle section"
-              >
-                <ChevronRight
-                  class="w-3 h-3 transition-transform duration-200"
-                  :class="isExpanded ? 'rotate-90' : ''"
-                />
-              </Button>
-
-              <!-- Title Container -->
-              <div class="flex items-center min-w-0 max-w-full gap-1">
-                <Input
-                  :ref="(el) => setRenameInputRef((item.value as OutlineNode).id, el)"
-                  v-model="editingTitle"
-                  class="h-6 text-xs px-2 py-0.5"
-                  @keydown.enter.prevent="commitRename"
-                  @keydown.esc.prevent="cancelRename"
-                  @blur="commitRename"
-                />
-              </div>
-            </div>
-
-            <ContextMenu
-              v-else
-              @update:open="(open) => handleContextMenuOpenChange(open, item.value as OutlineNode)"
-            >
-              <ContextMenuTrigger>
-                <div
-                  class="flex w-full h-full gap-0"
-                  tabindex="0"
-                  @keydown.f2.prevent="startRename(item.value as OutlineNode)"
-                >
-                  <!-- Expander -->
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="mr-1 h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-foreground"
-                    :style="{ visibility: item.hasChildren ? 'visible' : 'hidden' }"
-                    aria-label="Toggle section"
-                  >
-                    <ChevronRight
-                      class="w-3 h-3 transition-transform duration-200"
-                      :class="isExpanded ? 'rotate-90' : ''"
-                    />
-                  </Button>
-
-                  <!-- Title Container -->
-                  <div class="flex min-w-0 max-w-full gap-1">
-                    <span
-                      class="text-xs truncate leading-none py-1 pr-2"
-                      :class="{
-                        'font-semibold': !(item.value as OutlineNode).isBold,
-                        'font-bold': (item.value as OutlineNode).isBold,
-                        italic: (item.value as OutlineNode).isItalic,
-                      }"
-                      :style="
-                        !isBroken(item.value as OutlineNode) && (item.value as OutlineNode).color
-                          ? { color: (item.value as OutlineNode).color }
-                          : undefined
-                      "
-                    >
-                      {{ (item.value as OutlineNode).title }}
-                    </span>
-                    <Link2Off
-                      v-if="isBroken(item.value as OutlineNode)"
-                      class="w-3 h-3 text-destructive/80"
-                    />
-                    <Badge
-                      v-if="isTargetingNode(item.value as OutlineNode)"
-                      variant="outline"
-                      class="ui-mono ui-2xs h-4 px-1.5 text-primary border-primary/40"
-                    >
-                      Targeting
-                    </Badge>
-
-                    <!-- Target Action - Attached to Title -->
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-primary ml-auto"
-                      :style="{
-                        visibility:
-                          (item.value as OutlineNode).dest.type === 'page' ? 'visible' : 'hidden',
-                      }"
-                      aria-label="Jump to section"
-                      @click.stop="scrollGridToPage((item.value as OutlineNode).dest.targetPageId)"
-                    >
-                      <Crosshair class="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </ContextMenuTrigger>
-
-              <ContextMenuContent>
-                <ContextMenuItem @select="startRename(item.value as OutlineNode)">
-                  Rename
-                </ContextMenuItem>
-                <ContextMenuItem @select="handleSetTargetMode(item.value as OutlineNode)">
-                  Set Target...
-                </ContextMenuItem>
-                <ContextMenuItem @select="openUrlEditor(item.value as OutlineNode)">
-                  Set External URL...
-                </ContextMenuItem>
-                <ContextMenuItem @select="handleClearTarget(item.value as OutlineNode)">
-                  Clear Target
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger>Style</ContextMenuSubTrigger>
-                  <ContextMenuSubContent class="w-48">
-                    <ContextMenuLabel inset class="text-xs text-muted-foreground">
-                      Text Style
-                    </ContextMenuLabel>
-                    <ContextMenuCheckboxItem
-                      :checked="Boolean((item.value as OutlineNode).isBold)"
-                      @select="handleToggleBold(item.value as OutlineNode)"
-                    >
-                      Bold
-                    </ContextMenuCheckboxItem>
-                    <ContextMenuCheckboxItem
-                      :checked="Boolean((item.value as OutlineNode).isItalic)"
-                      @select="handleToggleItalic(item.value as OutlineNode)"
-                    >
-                      Italic
-                    </ContextMenuCheckboxItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuLabel inset class="w-full text-xs text-muted-foreground">
-                      Color
-                    </ContextMenuLabel>
-                    <ContextMenuItem
-                      inset
-                      @select="handleSetColor(item.value as OutlineNode, '#ef4444')"
-                    >
-                      Red
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      inset
-                      @select="handleSetColor(item.value as OutlineNode, '#22c55e')"
-                    >
-                      Green
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      inset
-                      @select="handleSetColor(item.value as OutlineNode, '#3b82f6')"
-                    >
-                      Blue
-                    </ContextMenuItem>
-                    <ContextMenuItem inset @select.prevent class="w-full justify-between">
-                      <span class="text-sm">Custom</span>
-                      <ColorPicker
-                        :model-value="(item.value as OutlineNode).color ?? '#3b82f6'"
-                        size="icon-sm"
-                        variant="outline"
-                        class="h-6 w-6"
-                        @update:model-value="
-                          (value) => handlePreviewColor(item.value as OutlineNode, value)
-                        "
-                      />
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      inset
-                      @select="handleSetColor(item.value as OutlineNode, undefined)"
-                    >
-                      Clear Color
-                    </ContextMenuItem>
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
-                <ContextMenuSeparator />
-                <ContextMenuItem
-                  @select="actions.deleteOutlineNode((item.value as OutlineNode).id)"
-                >
-                  {{
-                    (item.value as OutlineNode).children?.length
-                      ? 'Ungroup Children'
-                      : 'Remove Node'
-                  }}
-                </ContextMenuItem>
-                <ContextMenuItem
-                  class="text-destructive focus:text-destructive"
-                  @select="actions.deleteOutlineBranch((item.value as OutlineNode).id)"
-                >
-                  Remove Branch
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenu>
+            <InspectorStructureNode
+              :node="item.value as OutlineNode"
+              :has-children="item.hasChildren"
+              :is-expanded="isExpanded"
+              :is-editing="isEditing(item.value as OutlineNode)"
+              :editing-title="editingTitle"
+              :is-broken="isBroken(item.value as OutlineNode)"
+              :is-targeting="isTargetingNode(item.value as OutlineNode)"
+              @update:editing-title="(value) => (editingTitle = value)"
+              @set-rename-input-ref="
+                (el) => setRenameInputRef((item.value as OutlineNode).id, el)
+              "
+              @rename-start="startRename(item.value as OutlineNode)"
+              @rename-commit="commitRename"
+              @rename-cancel="cancelRename"
+              @context-open="
+                (open) => handleContextMenuOpenChange(open, item.value as OutlineNode)
+              "
+              @target-mode="handleSetTargetMode(item.value as OutlineNode)"
+              @open-url-editor="openUrlEditor(item.value as OutlineNode)"
+              @clear-target="handleClearTarget(item.value as OutlineNode)"
+              @toggle-bold="handleToggleBold(item.value as OutlineNode)"
+              @toggle-italic="handleToggleItalic(item.value as OutlineNode)"
+              @set-color="(color) => handleSetColor(item.value as OutlineNode, color)"
+              @preview-color="(color) => handlePreviewColor(item.value as OutlineNode, color)"
+              @delete-node="actions.deleteOutlineNode((item.value as OutlineNode).id)"
+              @delete-branch="actions.deleteOutlineBranch((item.value as OutlineNode).id)"
+              @jump-to-page="scrollGridToPage"
+            />
           </TreeItem>
         </Tree>
       </div>
@@ -575,32 +339,10 @@ function handlePreviewColor(node: OutlineNode, color: string) {
     </div>
   </div>
 
-  <Dialog
+  <InspectorStructureUrlDialog
     :open="ui.showOutlineUrlDialog"
-    @update:open="(value) => (value ? null : closeUrlEditor())"
-  >
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Set external URL</DialogTitle>
-        <DialogDescription>
-          Add a link that opens when this outline item is selected.
-        </DialogDescription>
-      </DialogHeader>
-      <div class="space-y-2">
-        <Label for="outline-url">URL</Label>
-        <Input
-          id="outline-url"
-          ref="urlInputRef"
-          v-model="urlDraft"
-          type="url"
-          placeholder="https://example.com"
-          @keydown.enter.prevent="commitUrl"
-        />
-      </div>
-      <DialogFooter>
-        <Button variant="ghost" @click="closeUrlEditor">Cancel</Button>
-        <Button @click="commitUrl">Save</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+    v-model="urlDraft"
+    @close="closeUrlEditor"
+    @save="commitUrl"
+  />
 </template>

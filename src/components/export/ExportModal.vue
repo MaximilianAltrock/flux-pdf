@@ -16,8 +16,8 @@ import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
 
 // Sub-components
-import ExportConfiguration, { type ExportSettings } from './export/ExportConfiguration.vue'
-import ExportStatus, { type ExportStats } from './export/ExportStatus.vue'
+import ExportConfiguration, { type ExportSettings } from './ExportConfiguration.vue'
+import ExportStatus, { type ExportStats } from './ExportStatus.vue'
 
 const props = defineProps<{
   open: boolean

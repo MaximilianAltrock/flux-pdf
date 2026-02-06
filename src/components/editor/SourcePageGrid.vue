@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch, useTemplateRef } from 'vue'
 import { useEventListener, useResizeObserver, useTimeoutFn } from '@vueuse/core'
-import SourcePageThumbnail from '@/components/SourcePageThumbnail.vue'
+import SourcePageThumbnail from './SourcePageThumbnail.vue'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { ROTATION_DEFAULT_DEGREES } from '@/constants'
 import { Skeleton } from '@/components/ui/skeleton'

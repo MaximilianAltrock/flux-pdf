@@ -8,11 +8,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useUiStore } from '@/stores/ui'
 
 // Sub-components
-import InspectorStructure from './inspector/InspectorStructure.vue'
-import InspectorMetadata from './inspector/InspectorMetadata.vue'
-import InspectorSecurity from './inspector/InspectorSecurity.vue'
-import InspectorSettings from './inspector/InspectorSettings.vue'
-import InspectorHistory from './inspector/InspectorHistory.vue'
+import InspectorStructure from './InspectorStructure.vue'
+import InspectorMetadata from './InspectorMetadata.vue'
+import InspectorSecurity from './InspectorSecurity.vue'
+import InspectorSettings from './InspectorSettings.vue'
+import InspectorHistory from './InspectorHistory.vue'
 
 const ui = useUiStore()
 

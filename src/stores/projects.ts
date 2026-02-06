@@ -193,34 +193,39 @@ export const useProjectsStore = defineStore('projects', () => {
         await garbageCollectStoredSources(liveState)
       }, TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE)
 
-      const triggerSave = () => {
+      const triggerProjectSave = () => {
         saveProject()
+      }
+
+      const triggerGarbageCollect = () => {
         scheduleGC()
       }
 
-      // Deep watch only for structures that mutate in place.
-      const deepWatchSource = () => [
-        store.pages,
-        store.sourceFileList,
-        store.outlineTree,
-        store.metadata,
-      ]
-
-      watch(deepWatchSource, triggerSave, { deep: true })
-
-      // Shallow watch for simple values or replaced objects.
-      const shallowWatchSource = () => [
+      // Version-driven autosave avoids expensive deep object walks.
+      const saveWatchSource = () => [
+        store.pagesVersion,
+        store.sourcesVersion,
+        store.outlineVersion,
+        store.metadataVersion,
+        store.securityVersion,
         historyStore.historyPointer,
         historyStore.history.length,
         store.projectTitle,
         boundUiState.value?.zoom.value,
         store.outlineDirty,
         store.metadataDirty,
-        store.security,
         boundUiState.value?.ignoredPreflightRuleIds.value,
       ]
 
-      watch(shallowWatchSource, triggerSave)
+      // GC only depends on source/page reachability and history shape.
+      const gcWatchSource = () => [
+        store.pagesVersion,
+        store.sourcesVersion,
+        historyStore.history.length,
+      ]
+
+      watch(saveWatchSource, triggerProjectSave)
+      watch(gcWatchSource, triggerGarbageCollect)
     })
   }
 

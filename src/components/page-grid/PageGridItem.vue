@@ -10,7 +10,7 @@ import {
   ContextMenuLabel,
 } from '@/components/ui/context-menu'
 import { RotateCw, RotateCcw, Trash2, Copy, Eye, CheckSquare, Download } from 'lucide-vue-next'
-import PdfThumbnail from '../PdfThumbnail.vue'
+import PdfThumbnail from '@/components/editor/PdfThumbnail.vue'
 import { UserAction } from '@/types/actions'
 import type { PageReference } from '@/types'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
