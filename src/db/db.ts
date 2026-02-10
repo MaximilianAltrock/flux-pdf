@@ -138,12 +138,6 @@ export class FluxDatabase extends Dexie {
       projects: 'id, updatedAt',
       states: 'id',
       files: 'id',
-    })
-
-    this.version(2).stores({
-      projects: 'id, updatedAt',
-      states: 'id',
-      files: 'id',
       workflows: 'id, updatedAt, createdAt',
     })
   }
