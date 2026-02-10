@@ -20,7 +20,7 @@ import {
 import { UserAction } from '@/types/actions'
 import { useThemeToggle } from '@/composables/useThemeToggle'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
-import { useDocumentStore } from '@/stores/document'
+import { useEditorActionAvailability } from '@/composables/useEditorActionAvailability'
 import { withPrimaryModifier } from '@/utils/shortcuts'
 
 import {
@@ -44,7 +44,12 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const {
+  hasPages,
+  hasSelection,
+  hasDiffSelection,
+  canRun,
+} = useEditorActionAvailability()
 const undoShortcut = withPrimaryModifier('Z')
 const redoShortcut = `Shift+${withPrimaryModifier('Z')}`
 const selectAllShortcut = withPrimaryModifier('A')
@@ -116,7 +121,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '',
     icon: Download,
     action: () => emit('action', UserAction.EXPORT),
-    enabled: () => document.pageCount > 0,
+    enabled: () => canRun(UserAction.EXPORT),
     category: 'File',
   },
   {
@@ -125,7 +130,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: '',
     icon: Download,
     action: () => emit('action', UserAction.EXPORT_SELECTED),
-    enabled: () => document.selectedCount > 0,
+    enabled: () => canRun(UserAction.EXPORT_SELECTED),
     category: 'File',
   },
 
@@ -165,7 +170,7 @@ const allCommands = computed<CommandItemData[]>(() => [
       actions.selectAllPages()
       emit('update:open', false)
     },
-    enabled: () => document.pageCount > 0,
+    enabled: () => hasPages.value,
     category: 'Selection',
   },
   {
@@ -177,7 +182,7 @@ const allCommands = computed<CommandItemData[]>(() => [
       actions.clearSelection()
       emit('update:open', false)
     },
-    enabled: () => document.selectedCount > 0,
+    enabled: () => hasSelection.value,
     category: 'Selection',
   },
   {
@@ -186,7 +191,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'D',
     icon: Layers,
     action: () => emit('action', UserAction.DIFF),
-    enabled: () => document.selectedCount === 2,
+    enabled: () => hasDiffSelection.value,
     category: 'Selection',
   },
 
@@ -197,7 +202,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'R',
     icon: RotateCw,
     action: () => emit('action', UserAction.ROTATE_RIGHT),
-    enabled: () => document.selectedCount > 0,
+    enabled: () => canRun(UserAction.ROTATE_RIGHT),
     category: 'Page',
   },
   {
@@ -206,7 +211,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'Shift+R',
     icon: RotateCcw,
     action: () => emit('action', UserAction.ROTATE_LEFT),
-    enabled: () => document.selectedCount > 0,
+    enabled: () => canRun(UserAction.ROTATE_LEFT),
     category: 'Page',
   },
   {
@@ -215,7 +220,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'Del',
     icon: Trash2,
     action: () => emit('action', UserAction.DELETE),
-    enabled: () => document.selectedCount > 0,
+    enabled: () => canRun(UserAction.DELETE),
     category: 'Page',
   },
   {
@@ -224,7 +229,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: duplicateShortcut,
     icon: Copy,
     action: () => emit('action', UserAction.DUPLICATE),
-    enabled: () => document.selectedCount > 0,
+    enabled: () => canRun(UserAction.DUPLICATE),
     category: 'Page',
   },
   {
@@ -233,7 +238,7 @@ const allCommands = computed<CommandItemData[]>(() => [
     shortcut: 'Space',
     icon: Eye,
     action: () => emit('action', UserAction.PREVIEW),
-    enabled: () => document.selectedCount === 1,
+    enabled: () => canRun(UserAction.PREVIEW),
     category: 'Page',
   },
 

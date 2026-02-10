@@ -34,7 +34,7 @@ function toSafeFilenameBase(value: string): string {
   const normalized = value.replace(/\.[^.]+$/g, '')
   return (
     normalized
-      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
+      .replace(/[<>:"/\\|?*]|\p{Cc}/gu, '-')
       .replace(/\s+/g, ' ')
       .trim() || 'document'
   )

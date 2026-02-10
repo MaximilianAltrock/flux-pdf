@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import JSZip from 'jszip'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { EXPORT_PROGRESS, PROGRESS } from '@/constants'
+import { DEFAULT_PROJECT_TITLE, EXPORT_PROGRESS, PROGRESS } from '@/constants'
 import type { Command } from '@/commands/types'
 import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
 import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
@@ -117,7 +117,7 @@ export function createDocumentService(deps: DocumentServiceDeps) {
 
   function isDefaultMetadata(value: DocumentMetadata): boolean {
     return (
-      value.title.trim() === 'Untitled Project' &&
+      value.title.trim() === DEFAULT_PROJECT_TITLE &&
       !value.author.trim() &&
       !value.subject.trim() &&
       value.keywords.length === 0

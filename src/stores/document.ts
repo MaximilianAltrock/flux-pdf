@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
-import { ROTATION_FULL_DEGREES, type RotationAngle, type RotationDelta } from '@/constants'
+import {
+  DEFAULT_PROJECT_TITLE,
+  ROTATION_FULL_DEGREES,
+  type RotationAngle,
+  type RotationDelta,
+} from '@/constants'
 import type {
   SourceFile,
   PageReference,
@@ -19,7 +24,7 @@ export const useDocumentStore = defineStore('document', () => {
   // ============================================
 
   const DEFAULT_METADATA: DocumentMetadata = {
-    title: 'Untitled Project',
+    title: DEFAULT_PROJECT_TITLE,
     author: '',
     subject: '',
     keywords: [],
@@ -47,7 +52,7 @@ export const useDocumentStore = defineStore('document', () => {
   const outlineTree = ref<OutlineNode[]>([])
   const outlineDirty = shallowRef(false)
   const metadataDirty = shallowRef(false)
-  const projectTitle = shallowRef('Untitled Project')
+  const projectTitle = shallowRef(DEFAULT_PROJECT_TITLE)
   const isTitleLocked = shallowRef(false)
 
   const selection = ref<SelectionState>({
@@ -388,7 +393,7 @@ export const useDocumentStore = defineStore('document', () => {
     pages.value = []
     clearSelection()
     activePageId.value = null
-    projectTitle.value = 'Untitled Project'
+    projectTitle.value = DEFAULT_PROJECT_TITLE
     isTitleLocked.value = false
     resetMetadata()
     resetSecurity()

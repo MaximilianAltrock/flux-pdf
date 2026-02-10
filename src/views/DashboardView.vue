@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, LayoutGrid } from 'lucide-vue-next'
+import { DEFAULT_PROJECT_TITLE } from '@/constants'
 import { useProjectsStore } from '@/stores/projects'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
@@ -140,7 +141,7 @@ async function handleOpenProject(id: string) {
 }
 
 async function handleCreateProject() {
-  const meta = await projectsStore.createProject({ title: 'Untitled Project' })
+  const meta = await projectsStore.createProject({ title: DEFAULT_PROJECT_TITLE })
   await router.push(`/project/${meta.id}`)
 }
 

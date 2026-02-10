@@ -11,6 +11,7 @@ import {
 import { useDocumentStore } from '@/stores/document'
 import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/constants'
 import { isDividerEntry } from '@/types'
+import { useEditorActionAvailability } from '@/composables/useEditorActionAvailability'
 
 /**
  * Mobile action categories for grouping in the "More" action sheet
@@ -53,6 +54,7 @@ export function useMobileActionRegistry(actions: {
   handleExportSelected: () => void
 }) {
   const store = useDocumentStore()
+  const { hasSelection } = useEditorActionAvailability()
   const canSplit = computed(() => {
     const pages = store.pages
     if (pages.length < 2) return false
@@ -74,7 +76,7 @@ export function useMobileActionRegistry(actions: {
       icon: markRaw(ArrowRightLeft),
       primary: true,
       execute: () => actions.enterMobileMoveMode(),
-      isEnabled: () => store.selectedCount > 0,
+      isEnabled: () => hasSelection.value,
     },
     {
       id: 'rotate',
@@ -82,7 +84,7 @@ export function useMobileActionRegistry(actions: {
       icon: markRaw(RotateCw),
       primary: true,
       execute: () => actions.handleRotateSelected(ROTATION_DELTA_DEGREES.RIGHT),
-      isEnabled: () => store.selectedCount > 0,
+      isEnabled: () => hasSelection.value,
     },
     {
       id: 'duplicate',
@@ -90,7 +92,7 @@ export function useMobileActionRegistry(actions: {
       icon: markRaw(Copy),
       primary: true,
       execute: () => actions.handleDuplicateSelected(),
-      isEnabled: () => store.selectedCount > 0,
+      isEnabled: () => hasSelection.value,
     },
     {
       id: 'delete',
@@ -99,7 +101,7 @@ export function useMobileActionRegistry(actions: {
       primary: true,
       isDestructive: true,
       execute: () => actions.handleDeleteSelected(),
-      isEnabled: () => store.selectedCount > 0,
+      isEnabled: () => hasSelection.value,
     },
 
     // === Secondary Actions (More Sheet) ===
@@ -118,7 +120,7 @@ export function useMobileActionRegistry(actions: {
       icon: markRaw(RotateCcw),
       category: 'arrange',
       execute: () => actions.handleRotateSelected(ROTATION_DELTA_DEGREES.LEFT),
-      isEnabled: () => store.selectedCount > 0,
+      isEnabled: () => hasSelection.value,
     },
     {
       id: 'export-selected',
@@ -126,7 +128,7 @@ export function useMobileActionRegistry(actions: {
       icon: markRaw(Download),
       category: 'export',
       execute: () => actions.handleExportSelected(),
-      isEnabled: () => store.selectedCount > 0,
+      isEnabled: () => hasSelection.value,
     },
   ]
 

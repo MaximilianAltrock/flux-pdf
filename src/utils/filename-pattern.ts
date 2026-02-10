@@ -6,7 +6,7 @@ export interface FilenamePatternContext {
 }
 
 const TOKEN_REGEX = /\{(original_name|name|date|version)\}/gi
-const INVALID_FILENAME_CHARS_REGEX = /[<>:"/\\|?*\u0000-\u001f]/g
+const INVALID_FILENAME_CHARS_REGEX = /[<>:"/\\|?*]|\p{Cc}/gu
 
 function toDateToken(value?: Date | string): string {
   if (value instanceof Date) {

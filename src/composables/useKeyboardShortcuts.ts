@@ -5,6 +5,7 @@ import { useDocumentStore } from '@/stores/document'
 import { useHistoryStore } from '@/stores/history'
 import { useUiStore } from '@/stores/ui'
 import { useMobile } from '@/composables/useMobile'
+import { useEditorActionAvailability } from '@/composables/useEditorActionAvailability'
 import { UserAction } from '@/types/actions'
 import type { DocumentActions } from '@/composables/useDocumentActions'
 
@@ -20,6 +21,7 @@ export function useKeyboardShortcuts(
   const store = useDocumentStore()
   const history = useHistoryStore()
   const ui = useUiStore()
+  const { hasSelection } = useEditorActionAvailability()
   const { isMobile } = useMobile()
   const { undo, redo } = history
   let rangeAnchorId: string | null = null
@@ -129,7 +131,7 @@ export function useKeyboardShortcuts(
       return
     }
 
-    if (store.selectedCount > 0) {
+    if (hasSelection.value) {
       // ----------------------------------------------------
       // 1. STANDARD DUPLICATE (Cmd + D)
       // ----------------------------------------------------

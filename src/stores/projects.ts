@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { effectScope, ref, shallowRef, watch } from 'vue'
 import { useDebounceFn, useLocalStorage } from '@vueuse/core'
-import { HISTORY, TIMEOUTS_MS, ZOOM } from '@/constants'
+import { DEFAULT_PROJECT_TITLE, HISTORY, TIMEOUTS_MS, ZOOM } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { useHistoryStore } from '@/stores/history'
 import { useSettingsStore } from '@/stores/settings'
@@ -19,7 +19,7 @@ const LAST_ACTIVE_PROJECT_KEY = 'lastActiveProjectId'
 
 function normalizeTitle(title: string | undefined): string {
   const next = String(title ?? '').trim()
-  return next.length > 0 ? next : 'Untitled Project'
+  return next.length > 0 ? next : DEFAULT_PROJECT_TITLE
 }
 
 function isProjectTrashed(meta: ProjectMeta | null | undefined): boolean {
@@ -37,7 +37,7 @@ function isDefaultMetadata(value: {
   keywords?: string[]
 }) {
   return (
-    (value.title ?? '').trim() === 'Untitled Project' &&
+    (value.title ?? '').trim() === DEFAULT_PROJECT_TITLE &&
     !(value.author ?? '').trim() &&
     !(value.subject ?? '').trim() &&
     (value.keywords ?? []).length === 0

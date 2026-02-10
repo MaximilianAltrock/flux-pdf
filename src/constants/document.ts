@@ -1,3 +1,5 @@
+export const DEFAULT_PROJECT_TITLE = 'Untitled Project'
+
 export const ROTATION_DELTA_DEGREES = {
   LEFT: -90,
   RIGHT: 90,

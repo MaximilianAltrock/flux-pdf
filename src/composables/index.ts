@@ -8,6 +8,7 @@ export { useConfirm } from './useConfirm'
 // Input handling
 export { useKeyboardShortcuts } from './useKeyboardShortcuts'
 export { useFileInput } from './useFileInput'
+export { useEditorActionAvailability } from './useEditorActionAvailability'
 
 // Device & platform
 export { useMobile } from './useMobile'

@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/stores/projects'
 import { useSettingsStore } from '@/stores/settings'
 import { useRouter } from 'vue-router'
 import {
+  DEFAULT_PROJECT_TITLE,
   DIFF_REQUIRED_SELECTION,
   ROTATION_DEFAULT_DEGREES,
   ROTATION_DELTA_DEGREES,
@@ -120,7 +121,7 @@ export function useDocumentActions() {
 
   function normalizeProjectTitle(value: string) {
     let next = value.trim()
-    if (!next) next = 'Untitled Project'
+    if (!next) next = DEFAULT_PROJECT_TITLE
     return next.replace(/[/\\:]/g, '-')
   }
 
@@ -153,10 +154,7 @@ export function useDocumentActions() {
     await handleImport(files, { addPages: false })
   }
 
-  async function handleImport(
-    files: FileList | File[],
-    options: { addPages: boolean },
-  ) {
+  async function handleImport(files: FileList | File[], options: { addPages: boolean }) {
     const result = await importFiles(files, { addPages: options.addPages })
     if (!result.ok) {
       toast.error('Failed to load files', result.error.message)
@@ -652,9 +650,7 @@ export function useDocumentActions() {
       return
     }
 
-    const projectTitle = normalizeProjectTitle(
-      activeProjectMeta.value?.title ?? store.projectTitle,
-    )
+    const projectTitle = normalizeProjectTitle(activeProjectMeta.value?.title ?? store.projectTitle)
 
     const confirmed = await confirm({
       title: `Move "${projectTitle}" to trash?`,
@@ -680,7 +676,7 @@ export function useDocumentActions() {
       variant: 'info',
     })
     if (!confirmed) return
-    const project = await projects.createProject({ title: 'Untitled Project' })
+    const project = await projects.createProject({ title: DEFAULT_PROJECT_TITLE })
     toast.success('New project created')
     await router.push(`/project/${project.id}`)
   }
@@ -1064,10 +1060,7 @@ export function useDocumentActions() {
   }
 
   function resetOutlineToFileStructure() {
-    const nextTree = autoGenOutlineFromPages(
-      store.contentPages as PageReference[],
-      store.sources,
-    )
+    const nextTree = autoGenOutlineFromPages(store.contentPages as PageReference[], store.sources)
     updateOutlineTree(nextTree, { name: 'Reset outline', nextDirty: false })
   }
 
