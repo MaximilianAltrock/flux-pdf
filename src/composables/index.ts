@@ -18,3 +18,5 @@ export { useGridLogic } from './useGridLogic'
 
 // App-level actions
 export { useDocumentActions, type DocumentActions } from './useDocumentActions'
+export { useStorageGC } from './useStorageGC'
+export { useWorkflowRunner } from './useWorkflowRunner'

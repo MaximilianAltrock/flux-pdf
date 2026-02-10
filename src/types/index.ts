@@ -1,6 +1,7 @@
 import type { RotationAngle } from '@/constants'
 import type { ImportErrorCode } from './errors'
 export type { DocumentUiState } from './ui'
+export type { Workflow, WorkflowStep } from './workflow'
 
 /**
  *

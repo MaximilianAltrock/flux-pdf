@@ -57,7 +57,7 @@ const canExport = computed(() => document.pageCount > 0)
               </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" :side-offset="8">
-              <p class="ui-caption">Razor Tool <span class="ui-mono ml-1">(R)</span></p>
+              <p class="ui-caption">Razor Tool <span class="ui-mono ml-1">(C)</span></p>
             </TooltipContent>
           </Tooltip>
         </ToggleGroupItem>

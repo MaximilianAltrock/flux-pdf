@@ -104,8 +104,8 @@ function handleSettings() {
           </div>
           <div class="flex flex-col">
             <SheetTitle class="font-bold text-foreground text-base">FluxPDF</SheetTitle>
-            <SheetDescription class="sr-only">
-              Document menu with sources, history, and settings.
+          <SheetDescription class="sr-only">
+              Document menu with sources, history, and details.
             </SheetDescription>
           </div>
         </div>
@@ -277,7 +277,7 @@ function handleSettings() {
 
           <Separator />
 
-          <!-- Document Settings -->
+          <!-- Document Details -->
           <div class="px-4 py-4">
             <Button
               variant="outline"
@@ -286,7 +286,7 @@ function handleSettings() {
             >
               <div class="flex items-center gap-3">
                 <SlidersHorizontal class="w-4 h-4 text-muted-foreground" />
-                <span class="text-sm">Document Settings</span>
+                <span class="text-sm">Document Details</span>
               </div>
               <ChevronRight class="w-4 h-4 text-muted-foreground" />
             </Button>

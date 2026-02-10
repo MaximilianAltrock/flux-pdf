@@ -13,6 +13,7 @@ import { UserAction } from '@/types/actions'
 import type { PageReference } from '@/types'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
+import { usePreflight } from '@/composables/usePreflight'
 import { useUiStore } from '@/stores/ui'
 
 const emit = defineEmits<{
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 const actions = useDocumentActionsContext()
 const document = useDocumentStore()
 const ui = useUiStore()
+const preflight = usePreflight()
 const { policy } = useGridInteractionPolicy()
 
 const { localPages, isDragging, isSelected, gridItems } = useGridLogic(document)
@@ -44,6 +46,44 @@ const gridStyle = computed(() => ({
 const selectedCount = computed(() => document.selectedCount)
 const isTargeting = computed(() => policy.value.tool === 'target')
 const isRazor = computed(() => policy.value.tool === 'razor')
+
+type PageProblemMeta = {
+  severity?: 'error' | 'warning' | 'info'
+  messages: string[]
+}
+
+const EMPTY_PAGE_PROBLEM_META: PageProblemMeta = {
+  severity: undefined,
+  messages: [],
+}
+
+const pageProblemsById = computed(() => {
+  const pageMeta = new Map<string, PageProblemMeta>()
+
+  for (const [pageId, problems] of preflight.problemsByPageId.value) {
+    let severity: PageProblemMeta['severity']
+    if (problems.some((problem) => problem.severity === 'error')) {
+      severity = 'error'
+    } else if (problems.some((problem) => problem.severity === 'warning')) {
+      severity = 'warning'
+    } else if (problems.some((problem) => problem.severity === 'info')) {
+      severity = 'info'
+    } else {
+      severity = undefined
+    }
+
+    pageMeta.set(pageId, {
+      severity,
+      messages: problems.map((problem) => problem.message),
+    })
+  }
+
+  return pageMeta
+})
+
+function getPageProblemMeta(pageId: string): PageProblemMeta {
+  return pageProblemsById.value.get(pageId) ?? EMPTY_PAGE_PROBLEM_META
+}
 
 function getOrderedSelectedPageIds(): string[] {
   if (selectedCount.value === 0) return []
@@ -381,6 +421,8 @@ useEventListener('dragleave', (event) => {
           :selected="isSelected(item.id)"
           :is-start-of-file="item.isStartOfFile"
           :interaction-policy="policy"
+          :problem-severity="getPageProblemMeta(item.id).severity"
+          :problem-messages="getPageProblemMeta(item.id).messages"
           @preview="handlePreview"
           @context-action="handleContextAction"
         />

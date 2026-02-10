@@ -1,5 +1,5 @@
 import { storeToRefs } from 'pinia'
-import { inject, provide, type InjectionKey } from 'vue'
+import { computed, inject, provide, type InjectionKey } from 'vue'
 import { useDocumentStore } from '@/stores/document'
 import { useHistoryStore } from '@/stores/history'
 import { useUiStore } from '@/stores/ui'
@@ -73,7 +73,11 @@ export function useDocumentActions() {
     exportJob: uiExportJob,
     ignoredPreflightRuleIds,
   } = storeToRefs(ui)
-  const { autoGenerateOutlineSinglePage } = storeToRefs(settings)
+  const { preferences } = storeToRefs(settings)
+  const autoGenerateOutlineSinglePage = computed(
+    () => preferences.value.autoGenerateOutlineSinglePage,
+  )
+  const filenamePattern = computed(() => preferences.value.filenamePattern)
   const { activeProjectId, activeProjectMeta } = storeToRefs(projects)
   const { openFileDialog, clearFileInput } = useFileInput()
   const { execute, undo, redo, jumpTo, clearHistory } = history
@@ -110,7 +114,7 @@ export function useDocumentActions() {
       importJob: uiImportJob,
       exportJob: uiExportJob,
     },
-    settings: { autoGenerateOutlineSinglePage },
+    settings: { autoGenerateOutlineSinglePage, filenamePattern },
   })
   const exportJob = uiExportJob
 
@@ -653,15 +657,15 @@ export function useDocumentActions() {
     )
 
     const confirmed = await confirm({
-      title: `Delete "${projectTitle}"?`,
-      message: 'This action cannot be undone. This project will be permanently removed.',
-      confirmText: 'Delete',
-      variant: 'danger',
+      title: `Move "${projectTitle}" to trash?`,
+      message: 'You can restore this project later from the Trash view.',
+      confirmText: 'Move to Trash',
+      variant: 'warning',
     })
     if (!confirmed) return
 
-    await projects.deleteProject(projectId)
-    toast.success('Project deleted')
+    await projects.trashProject(projectId)
+    toast.success('Project moved to trash')
     await router.push('/')
   }
 

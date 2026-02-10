@@ -21,6 +21,7 @@ import { UserAction } from '@/types/actions'
 import { useThemeToggle } from '@/composables/useThemeToggle'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
+import { withPrimaryModifier } from '@/utils/shortcuts'
 
 import {
   CommandDialog,
@@ -44,9 +45,12 @@ const emit = defineEmits<{
 
 const actions = useDocumentActionsContext()
 const document = useDocumentStore()
+const undoShortcut = withPrimaryModifier('Z')
+const redoShortcut = `Shift+${withPrimaryModifier('Z')}`
+const selectAllShortcut = withPrimaryModifier('A')
+const duplicateShortcut = withPrimaryModifier('D')
 
-const { mode, toggleTheme } = useThemeToggle()
-const isDark = computed(() => mode.value === 'dark')
+const { isDark, toggleTheme } = useThemeToggle()
 
 interface CommandItemData {
   id: string
@@ -129,7 +133,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'undo',
     label: 'Undo',
-    shortcut: 'Cmd+Z',
+    shortcut: undoShortcut,
     icon: Undo2,
     action: () => {
       actions.undo()
@@ -141,7 +145,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'redo',
     label: 'Redo',
-    shortcut: 'Shift+Cmd+Z',
+    shortcut: redoShortcut,
     icon: Redo2,
     action: () => {
       actions.redo()
@@ -155,7 +159,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'select-all',
     label: 'Select all pages',
-    shortcut: 'Cmd+A',
+    shortcut: selectAllShortcut,
     icon: CheckSquare,
     action: () => {
       actions.selectAllPages()
@@ -217,7 +221,7 @@ const allCommands = computed<CommandItemData[]>(() => [
   {
     id: 'duplicate',
     label: 'Duplicate selected pages',
-    shortcut: 'Cmd+D',
+    shortcut: duplicateShortcut,
     icon: Copy,
     action: () => emit('action', UserAction.DUPLICATE),
     enabled: () => document.selectedCount > 0,

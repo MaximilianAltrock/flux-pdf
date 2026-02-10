@@ -7,6 +7,7 @@ import type {
   PageMetrics,
 } from '@/types'
 import type { SerializedCommand } from '@/commands'
+import type { Workflow } from '@/types/workflow'
 
 /**
  * Lightweight project metadata for dashboard listings.
@@ -29,6 +30,9 @@ export interface ProjectMeta {
 
   /** Creation timestamp */
   createdAt: number
+
+  /** Soft-delete timestamp; when set, project appears in Trash */
+  trashedAt?: number | null
 }
 
 /**
@@ -119,11 +123,13 @@ export interface StoredFile {
  * - projects: Lightweight metadata for dashboard
  * - states: Heavy per-project state
  * - files: Source PDF binary data (shared)
+ * - workflows: Saved workflow scripts
  */
 export class FluxDatabase extends Dexie {
   projects!: Table<ProjectMeta>
   states!: Table<ProjectState>
   files!: Table<StoredFile>
+  workflows!: Table<Workflow>
 
   constructor() {
     super('FluxPDF_DB')
@@ -132,6 +138,13 @@ export class FluxDatabase extends Dexie {
       projects: 'id, updatedAt',
       states: 'id',
       files: 'id',
+    })
+
+    this.version(2).stores({
+      projects: 'id, updatedAt',
+      states: 'id',
+      files: 'id',
+      workflows: 'id, updatedAt, createdAt',
     })
   }
 }

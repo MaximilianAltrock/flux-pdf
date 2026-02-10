@@ -1,21 +1,36 @@
+import { computed } from 'vue'
 import { useColorMode, usePreferredReducedMotion } from '@vueuse/core'
+import { useSettingsStore, type ThemePreference } from '@/stores/settings'
 
 export function useThemeToggle() {
-  const mode = useColorMode()
+  const colorMode = useColorMode()
   const prefersReducedMotion = usePreferredReducedMotion()
+  const settings = useSettingsStore()
+
+  const mode = computed(() => settings.preferences.theme)
+  const isDark = computed(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark')
+    }
+    return colorMode.value === 'dark'
+  })
+
+  const reduceMotion = computed(
+    () => settings.preferences.reducedMotion || prefersReducedMotion.value === 'reduce',
+  )
 
   const toggleTheme = (event?: MouseEvent) => {
-    const newMode = mode.value === 'dark' ? 'light' : 'dark'
+    const nextTheme: ThemePreference = isDark.value ? 'light' : 'dark'
 
     if (typeof document === 'undefined') {
-      mode.value = newMode
+      settings.preferences.theme = nextTheme
       return
     }
 
-  if (!document.startViewTransition || prefersReducedMotion.value === 'reduce') {
-    mode.value = newMode
-    return
-  }
+    if (!document.startViewTransition || reduceMotion.value) {
+      settings.preferences.theme = nextTheme
+      return
+    }
 
     const x =
       event?.clientX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 0)
@@ -26,9 +41,9 @@ export function useThemeToggle() {
     document.documentElement.style.setProperty('--y', `${y}px`)
 
     document.startViewTransition(() => {
-      mode.value = newMode
+      settings.preferences.theme = nextTheme
     })
   }
 
-  return { mode, toggleTheme }
+  return { mode, isDark, toggleTheme }
 }

@@ -3,8 +3,10 @@ import { Search } from 'lucide-vue-next'
 import { Spinner } from '@/components/ui/spinner'
 import { Kbd } from '@/components/ui/kbd'
 import { useUiStore } from '@/stores/ui'
+import { withPrimaryModifier } from '@/utils/shortcuts'
 
 const ui = useUiStore()
+const commandPaletteShortcut = withPrimaryModifier('K')
 
 defineEmits<{
   command: []
@@ -58,7 +60,7 @@ defineEmits<{
           <Kbd
             class="hidden sm:inline-flex ui-mono ui-2xs"
           >
-            Cmd+K
+            {{ commandPaletteShortcut }}
           </Kbd>
         </div>
       </button>

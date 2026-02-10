@@ -135,7 +135,7 @@ const handleCancel = () => {
             <DropdownMenuItem @select.stop="emit('duplicate', project)">Duplicate</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem @select.stop="emit('delete', project)" variant="destructive">
-              Delete
+              Move to Trash
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

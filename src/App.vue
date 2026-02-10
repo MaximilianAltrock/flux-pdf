@@ -3,8 +3,11 @@ import { RouterView } from 'vue-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Toaster from '@/components/ui/sonner/Sonner.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useAppPreferences } from '@/composables/useAppPreferences'
 
 import 'vue-sonner/style.css'
+
+useAppPreferences()
 </script>
 <template>
   <TooltipProvider>

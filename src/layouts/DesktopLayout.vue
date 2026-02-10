@@ -18,10 +18,12 @@ import type { UserAction } from '@/types/actions'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useUiStore } from '@/stores/ui'
 import { useDocumentStore } from '@/stores/document'
+import { withPrimaryModifier } from '@/utils/shortcuts'
 
 const ui = useUiStore()
 const document = useDocumentStore()
 const actions = useDocumentActionsContext()
+const commandPaletteShortcut = withPrimaryModifier('K')
 
 // Local computed for template readability
 const hasPages = computed(() => document.pageCount > 0)
@@ -106,7 +108,9 @@ async function onDeleteProject() {
                 <div
                   class="flex flex-wrap justify-center gap-2 ui-kicker opacity-70"
                 >
-                  <span class="px-2 py-1 ui-panel-muted ui-mono">CMD+K for commands</span>
+                  <span class="px-2 py-1 ui-panel-muted ui-mono">
+                    {{ commandPaletteShortcut }} for commands
+                  </span>
                 </div>
               </div>
             </div>

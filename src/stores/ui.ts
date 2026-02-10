@@ -41,7 +41,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const currentTool = shallowRef<'select' | 'razor' | 'target'>('select')
   const previousTool = shallowRef<'select' | 'razor'>('select')
-  const inspectorTab = shallowRef<'structure' | 'metadata' | 'security' | 'settings'>('structure')
+  const inspectorTab = shallowRef<'structure' | 'metadata' | 'security'>('structure')
 
   // ============================================
   // Desktop State
@@ -131,7 +131,7 @@ export const useUiStore = defineStore('ui', () => {
     currentTool.value = tool
   }
 
-  function setInspectorTab(tab: 'structure' | 'metadata' | 'security' | 'settings') {
+  function setInspectorTab(tab: 'structure' | 'metadata' | 'security') {
     inspectorTab.value = tab
   }
 

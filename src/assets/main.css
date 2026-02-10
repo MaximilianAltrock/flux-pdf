@@ -315,3 +315,13 @@
     animation: none;
   }
 }
+
+:root[data-reduced-motion='true'] ::view-transition-new(root) {
+  animation: none !important;
+}
+
+:root[data-reduced-motion='true'] .animate-in,
+:root[data-reduced-motion='true'] .animate-out,
+:root[data-reduced-motion='true'] .animate-shimmer {
+  animation: none !important;
+}

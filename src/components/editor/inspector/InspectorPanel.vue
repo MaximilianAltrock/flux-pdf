@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { FileText, Tag, Lock, Settings } from 'lucide-vue-next'
+import { FileText, Tag, Lock } from 'lucide-vue-next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -11,13 +11,12 @@ import { useUiStore } from '@/stores/ui'
 import InspectorStructure from './InspectorStructure.vue'
 import InspectorMetadata from './InspectorMetadata.vue'
 import InspectorSecurity from './InspectorSecurity.vue'
-import InspectorSettings from './InspectorSettings.vue'
 import InspectorHistory from './InspectorHistory.vue'
 
 const ui = useUiStore()
 
-type InspectorTab = 'structure' | 'metadata' | 'security' | 'settings'
-const inspectorTabs = new Set<InspectorTab>(['structure', 'metadata', 'security', 'settings'])
+type InspectorTab = 'structure' | 'metadata' | 'security'
+const inspectorTabs = new Set<InspectorTab>(['structure', 'metadata', 'security'])
 
 const inspectorLabelMinSize = 15
 const showTabLabels = shallowRef(true)
@@ -86,15 +85,6 @@ function handleInspectorTabChange(value: string | number) {
                     </TooltipTrigger>
                     <TooltipContent side="bottom">Security</TooltipContent>
                   </Tooltip>
-                  <Tooltip :disabled="showTabLabels">
-                    <TooltipTrigger as-child>
-                      <TabsTrigger value="settings">
-                        <Settings />
-                        <span :class="showTabLabels ? '' : 'sr-only'">Settings</span>
-                      </TabsTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Settings</TooltipContent>
-                  </Tooltip>
                 </TabsList>
               </div>
 
@@ -113,11 +103,6 @@ function handleInspectorTabChange(value: string | number) {
                 <!-- C. SECURITY TAB -->
                 <TabsContent value="security" class="p-5">
                   <InspectorSecurity />
-                </TabsContent>
-
-                <!-- D. SETTINGS TAB -->
-                <TabsContent value="settings" class="p-5">
-                  <InspectorSettings />
                 </TabsContent>
               </ScrollArea>
             </Tabs>

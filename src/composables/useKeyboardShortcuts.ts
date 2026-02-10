@@ -83,12 +83,13 @@ export function useKeyboardShortcuts(
 
     const isCmd = e.metaKey || e.ctrlKey
     const isShift = e.shiftKey
+    const key = e.key.toLowerCase()
     if (store.selectedCount === 0) {
       resetRangeAnchor()
     }
 
-    // Command Palette: Cmd+K or /
-    if ((isCmd && e.key === 'k') || e.key === '/') {
+    // Command Palette: Ctrl/Cmd+K or /
+    if ((isCmd && key === 'k') || e.key === '/') {
       e.preventDefault()
       if (!isMobile.value) {
         ui.openCommandPalette()
@@ -97,14 +98,14 @@ export function useKeyboardShortcuts(
     }
 
     // Tools
-    if (e.key === 'v') {
+    if (key === 'v') {
       actions.setCurrentTool('select')
-    } else if (e.key === 'c') {
+    } else if (key === 'c') {
       actions.setCurrentTool('razor')
     }
 
     // Undo/Redo
-    if (isCmd && e.key === 'z') {
+    if (isCmd && key === 'z') {
       e.preventDefault()
       if (isShift) {
         redo()
@@ -115,7 +116,7 @@ export function useKeyboardShortcuts(
     }
 
     // Select All
-    if (isCmd && e.key === 'a') {
+    if (isCmd && key === 'a') {
       e.preventDefault()
       actions.selectAllPages()
       return
@@ -133,7 +134,7 @@ export function useKeyboardShortcuts(
       // 1. STANDARD DUPLICATE (Cmd + D)
       // ----------------------------------------------------
       // Using standard convention avoids confusion.
-      if (isCmd && e.key.toLowerCase() === 'd') {
+      if (isCmd && key === 'd') {
         e.preventDefault()
         actions.handleCommandAction(UserAction.DUPLICATE)
         return
@@ -153,7 +154,7 @@ export function useKeyboardShortcuts(
       // ----------------------------------------------------
       // 'D' always tries to Diff. It never Duplicates.
       // Deterministic behavior is better than "smart" behavior.
-      if (e.key.toLowerCase() === 'd' && !isCmd) {
+      if (key === 'd' && !isCmd) {
         e.preventDefault()
         // We trigger the action regardless of count.
         // The Action Handler (useDocumentActions) is responsible for
@@ -164,7 +165,7 @@ export function useKeyboardShortcuts(
       // ----------------------------------------------------
       // ROTATE (R)
       // ----------------------------------------------------
-      if (e.key.toLowerCase() === 'r') {
+      if (key === 'r') {
         e.preventDefault()
         // Delegate to the Action Handler
         if (e.shiftKey) {

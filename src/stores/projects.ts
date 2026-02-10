@@ -4,6 +4,7 @@ import { useDebounceFn, useLocalStorage } from '@vueuse/core'
 import { HISTORY, TIMEOUTS_MS, ZOOM } from '@/constants'
 import { useDocumentStore } from '@/stores/document'
 import { useHistoryStore } from '@/stores/history'
+import { useSettingsStore } from '@/stores/settings'
 import { useThumbnailRenderer } from '@/composables/useThumbnailRenderer'
 import { db, type ProjectMeta, type ProjectState } from '@/db/db'
 import { buildProjectState, type ProjectSnapshot } from '@/domain/document/project'
@@ -19,6 +20,14 @@ const LAST_ACTIVE_PROJECT_KEY = 'lastActiveProjectId'
 function normalizeTitle(title: string | undefined): string {
   const next = String(title ?? '').trim()
   return next.length > 0 ? next : 'Untitled Project'
+}
+
+function isProjectTrashed(meta: ProjectMeta | null | undefined): boolean {
+  return Boolean(meta && typeof meta.trashedAt === 'number')
+}
+
+function clampGridZoom(value: number): number {
+  return Math.min(ZOOM.MAX, Math.max(ZOOM.MIN, value))
 }
 
 function isDefaultMetadata(value: {
@@ -106,6 +115,7 @@ type GcStateSnapshot = {
 export const useProjectsStore = defineStore('projects', () => {
   const store = useDocumentStore()
   const historyStore = useHistoryStore()
+  const settingsStore = useSettingsStore()
   const { clearCache } = useThumbnailRenderer()
 
   const activeProjectId = shallowRef<string | null>(null)
@@ -120,6 +130,19 @@ export const useProjectsStore = defineStore('projects', () => {
   const thumbnailKeyByProject = new Map<string, string | null>()
   const thumbnailInFlight = new Map<string, Promise<Blob | undefined>>()
   const gcInFlight = shallowRef(false)
+
+  function getDefaultGridZoom(): number {
+    return clampGridZoom(settingsStore.preferences.defaultGridZoom)
+  }
+
+  function buildDefaultMetadata(projectTitle: string): DocumentMetadata {
+    return {
+      title: projectTitle,
+      author: settingsStore.preferences.defaultAuthor.trim(),
+      subject: '',
+      keywords: [],
+    }
+  }
 
   function bindUiState(uiState?: DocumentUiState) {
     if (uiState) boundUiState.value = uiState
@@ -230,10 +253,25 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   async function listRecentProjects(limit = 5): Promise<ProjectMeta[]> {
+    const allProjects = await db.projects.orderBy('updatedAt').reverse().toArray()
+    const activeProjects = allProjects.filter((project) => !isProjectTrashed(project))
     if (limit) {
-      return db.projects.orderBy('updatedAt').reverse().limit(limit).toArray()
+      return activeProjects.slice(0, limit)
     }
-    return db.projects.orderBy('updatedAt').reverse().toArray()
+    return activeProjects
+  }
+
+  async function listTrashedProjects(limit = 0): Promise<ProjectMeta[]> {
+    const allProjects = await db.projects.toArray()
+    const trashedProjects = allProjects
+      .filter((project) => isProjectTrashed(project))
+      .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0))
+
+    if (limit) {
+      return trashedProjects.slice(0, limit)
+    }
+
+    return trashedProjects
   }
 
   async function loadProjectMeta(id: string): Promise<ProjectMeta | undefined> {
@@ -241,6 +279,7 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   async function createProject(options?: { title?: string; open?: boolean }): Promise<ProjectMeta> {
+    const projectTitle = normalizeTitle(options?.title)
     const id =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
@@ -248,10 +287,11 @@ export const useProjectsStore = defineStore('projects', () => {
     const now = Date.now()
     const meta: ProjectMeta = {
       id,
-      title: normalizeTitle(options?.title),
+      title: projectTitle,
       pageCount: 0,
       updatedAt: now,
       createdAt: now,
+      trashedAt: null,
     }
 
     const snapshot: ProjectSnapshot = {
@@ -259,10 +299,10 @@ export const useProjectsStore = defineStore('projects', () => {
       pageMap: [],
       history: [],
       historyPointer: HISTORY.POINTER_START,
-      zoom: boundUiState.value?.zoom.value ?? ZOOM.DEFAULT,
+      zoom: getDefaultGridZoom(),
       outlineTree: [],
       outlineDirty: false,
-      metadata: undefined,
+      metadata: buildDefaultMetadata(projectTitle),
       security: undefined,
       metadataDirty: false,
       ignoredPreflightRuleIds: [],
@@ -350,7 +390,7 @@ export const useProjectsStore = defineStore('projects', () => {
     }
 
     store.setProjectTitle(meta.title)
-    boundUiState.value?.setZoom(state.zoom ?? ZOOM.DEFAULT)
+    boundUiState.value?.setZoom(state.zoom ?? getDefaultGridZoom())
     store.setOutlineDirty(Boolean(state.outlineDirty))
     store.setPages(state.pageMap ?? [])
     boundUiState.value?.setIgnoredPreflightRuleIds(state.ignoredPreflightRuleIds ?? [])
@@ -400,6 +440,12 @@ export const useProjectsStore = defineStore('projects', () => {
     try {
       const [meta, rawState] = await Promise.all([db.projects.get(id), db.states.get(id)])
       if (!meta || !rawState) return false
+      if (isProjectTrashed(meta)) {
+        if (getLastActiveProjectId() === id) {
+          setLastActiveProjectId(null)
+        }
+        return false
+      }
 
       await hydrateStore(meta, rawState)
       activeProjectId.value = id
@@ -468,6 +514,7 @@ export const useProjectsStore = defineStore('projects', () => {
       title: `${meta.title} Copy`,
       updatedAt: now,
       createdAt: now,
+      trashedAt: null,
     }
 
     const duplicateState: ProjectState = {
@@ -482,7 +529,7 @@ export const useProjectsStore = defineStore('projects', () => {
     return duplicateMeta
   }
 
-  async function deleteProject(id: string): Promise<void> {
+  async function permanentlyDeleteProject(id: string): Promise<void> {
     await db.projects.delete(id)
     await db.states.delete(id)
     if (activeProjectId.value === id) {
@@ -493,6 +540,77 @@ export const useProjectsStore = defineStore('projects', () => {
     if (getLastActiveProjectId() === id) {
       setLastActiveProjectId(null)
     }
+    await garbageCollectStoredSources()
+  }
+
+  async function trashProject(id: string): Promise<void> {
+    const meta = await db.projects.get(id)
+    if (!meta || isProjectTrashed(meta)) return
+
+    const now = Date.now()
+    await db.projects.put({
+      ...meta,
+      trashedAt: now,
+      updatedAt: now,
+    })
+
+    if (activeProjectId.value === id) {
+      activeProjectId.value = null
+      activeProjectMeta.value = null
+      setLastActiveProjectId(null)
+    }
+
+    if (getLastActiveProjectId() === id) {
+      setLastActiveProjectId(null)
+    }
+  }
+
+  async function restoreProject(id: string): Promise<void> {
+    const meta = await db.projects.get(id)
+    if (!meta || !isProjectTrashed(meta)) return
+
+    const updated: ProjectMeta = {
+      ...meta,
+      trashedAt: null,
+      updatedAt: Date.now(),
+    }
+    await db.projects.put(updated)
+
+    if (activeProjectId.value === id) {
+      activeProjectMeta.value = updated
+    }
+  }
+
+  async function deleteProject(id: string): Promise<void> {
+    await permanentlyDeleteProject(id)
+  }
+
+  async function emptyTrash(): Promise<number> {
+    const trashedProjects = await listTrashedProjects()
+    if (trashedProjects.length === 0) return 0
+
+    const ids = trashedProjects.map((project) => project.id)
+    await db.transaction('rw', db.projects, db.states, async () => {
+      await db.projects.where('id').anyOf(ids).delete()
+      await db.states.where('id').anyOf(ids).delete()
+    })
+
+    if (activeProjectId.value && ids.includes(activeProjectId.value)) {
+      activeProjectId.value = null
+      activeProjectMeta.value = null
+      setLastActiveProjectId(null)
+    }
+
+    const lastActiveId = getLastActiveProjectId()
+    if (lastActiveId && ids.includes(lastActiveId)) {
+      setLastActiveProjectId(null)
+    }
+
+    await garbageCollectStoredSources()
+    return ids.length
+  }
+
+  async function runGarbageCollection(): Promise<void> {
     await garbageCollectStoredSources()
   }
 
@@ -508,6 +626,7 @@ export const useProjectsStore = defineStore('projects', () => {
     bindUiState,
     getLastActiveProjectId,
     listRecentProjects,
+    listTrashedProjects,
     loadProjectMeta,
     createProject,
     persistActiveProject,
@@ -515,7 +634,12 @@ export const useProjectsStore = defineStore('projects', () => {
     switchProject,
     renameProject,
     duplicateProject,
+    trashProject,
+    restoreProject,
     deleteProject,
+    permanentlyDeleteProject,
+    emptyTrash,
+    runGarbageCollection,
     setLastActiveProjectId,
   }
 })

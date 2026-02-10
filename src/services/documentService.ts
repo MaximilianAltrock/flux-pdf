@@ -32,6 +32,7 @@ import type { DocumentError, ExportErrorCode } from '@/domain/document/errors'
 import { loadPdfFiles } from '@/domain/document/import'
 import type { JobState } from '@/stores/ui'
 import type { useDocumentStore } from '@/stores/document'
+import { formatFilenamePattern, stripPdfExtension } from '@/utils/filename-pattern'
 
 export interface PdfRepository {
   getPdfDocument: (sourceFileId: string) => Promise<PDFDocumentProxy>
@@ -46,6 +47,7 @@ export interface DocumentUiBindings {
 
 export interface DocumentServiceSettings {
   autoGenerateOutlineSinglePage: Ref<boolean>
+  filenamePattern: Ref<string>
 }
 
 export interface DocumentServiceDeps {
@@ -434,17 +436,18 @@ export function createDocumentService(deps: DocumentServiceDeps) {
 
   function getSuggestedFilename(): string {
     const sources = store.sourceFileList
+    const defaultName =
+      sources.length === 0
+        ? 'document'
+        : sources.length === 1 && sources[0]
+          ? stripPdfExtension(sources[0].filename)
+          : 'merged-document'
 
-    if (sources.length === 0) {
-      return 'document'
-    }
-
-    if (sources.length === 1 && sources[0]) {
-      const name = sources[0].filename.replace(/\.pdf$/i, '')
-      return `${name}-edited`
-    }
-
-    return 'merged-document'
+    return formatFilenamePattern(settings.filenamePattern.value, {
+      originalName: defaultName,
+      name: defaultName,
+      version: 1,
+    })
   }
 
   function getEstimatedSize(pagesToEstimate?: ReadonlyArray<PageReference>): number {

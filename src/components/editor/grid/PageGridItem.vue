@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,8 +15,8 @@ import type { PageReference } from '@/types'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
 import { useUiStore } from '@/stores/ui'
-import { usePreflight } from '@/composables/usePreflight'
 import type { GridInteractionPolicy } from '@/composables/useGridInteractionPolicy'
+import { withPrimaryModifier } from '@/utils/shortcuts'
 
 const props = defineProps<{
   page: PageReference
@@ -26,6 +25,8 @@ const props = defineProps<{
   selected: boolean
   isStartOfFile: boolean
   interactionPolicy: GridInteractionPolicy
+  problemSeverity?: 'error' | 'warning' | 'info'
+  problemMessages?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -36,20 +37,7 @@ const emit = defineEmits<{
 const actions = useDocumentActionsContext()
 const document = useDocumentStore()
 const ui = useUiStore()
-const preflight = usePreflight()
-
-const pageProblems = computed(
-  () => preflight.problemsByPageId.value.get(props.page.id) ?? [],
-)
-
-const problemSeverity = computed(() => {
-  if (pageProblems.value.some((p) => p.severity === 'error')) return 'error'
-  if (pageProblems.value.some((p) => p.severity === 'warning')) return 'warning'
-  if (pageProblems.value.some((p) => p.severity === 'info')) return 'info'
-  return undefined
-})
-
-const problemMessages = computed(() => pageProblems.value.map((p) => p.message))
+const selectAllShortcut = withPrimaryModifier('A')
 
 function handlePageClick(event: MouseEvent | KeyboardEvent) {
   if (actions.completeOutlineTargeting(props.page.id)) {
@@ -178,13 +166,12 @@ function handleContextMenu(event: MouseEvent) {
         <ContextMenuItem @select="emit('contextAction', UserAction.SELECT_ALL, page)">
           <CheckSquare class="w-4 h-4 mr-2 text-muted-foreground" />
           <span>Select All</span>
-          <ContextMenuShortcut>Cmd+A</ContextMenuShortcut>
+          <ContextMenuShortcut>{{ selectAllShortcut }}</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuItem @select="emit('contextAction', UserAction.EXPORT_SELECTED, page)">
           <Download class="w-4 h-4 mr-2 text-muted-foreground" />
           <span>Export Selected</span>
-          <ContextMenuShortcut>Cmd+A</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuSeparator />
