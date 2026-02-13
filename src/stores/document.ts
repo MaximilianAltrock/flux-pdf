@@ -61,7 +61,6 @@ export const useDocumentStore = defineStore('document', () => {
   })
   const activePageId = shallowRef<string | null>(null)
 
-
   // ============================================
   // Getters
   // ============================================
@@ -167,8 +166,8 @@ export const useDocumentStore = defineStore('document', () => {
     const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (page) {
       const current = page.rotation
-      const newRotation =
-        ((current + degrees + ROTATION_FULL_DEGREES) % ROTATION_FULL_DEGREES) as RotationAngle
+      const newRotation = ((current + degrees + ROTATION_FULL_DEGREES) %
+        ROTATION_FULL_DEGREES) as RotationAngle
       page.rotation = newRotation
       bumpPagesVersion()
     }
@@ -409,7 +408,6 @@ export const useDocumentStore = defineStore('document', () => {
   function setMetadataDirty(value: boolean) {
     metadataDirty.value = value
   }
-
 
   // Outline is updated explicitly during import or reset actions.
 

@@ -1,51 +1,43 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { db } from '@/db/db'
-import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import DashboardView from '@/views/DashboardView.vue'
-import EditorView from '@/views/EditorView.vue'
-import SettingsView from '@/views/SettingsView.vue'
-import TrashView from '@/views/TrashView.vue'
-import WorkflowsView from '@/views/WorkflowsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      component: DashboardLayout,
+      component: () => import('@/layouts/DashboardLayout.vue'),
       children: [
         {
           path: '',
           name: 'dashboard',
-          component: DashboardView,
+          component: () => import('@/views/DashboardView.vue'),
         },
         {
           path: 'trash',
-          alias: 'bin',
           name: 'dashboard-trash',
-          component: TrashView,
+          component: () => import('@/views/TrashView.vue'),
         },
         {
           path: 'workflows',
           name: 'dashboard-workflows',
-          component: WorkflowsView,
+          component: () => import('@/views/WorkflowsView.vue'),
         },
         {
           path: 'settings',
           name: 'dashboard-settings',
-          component: SettingsView,
+          component: () => import('@/views/SettingsView.vue'),
         },
       ],
     },
     {
       path: '/project/:id',
       name: 'project',
-      component: EditorView,
+      component: () => import('@/views/EditorView.vue'),
       props: true,
     },
   ],
 })
-
 let didBootRedirect = false
 
 function getLastActiveProjectId(): string | null {
