@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
-import { HISTORY } from '@/constants'
+import { HISTORY } from '@/shared/constants'
 import { useDocumentStore } from '@/domains/document/store/document.store'
-import { commandRegistry } from '@/domains/history/domain/commands'
+import { BatchCommand, commandRegistry } from '@/domains/history/domain/commands'
 import type {
   Command,
   HistoryEntry,
@@ -157,6 +157,22 @@ export const useHistoryStore = defineStore('history', () => {
     historyPointer.value = history.value.length - 1
   }
 
+  function executeBatch(commands: readonly Command[], label?: string): Command | null {
+    const validCommands = commands.filter((command): command is Command => Boolean(command))
+    if (validCommands.length === 0) return null
+
+    if (validCommands.length === 1) {
+      const first = validCommands[0]
+      if (!first) return null
+      execute(first)
+      return first
+    }
+
+    const batch = new BatchCommand([...validCommands], label)
+    execute(batch)
+    return batch
+  }
+
   function undo(): boolean {
     if (!canUndo.value) return false
 
@@ -212,6 +228,7 @@ export const useHistoryStore = defineStore('history', () => {
 
     // Actions
     execute,
+    executeBatch,
     undo,
     redo,
     clearHistory,

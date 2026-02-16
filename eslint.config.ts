@@ -24,7 +24,7 @@ export default defineConfigWithVueTs(
 
   {
     name: 'app/ui-single-word-components',
-    files: ['src/components/ui/**/*.vue'],
+    files: ['src/shared/components/ui/**/*.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',
     },

@@ -1,4 +1,4 @@
-import type { PageReference } from '@/types'
+import type { PageReference } from '@/shared/types'
 
 /**
  * Serialized form of a command for persistence

@@ -3,7 +3,7 @@ import type {
   ExportOptions,
   ExportResult,
 } from '@/domains/document/application/document.service'
-import type { Result } from '@/types/result'
+import type { Result } from '@/shared/types/result'
 
 export function exportPdf(
   service: Pick<DocumentService, 'exportDocument'>,

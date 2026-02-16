@@ -1,20 +1,20 @@
 import type { Ref } from 'vue'
 import JSZip from 'jszip'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import { DEFAULT_PROJECT_TITLE, EXPORT_PROGRESS, PROGRESS } from '@/constants'
+import { DEFAULT_PROJECT_TITLE, EXPORT_PROGRESS, PROGRESS } from '@/shared/constants'
 import type { Command } from '@/domains/history/domain/commands/types'
+import { executeCommandBatch, type HistoryBatchCommandExecutor } from '@/domains/history/application'
 import {
   AddPagesCommand,
   AddSourceCommand,
-  BatchCommand,
 } from '@/domains/history/domain/commands'
-import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
-import type { Result } from '@/types/result'
+import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/shared/types'
+import type { Result } from '@/shared/types/result'
 import {
   usePdfCompression,
   type CompressionOptions,
   type CompressionResult,
-} from '@/composables/usePdfCompression'
+} from '@/domains/export/application/usePdfCompression'
 import {
   generateRawPdf as generateRawPdfCore,
   parsePageRange,
@@ -24,19 +24,19 @@ import {
   type ExportOptions,
   type ExportResult,
   type GeneratorOptions,
-} from '@/domain/document/export'
-import { buildOutlineForImport } from '@/domain/document/outline'
+} from '@/domains/export/domain/export'
+import { buildOutlineForImport } from '@/domains/document/domain/outline'
 import {
   getExportErrorMessage,
   getImportErrorMessage,
   isDocumentError,
   makeDocumentError,
-} from '@/domain/document/errors'
-import type { DocumentError, ExportErrorCode } from '@/domain/document/errors'
-import { loadPdfFiles } from '@/domain/document/import'
-import type { JobState } from '@/stores/ui'
+} from '@/domains/document/domain/errors'
+import type { DocumentError, ExportErrorCode } from '@/domains/document/domain/errors'
+import { loadPdfFiles } from '@/domains/document/infrastructure/import'
+import type { JobState } from '@/domains/editor/store/ui.store'
 import type { useDocumentStore } from '@/domains/document/store/document.store'
-import { formatFilenamePattern, stripPdfExtension } from '@/utils/filename-pattern'
+import { formatFilenamePattern, stripPdfExtension } from '@/shared/utils/filename-pattern'
 
 export interface PdfRepository {
   getPdfDocument: (sourceFileId: string) => Promise<PDFDocumentProxy>
@@ -56,7 +56,7 @@ export interface DocumentServiceSettings {
 
 export interface DocumentServiceDeps {
   documentStore: ReturnType<typeof useDocumentStore>
-  historyStore: { execute: (command: Command) => void }
+  historyStore: HistoryBatchCommandExecutor
   pdfRepository: PdfRepository
   ui?: DocumentUiBindings
   compression?: {
@@ -179,14 +179,11 @@ export function createDocumentService(deps: DocumentServiceDeps) {
           }
         }
 
-        if (commandsToRun.length === 1) {
-          history.execute(commandsToRun[0]!)
-        } else if (commandsToRun.length > 1) {
+        if (commandsToRun.length > 0) {
           const batchName = addPages
             ? `Import ${commandsToRun.length} files`
             : `Register ${commandsToRun.length} sources`
-          const batchCmd = new BatchCommand(commandsToRun, batchName)
-          history.execute(batchCmd)
+          executeCommandBatch(history, commandsToRun, batchName)
         }
 
         if (addPages) {
@@ -499,3 +496,5 @@ export function createDocumentService(deps: DocumentServiceDeps) {
 
 export type DocumentService = ReturnType<typeof createDocumentService>
 export type { ExportOptions, ExportResult, GeneratorOptions }
+
+

@@ -1,5 +1,5 @@
 import { computed, toRef, type MaybeRefOrGetter } from 'vue'
-import type { PageReference } from '@/types'
+import type { PageReference } from '@/shared/types'
 
 export function usePageRedactionStats(
   pages: MaybeRefOrGetter<ReadonlyArray<PageReference>>,

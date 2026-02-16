@@ -4,30 +4,35 @@ Use this checklist when implementing or reviewing features in the refactored arc
 
 ## 1. Placement
 
-- [ ] New code is under `src/domains/*` unless it is shared infrastructure/UI primitive.
-- [ ] Domain ownership is explicit (`workspace`, `document`, `editor`, `history`, `export`).
+- [x] New code is under `src/domains/*` unless it is shared infrastructure/UI primitive.
+- [x] Domain ownership is explicit (`workspace`, `document`, `editor`, `history`, `export`).
 
 ## 2. Layering
 
-- [ ] `ui` depends on `application`/`domain`, not infrastructure adapters.
-- [ ] `application` orchestrates use-cases and history execution.
-- [ ] `domain` stays framework-free and deterministic.
-- [ ] Infrastructure integrations are isolated in `infrastructure`.
+- [x] `ui` depends on `application`/`domain`, not infrastructure adapters.
+- [x] `application` orchestrates use-cases and history execution.
+- [x] `domain` stays framework-free and deterministic.
+- [x] Infrastructure integrations are isolated in `infrastructure`.
 
 ## 3. Vue and State
 
-- [ ] Composition API + TypeScript (`<script setup lang="ts">`) used by default.
-- [ ] Pinia store usage is reactivity-safe (`storeToRefs()` where needed).
-- [ ] Computed values are pure; side effects stay in actions/watchers.
+- [x] Composition API + TypeScript (`<script setup lang="ts">`) used by default.
+- [x] Pinia store usage is reactivity-safe (`storeToRefs()` where needed).
+- [x] Computed values are pure; side effects stay in actions/watchers.
 
 ## 4. Commands and History
 
-- [ ] Mutations that should be undoable use command execution paths.
-- [ ] Command payloads are serializable and deserializable.
-- [ ] Batch/group commands are used for multi-step interactions.
+- [x] Mutations that should be undoable use command execution paths.
+- [x] Command payloads are serializable and deserializable.
+- [x] Batch/group commands are used for multi-step interactions.
 
 ## 5. Validation
 
-- [ ] `npm run type-check`
-- [ ] `npm run lint`
-- [ ] Behavior tests added/updated for changed functionality
+- [x] `npm run type-check`
+- [x] `npm run lint`
+- [x] `npm run test:unit:run`
+- [x] `npm run test:e2e` for UI/interaction changes
+- [x] `npm run validate:shadcn` for UI primitive/config changes
+- [x] `npm run validate:a11y-overlays` for dialog/sheet/drawer changes
+- [x] `npm run validate:architecture` for legacy-path/SFC/JSX guardrails
+- [x] Behavior tests added/updated for changed functionality

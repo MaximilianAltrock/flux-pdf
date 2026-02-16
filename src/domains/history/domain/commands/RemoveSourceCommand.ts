@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand, PageSnapshot } from './types'
-import type { SourceFile, PageEntry, PageReference } from '@/types'
+import type { SourceFile, PageEntry, PageReference } from '@/shared/types'
 import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**

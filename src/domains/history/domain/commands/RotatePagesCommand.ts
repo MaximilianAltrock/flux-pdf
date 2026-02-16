@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
-import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/constants'
+import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/shared/constants'
 import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**

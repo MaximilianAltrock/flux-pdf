@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
-import type { DividerReference } from '@/types'
+import type { DividerReference } from '@/shared/types'
 import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**

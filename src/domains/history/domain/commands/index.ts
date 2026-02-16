@@ -11,8 +11,8 @@
  *
  * Usage:
  * ```ts
- * import { RotatePagesCommand, commandRegistry } from '@/commands'
- * import { ROTATION_DELTA_DEGREES } from '@/constants'
+ * import { RotatePagesCommand, commandRegistry } from '@/domains/history/domain/commands'
+ * import { ROTATION_DELTA_DEGREES } from '@/shared/constants'
  *
  * // Create and execute a command
  * const cmd = new RotatePagesCommand(['page-1', 'page-2'], ROTATION_DELTA_DEGREES.RIGHT)
@@ -58,4 +58,5 @@ export { SplitGroupCommand } from './SplitGroupCommand'
 export { RemoveSourceCommand } from './RemoveSourceCommand'
 export { UpdateOutlineCommand } from './UpdateOutlineCommand'
 export { BatchCommand } from './BatchCommand'
+
 

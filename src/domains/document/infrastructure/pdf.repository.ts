@@ -1,4 +1,4 @@
-import { getPdfBlob, getPdfDocument } from '@/domain/document/import'
+import { getPdfBlob, getPdfDocument } from '@/domains/document/infrastructure/import'
 
 export function usePdfRepository() {
   return {
@@ -6,3 +6,4 @@ export function usePdfRepository() {
     getPdfBlob,
   }
 }
+

@@ -1,4 +1,4 @@
-import type { DocumentMetadata } from '@/types'
+import type { DocumentMetadata } from '@/shared/types'
 
 export interface MetadataStoreContract {
   setMetadata: (next: Partial<DocumentMetadata>, markDirty?: boolean) => void

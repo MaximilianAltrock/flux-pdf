@@ -5,7 +5,7 @@ import {
   ROTATION_FULL_DEGREES,
   type RotationAngle,
   type RotationDelta,
-} from '@/constants'
+} from '@/shared/constants'
 import type {
   SourceFile,
   PageReference,
@@ -15,8 +15,8 @@ import type {
   DocumentMetadata,
   SecurityMetadata,
   RedactionMark,
-} from '@/types'
-import { isPageEntry } from '@/types'
+} from '@/shared/types'
+import { isPageEntry } from '@/shared/types'
 
 export const useDocumentStore = defineStore('document', () => {
   // ============================================

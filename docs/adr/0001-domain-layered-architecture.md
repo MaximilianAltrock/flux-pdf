@@ -15,7 +15,7 @@ Adopt and enforce a layered domain-first structure:
 - Dependency direction: `ui -> application -> domain -> infrastructure`
 - Domain modules under `src/domains/{workspace,document,editor,history,export}`
 - Each domain uses subfolders: `ui`, `store`, `application`, `domain`, `infrastructure`
-- Legacy paths (`src/stores/*`, `src/services/*`, `src/commands/*`) remain as temporary compatibility wrappers during migration
+- Legacy paths (`src/stores/*`, `src/services/*`, `src/commands/*`) are removed and blocked by architecture validation
 
 ## Consequences
 
@@ -28,7 +28,6 @@ Adopt and enforce a layered domain-first structure:
 
 ### Tradeoffs
 
-- Short-term duplication (legacy wrappers + domain modules).
 - Additional lint/config rules to maintain boundaries.
 - Contributors need to learn and follow layer boundaries.
 
@@ -40,4 +39,4 @@ Adopt and enforce a layered domain-first structure:
 ## Migration Notes
 
 - New work must be added to `src/domains/*` by default.
-- Legacy folders are compatibility-only and should be reduced over time.
+- Legacy folders must not be reintroduced.

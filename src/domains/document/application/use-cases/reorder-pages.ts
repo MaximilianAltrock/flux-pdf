@@ -1,6 +1,6 @@
 import { ReorderPagesCommand } from '@/domains/history/domain/commands'
 import { executeCommand, type HistoryCommandExecutor } from '@/domains/history/application'
-import type { PageEntry } from '@/types'
+import type { PageEntry } from '@/shared/types'
 
 export function reorderPages(
   history: HistoryCommandExecutor,
