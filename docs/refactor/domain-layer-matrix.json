@@ -1,0 +1,32 @@
+{
+  "version": "2026-02-16",
+  "domainsRoot": "src/domains",
+  "allowedLayers": ["application", "domain", "infrastructure", "store", "ui"],
+  "domains": {
+    "workspace": {
+      "required": ["application", "domain", "store", "ui"],
+      "optional": ["infrastructure"],
+      "deferred": []
+    },
+    "document": {
+      "required": ["application", "domain", "infrastructure", "store"],
+      "optional": ["ui"],
+      "deferred": []
+    },
+    "editor": {
+      "required": ["application", "domain", "store", "ui"],
+      "optional": ["infrastructure"],
+      "deferred": []
+    },
+    "history": {
+      "required": ["application", "domain", "store"],
+      "optional": ["infrastructure", "ui"],
+      "deferred": []
+    },
+    "export": {
+      "required": ["application", "domain", "infrastructure", "store"],
+      "optional": ["ui"],
+      "deferred": []
+    }
+  }
+}

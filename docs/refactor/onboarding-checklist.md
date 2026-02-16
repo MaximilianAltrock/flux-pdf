@@ -5,6 +5,7 @@
 - [ ] Install dependencies: `npm ci`
 - [ ] Verify baseline: `npm run type-check` and `npm run lint`
 - [ ] Read `docs/adr/0001-domain-layered-architecture.md`
+- [ ] Read `docs/refactor/domain-layer-matrix.json`
 - [ ] Read `docs/refactor/workflow-checklist.md`
 - [ ] Read `docs/refactor/visual-standard.md`
 - [ ] Read `docs/refactor/branch-protection.md`

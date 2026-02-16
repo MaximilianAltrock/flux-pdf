@@ -24,31 +24,33 @@ Notes:
 
 ### Largest UI Files (Current, Lines)
 
-- `src/domains/editor/ui/components/PagePreviewModal.vue`: 528
-- `src/domains/editor/ui/components/export/ExportConfiguration.vue`: 394
-- `src/domains/editor/ui/components/DiffModal.vue`: 351
-- `src/domains/workspace/ui/views/SettingsView.vue`: 324
-- `src/domains/editor/ui/components/PageGrid.vue`: 313
-- `src/domains/editor/ui/components/inspector/InspectorStructure.vue`: 311
-- `src/domains/editor/ui/components/SourcePageGrid.vue`: 302
-- `src/domains/editor/ui/components/inspector/InspectorHistory.vue`: 299
-- `src/domains/editor/ui/components/CommandPalette.vue`: 299
-- `src/domains/editor/ui/components/PdfThumbnail.vue`: 274
+- `src/domains/editor/ui/components/PagePreviewModal.vue`: 571
+- `src/domains/editor/ui/components/export/ExportConfiguration.vue`: 424
+- `src/domains/editor/ui/components/DiffModal.vue`: 379
+- `src/domains/workspace/ui/views/SettingsView.vue`: 368
+- `src/domains/editor/ui/components/PageGrid.vue`: 358
+- `src/domains/editor/ui/components/inspector/InspectorStructure.vue`: 349
+- `src/domains/editor/ui/components/SourcePageGrid.vue`: 341
+- `src/domains/editor/ui/components/inspector/InspectorHistory.vue`: 335
+- `src/domains/editor/ui/components/CommandPalette.vue`: 317
+- `src/domains/editor/ui/components/PdfThumbnail.vue`: 302
 
 ## Architecture Inventory
 
-### Stores (10)
+### Stores (12)
 
 - `src/domains/document/store/document.store.ts`
 - `src/domains/document/store/index.ts`
+- `src/domains/editor/store/index.ts`
+- `src/domains/editor/store/ui.store.ts`
+- `src/domains/export/store/export.store.ts`
+- `src/domains/export/store/index.ts`
 - `src/domains/history/store/history.store.ts`
 - `src/domains/history/store/index.ts`
+- `src/domains/workspace/store/index.ts`
 - `src/domains/workspace/store/projects.store.ts`
 - `src/domains/workspace/store/settings.store.ts`
 - `src/domains/workspace/store/workflows.store.ts`
-- `src/domains/workspace/store/index.ts`
-- `src/domains/editor/store/ui.store.ts`
-- `src/domains/editor/store/index.ts`
 
 ### Services / Repositories (2)
 
@@ -76,21 +78,21 @@ Notes:
 - `src/domains/history/domain/commands/UpdateOutlineCommand.ts`
 - `src/domains/history/domain/commands/UpdateRedactionCommand.ts`
 
-### Composables (20)
+### Composables (28)
 
 - Composables are split across `src/domains/*/{application,ui}/*` and `src/shared/composables/*`.
 
 ## Largest Files (Lines)
 
-- `src/domains/editor/application/useDocumentActions.ts`: 1058
-- `src/domains/editor/ui/components/PagePreviewModal.vue`: 652
-- `src/domains/export/domain/export.ts`: 612
-- `src/domains/workspace/store/projects.store.ts`: 546
-- `src/domains/workspace/ui/views/SettingsView.vue`: 531
-- `src/domains/document/infrastructure/import.ts`: 467
-- `src/domains/document/application/document.service.ts`: 439
-- `src/domains/document/store/document.store.ts`: 419
-- `src/domains/editor/ui/components/PageGrid.vue`: 417
-- `src/domains/editor/ui/components/export/ExportConfiguration.vue`: 394
-- `src/domains/editor/ui/components/SourcePageGrid.vue`: 364
-- `src/domains/editor/ui/components/DiffModal.vue`: 351
+- `src/domains/export/domain/export.ts`: 711
+- `src/domains/editor/ui/components/PagePreviewModal.vue`: 571
+- `src/domains/document/infrastructure/import.ts`: 530
+- `src/domains/document/application/document.service.ts`: 494
+- `src/domains/document/store/document.store.ts`: 483
+- `src/domains/editor/ui/components/export/ExportConfiguration.vue`: 424
+- `src/domains/editor/ui/useRedactionOverlay.ts`: 387
+- `src/domains/editor/ui/components/DiffModal.vue`: 379
+- `src/domains/workspace/ui/views/SettingsView.vue`: 368
+- `src/domains/editor/application/useDocumentActions.ts`: 360
+- `src/domains/editor/store/ui.store.ts`: 360
+- `src/shared/utils/workflow-history.ts`: 358

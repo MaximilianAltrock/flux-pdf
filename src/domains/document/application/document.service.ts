@@ -2,12 +2,7 @@ import type { Ref } from 'vue'
 import JSZip from 'jszip'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { DEFAULT_PROJECT_TITLE, EXPORT_PROGRESS, PROGRESS } from '@/shared/constants'
-import type { Command } from '@/domains/history/domain/commands/types'
-import { executeCommandBatch, type HistoryBatchCommandExecutor } from '@/domains/history/application'
-import {
-  AddPagesCommand,
-  AddSourceCommand,
-} from '@/domains/history/domain/commands'
+import type { HistoryBatchCommandExecutor } from '@/domains/history/application'
 import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/shared/types'
 import type { Result } from '@/shared/types/result'
 import {
@@ -34,7 +29,8 @@ import {
 } from '@/domains/document/domain/errors'
 import type { DocumentError, ExportErrorCode } from '@/domains/document/domain/errors'
 import { loadPdfFiles } from '@/domains/document/infrastructure/import'
-import type { JobState } from '@/domains/editor/store/ui.store'
+import { addPagesBatch, addSources } from '@/domains/document/application/use-cases'
+import type { JobState } from '@/shared/types/jobs'
 import type { useDocumentStore } from '@/domains/document/store/document.store'
 import { formatFilenamePattern, stripPdfExtension } from '@/shared/utils/filename-pattern'
 
@@ -167,23 +163,21 @@ export function createDocumentService(deps: DocumentServiceDeps) {
       const errors = results.filter((r) => !r.success)
 
       if (successes.length > 0) {
-        const commandsToRun: Command[] = []
         const addPages = options.addPages !== false
 
-        for (const result of successes) {
-          if (!result.sourceFile) continue
-          if (addPages && result.pageRefs) {
-            commandsToRun.push(new AddPagesCommand(result.sourceFile, result.pageRefs, true))
-          } else if (!addPages) {
-            commandsToRun.push(new AddSourceCommand(result.sourceFile))
+        if (addPages) {
+          const addPageEntries = successes.flatMap((result) => {
+            if (!result.sourceFile || !result.pageRefs) return []
+            return [{ sourceFile: result.sourceFile, pages: result.pageRefs, shouldAddSource: true }]
+          })
+          if (addPageEntries.length > 0) {
+            addPagesBatch(history, addPageEntries, `Import ${addPageEntries.length} files`)
           }
-        }
-
-        if (commandsToRun.length > 0) {
-          const batchName = addPages
-            ? `Import ${commandsToRun.length} files`
-            : `Register ${commandsToRun.length} sources`
-          executeCommandBatch(history, commandsToRun, batchName)
+        } else {
+          const sourceFiles = successes.flatMap((result) => (result.sourceFile ? [result.sourceFile] : []))
+          if (sourceFiles.length > 0) {
+            addSources(history, sourceFiles, `Register ${sourceFiles.length} sources`)
+          }
         }
 
         if (addPages) {

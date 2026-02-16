@@ -34,3 +34,11 @@ This validates that:
 
 - required status checks include `quality` and `e2e`
 - at least one approving review is required
+
+## Verification Evidence
+
+Record each verification run here:
+
+| Date (UTC) | Repository | Branch | Result | Required checks observed |
+| --- | --- | --- | --- | --- |
+| Pending | Pending | `main` | Not yet verified in this workspace session | `quality`, `e2e` (expected) |

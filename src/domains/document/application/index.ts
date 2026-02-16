@@ -1,4 +1,5 @@
 export * from './document.service'
+export * from './useDocumentServiceBindings'
 export * from './use-cases'
 export * from './composables/usePageRedactionStats'
 export * from './composables/useSourceDropHandlers'

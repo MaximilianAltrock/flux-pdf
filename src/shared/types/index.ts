@@ -1,6 +1,7 @@
 export type { DocumentUiState } from './ui'
 export type { Workflow, WorkflowStep } from './workflow'
 export type { ImportErrorCode } from './errors'
+export type { JobStatus, JobState } from './jobs'
 
 export type {
   SourceFile,

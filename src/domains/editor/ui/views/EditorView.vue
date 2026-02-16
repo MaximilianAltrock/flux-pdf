@@ -5,7 +5,7 @@
  * Owns document state + editor layouts and loads project data on route changes.
  */
 
-import { onBeforeUnmount, watch, watchEffect, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, watch, watchEffect, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
@@ -15,6 +15,7 @@ import { provideDocumentActions, useDocumentActions } from '@/domains/editor/app
 import { useFileInput } from '@/shared/composables/useFileInput'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useExportStore } from '@/domains/export/store/export.store'
 import { useProjectsStore } from '@/domains/workspace/store/projects.store'
 import { createProjectRouteSync } from '@/domains/workspace/application/project-route-sync'
 
@@ -34,19 +35,20 @@ import PagePreviewModal from '@/domains/editor/ui/components/PagePreviewModal.vu
 
 // Initialize stores and actions
 const ui = useUiStore()
+const exportState = useExportStore()
 const actions = useDocumentActions()
 provideDocumentActions(actions)
 const projects = useProjectsStore()
 const { isMobile } = useMobile()
 const {
-  hasOpenModal,
-  showExportModal,
-  exportSelectedOnly,
+  hasOpenModal: hasOpenUiModal,
   showPreviewModal,
   previewPageRef,
   showDiffModal,
   diffPages,
 } = storeToRefs(ui)
+const { showExportModal, exportSelectedOnly } = storeToRefs(exportState)
+const hasOpenModal = computed(() => hasOpenUiModal.value || showExportModal.value)
 const { setFileInputRef } = useFileInput()
 const route = useRoute()
 const router = useRouter()
@@ -114,14 +116,14 @@ onBeforeUnmount(() => {
       v-if="isMobile"
       :open="showExportModal"
       :export-selected="exportSelectedOnly"
-      @close="ui.closeExportModal"
+      @close="exportState.closeExportModal"
       @success="actions.handleExportSuccess"
     />
     <ExportModal
       v-else
       :open="showExportModal"
       :export-selected="exportSelectedOnly"
-      @close="ui.closeExportModal"
+      @close="exportState.closeExportModal"
       @success="actions.handleExportSuccess"
     />
 

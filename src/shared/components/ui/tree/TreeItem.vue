@@ -17,7 +17,7 @@ import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/el
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
 import type { ClassValue } from 'clsx'
 import { cn } from '@/shared/lib/utils'
-import type { TreeNode } from './utils'
+import { TREE_DROP_TARGET_KIND, type TreeNode } from './utils'
 
 interface Props {
   item: FlattenedItem<TreeNode>
@@ -107,7 +107,10 @@ watchEffect((onCleanup) => {
     dropTargetForElements({
       element: currentElement,
       getData: ({ input, element }) => {
-        const data = { id: item.id }
+        const data = {
+          id: item.id,
+          dropTargetKind: TREE_DROP_TARGET_KIND,
+        }
 
         return attachInstruction(data, {
           input,

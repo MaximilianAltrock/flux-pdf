@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
-import { PROGRESS, ZOOM } from '@/shared/constants'
+import { ZOOM } from '@/shared/constants'
 import type { PageReference } from '@/shared/types'
-import type { DocumentErrorCode } from '@/shared/types/errors'
+import { createJobState, type JobState } from '@/shared/types/jobs'
 import {
   EDITOR_TOOLS,
   MOBILE_EDITOR_MODES,
@@ -10,24 +10,6 @@ import {
   type MobileEditorMode,
   type PrimaryEditorToolId,
 } from '@/domains/editor/domain/types'
-
-export type JobStatus = 'idle' | 'running' | 'success' | 'error'
-
-export interface JobState {
-  status: JobStatus
-  progress: number
-  error: string | null
-  errorCode?: DocumentErrorCode | null
-}
-
-export function createJobState(): JobState {
-  return {
-    status: 'idle',
-    progress: PROGRESS.MIN,
-    error: null,
-    errorCode: null,
-  }
-}
 
 /**
  * UI Store
@@ -78,8 +60,6 @@ export const useUiStore = defineStore('ui', () => {
   // ============================================
   // Shared Modal State
   // ============================================
-  const showExportModal = shallowRef(false)
-  const exportSelectedOnly = shallowRef(false)
   const showPreviewModal = shallowRef(false)
   const previewPageRef = ref<PageReference | null>(null)
   const showDiffModal = shallowRef(false)
@@ -92,14 +72,12 @@ export const useUiStore = defineStore('ui', () => {
   // Preflight (per-project)
   const ignoredPreflightRuleIds = ref<string[]>([])
 
-  // Jobs (import/export)
+  // Jobs
   const importJob = ref<JobState>(createJobState())
-  const exportJob = ref<JobState>(createJobState())
 
   // Track if any modal is open (for blocking global shortcuts)
   const hasOpenModal = computed(
     () =>
-      showExportModal.value ||
       showPreviewModal.value ||
       showDiffModal.value ||
       showCommandPalette.value ||
@@ -164,15 +142,6 @@ export const useUiStore = defineStore('ui', () => {
 
   function togglePreflightPanel() {
     showPreflightPanel.value = !showPreflightPanel.value
-  }
-
-  function openExportModal(selectedOnly = false) {
-    exportSelectedOnly.value = selectedOnly
-    showExportModal.value = true
-  }
-
-  function closeExportModal() {
-    showExportModal.value = false
   }
 
   function openPreviewModal(pageRef: PageReference) {
@@ -323,8 +292,6 @@ export const useUiStore = defineStore('ui', () => {
     showOutlineUrlDialog,
 
     // Shared Modal State
-    showExportModal,
-    exportSelectedOnly,
     showPreviewModal,
     previewPageRef,
     showDiffModal,
@@ -335,7 +302,6 @@ export const useUiStore = defineStore('ui', () => {
 
     // Jobs
     importJob,
-    exportJob,
 
     // Computed
     hasOpenModal,
@@ -355,10 +321,6 @@ export const useUiStore = defineStore('ui', () => {
     zoomOut,
     setCurrentTool,
     setInspectorTab,
-
-    // Export Modal Actions
-    openExportModal,
-    closeExportModal,
 
     // Preview Modal Actions
     openPreviewModal,

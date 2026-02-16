@@ -5,7 +5,9 @@ This plan translates `Refactor-Plan.md` into phased, trackable work for a clean 
 ## Execution Status (2026-02-16)
 
 - Completed in this pass: Phase 0, Phase 1, targeted Phase 2/3/8 items, Waves 1-4 hotspots, mobile editor splits (`MobilePageGrid.vue`, `MobileTopBar.vue`, `MobileMenuDrawer.vue`, `MobileExportSheet.vue`), route-shell hardening, Phase 5 type/contract consolidation, CI/shadcn hardening baseline, Phase 7 overlay accessibility/wrapper hardening, workspace store-thinning progress (workflow service extraction + project source-GC/session/persistence/hydration/autosave/thumbnail/lifecycle/authoring/state-controller extraction), domain-store relocation (`projects`, `workflows`, `ui`, `settings`) with full legacy wrapper removal, legacy `src/domain/*` migration into `src/domains/*`, full root-layer migration into `src/app`, `src/shared`, and `src/domains`, removal of empty scaffold folders, editor UI composable flattening, shared `useMobile` extraction, UI-to-infrastructure dependency cleanup in preview flow, VueUse `useRefHistory` adoption for lightweight settings history, architecture convention validation (`validate:architecture`), and branch-protection apply/verify wiring docs/scripts.
-- Remaining: none in this execution plan; continue enforcing through CI and contributor workflow checklists.
+- Remediation update (Phase 0): canonical per-domain layer requirements now live in `docs/refactor/domain-layer-matrix.json` and are validated in `validate:architecture`.
+- Remediation update (Phases 1-4): export domain state ownership, runtime use-case wiring, editor action decomposition, and architecture/use-case guardrails are complete and test-validated.
+- Remaining: Phase 5 documentation closeout items (baseline refresh, branch-protection verification evidence, known exceptions) are tracked in `Refactor-Remediation-Plan.md`.
 
 ## Skill Coverage (All Available Skills)
 
@@ -46,7 +48,7 @@ Move from mixed file-type organization to domain-first structure from `Refactor-
 
 ### Checklist
 - [x] Create target folders: `src/app`, `src/shared`, `src/domains/{workspace,document,editor,history,export}`.
-- [x] Define per-domain subfolders: `ui`, `store`, `application`, `domain`, `infrastructure`.
+- [x] Define a canonical domain-layer matrix with required/optional/deferred layers per domain (`docs/refactor/domain-layer-matrix.json`).
 - [x] Add temporary migration aliases so old imports keep working during phased moves.
 - [x] Move and adapt current modules first by highest value:
 - [x] `src/stores/document.ts` -> `src/domains/document/store`.

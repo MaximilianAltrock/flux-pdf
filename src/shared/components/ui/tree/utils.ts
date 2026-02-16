@@ -8,6 +8,8 @@ export interface TreeNode {
   children?: TreeNode[]
 }
 
+export const TREE_DROP_TARGET_KIND = 'tree-item'
+
 export type TreeAction =
   | {
       type: 'instruction'

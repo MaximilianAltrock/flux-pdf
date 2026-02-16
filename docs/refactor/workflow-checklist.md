@@ -6,6 +6,7 @@ Use this checklist when implementing or reviewing features in the refactored arc
 
 - [x] New code is under `src/domains/*` unless it is shared infrastructure/UI primitive.
 - [x] Domain ownership is explicit (`workspace`, `document`, `editor`, `history`, `export`).
+- [x] Domain layer folders align with `docs/refactor/domain-layer-matrix.json`.
 
 ## 2. Layering
 
@@ -25,6 +26,8 @@ Use this checklist when implementing or reviewing features in the refactored arc
 - [x] Mutations that should be undoable use command execution paths.
 - [x] Command payloads are serializable and deserializable.
 - [x] Batch/group commands are used for multi-step interactions.
+- [x] Core document workflows call use-cases first (`importPdf`, `exportPdf`, `reorderPages`, `updateMetadata`) instead of direct store/command wiring.
+- [x] Direct command execution is allowed only with a documented temporary exception approved in architecture docs (currently none).
 
 ## 5. Validation
 
@@ -34,5 +37,5 @@ Use this checklist when implementing or reviewing features in the refactored arc
 - [x] `npm run test:e2e` for UI/interaction changes
 - [x] `npm run validate:shadcn` for UI primitive/config changes
 - [x] `npm run validate:a11y-overlays` for dialog/sheet/drawer changes
-- [x] `npm run validate:architecture` for legacy-path/SFC/JSX guardrails
+- [x] `npm run validate:architecture` for domain-layer parity, core use-case boundaries, and legacy-path/SFC/JSX guardrails
 - [x] Behavior tests added/updated for changed functionality

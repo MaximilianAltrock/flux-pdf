@@ -8,7 +8,7 @@ import {
   extractInstruction,
 } from '@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item'
 import { cn } from '@/shared/lib/utils'
-import { updateTree, type TreeNode } from './utils'
+import { TREE_DROP_TARGET_KIND, updateTree, type TreeNode } from './utils'
 
 interface Props {
   items: TreeNode[]
@@ -49,6 +49,7 @@ watchEffect((onCleanup) => {
         const itemId = source.data.id as string
         const target = location.current.dropTargets[0]
         if (!target) return
+        if (target.data.dropTargetKind !== TREE_DROP_TARGET_KIND) return
 
         const targetId = target.data.id as string
         const instruction: Instruction | null = extractInstruction(target.data)

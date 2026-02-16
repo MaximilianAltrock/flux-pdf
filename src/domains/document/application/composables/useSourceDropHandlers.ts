@@ -1,6 +1,10 @@
 import { ROTATION_DEFAULT_DEGREES } from '@/shared/constants'
-import { executeCommandBatch, type HistoryBatchCommandExecutor } from '@/domains/history/application'
-import { AddPagesCommand } from '@/domains/history/domain/commands'
+import type { HistoryBatchCommandExecutor } from '@/domains/history/application'
+import {
+  addPages as addPagesUseCase,
+  addPagesBatch as addPagesBatchUseCase,
+  type AddPagesBatchEntry,
+} from '@/domains/document/application/use-cases'
 import type { useDocumentStore } from '@/domains/document/store/document.store'
 import type { PageReference } from '@/shared/types'
 
@@ -30,7 +34,7 @@ export function useSourceDropHandlers({ store, history }: SourceDropHandlersDeps
       })
     }
 
-    history.execute(new AddPagesCommand(sourceFile, newPages, false))
+    addPagesUseCase(history, sourceFile, newPages, false)
   }
 
   function handleSourcePageDropped(sourceId: string, pageIndex: number) {
@@ -48,7 +52,7 @@ export function useSourceDropHandlers({ store, history }: SourceDropHandlersDeps
       groupId: crypto.randomUUID(),
     }
 
-    history.execute(new AddPagesCommand(sourceFile, [pageRef], false))
+    addPagesUseCase(history, sourceFile, [pageRef], false)
   }
 
   function handleSourcePagesDropped(pages: { sourceId: string; pageIndex: number }[]) {
@@ -65,7 +69,7 @@ export function useSourceDropHandlers({ store, history }: SourceDropHandlersDeps
       grouped.get(page.sourceId)?.add(page.pageIndex)
     }
 
-    const commands: AddPagesCommand[] = []
+    const addPageEntries: AddPagesBatchEntry[] = []
 
     for (const [sourceId, pageSet] of grouped) {
       const sourceFile = store.sources.get(sourceId)
@@ -85,15 +89,15 @@ export function useSourceDropHandlers({ store, history }: SourceDropHandlersDeps
         groupId,
       }))
 
-      commands.push(new AddPagesCommand(sourceFile, newPages, false))
+      addPageEntries.push({ sourceFile, pages: newPages, shouldAddSource: false })
     }
 
-    if (commands.length === 0) return
+    if (addPageEntries.length === 0) return
 
-    executeCommandBatch(
+    addPagesBatchUseCase(
       history,
-      commands,
-      commands.length > 1 ? `Add pages from ${commands.length} sources` : undefined,
+      addPageEntries,
+      addPageEntries.length > 1 ? `Add pages from ${addPageEntries.length} sources` : undefined,
     )
   }
 

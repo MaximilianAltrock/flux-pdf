@@ -14,7 +14,8 @@ Adopt and enforce a layered domain-first structure:
 
 - Dependency direction: `ui -> application -> domain -> infrastructure`
 - Domain modules under `src/domains/{workspace,document,editor,history,export}`
-- Each domain uses subfolders: `ui`, `store`, `application`, `domain`, `infrastructure`
+- Layer names are standardized as: `ui`, `store`, `application`, `domain`, `infrastructure`
+- Per-domain required/optional/deferred layers are defined in `docs/refactor/domain-layer-matrix.json` (single source of truth)
 - Legacy paths (`src/stores/*`, `src/services/*`, `src/commands/*`) are removed and blocked by architecture validation
 
 ## Consequences
@@ -34,6 +35,8 @@ Adopt and enforce a layered domain-first structure:
 ## Guardrails
 
 - ESLint boundary rules are active in `eslint.config.ts` for `src/domains/**`.
+- Domain layer matrix is enforced by `scripts/validate-domain-layer-matrix.mjs` (via `npm run validate:architecture`).
+- Core document workflows are guarded by `scripts/validate-core-usecase-boundaries.mjs` to prevent runtime bypass of application use-cases.
 - PR checklist enforces typed APIs, no side effects in computed, props-down/events-up, and behavior tests for changes.
 
 ## Migration Notes
