@@ -39,6 +39,8 @@ export interface Command {
 
   /** Human-readable description for history display */
   readonly name: string
+  /** Stable display label used by history UI */
+  readonly label: string
 
   /** Creation timestamp for ordering and serialization */
   readonly createdAt: number
@@ -103,3 +105,4 @@ export interface HistoryDisplayEntry extends HistoryEntry {
 
   pointer: number
 }
+

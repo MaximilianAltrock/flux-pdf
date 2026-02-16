@@ -18,6 +18,9 @@ export abstract class BaseCommand implements Command {
   public readonly id: string
   public abstract readonly type: string
   public abstract readonly name: string
+  public get label(): string {
+    return this.name
+  }
 
   /** Timestamp when command was created (for ordering) */
   public readonly createdAt: number
@@ -68,3 +71,4 @@ export abstract class BaseCommand implements Command {
     return pages.map((p) => ({ ...p }))
   }
 }
+

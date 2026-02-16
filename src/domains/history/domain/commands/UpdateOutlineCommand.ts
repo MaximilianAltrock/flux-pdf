@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { OutlineNode } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 export class UpdateOutlineCommand extends BaseCommand {
   public readonly type = CommandType.UPDATE_OUTLINE
@@ -78,3 +78,4 @@ function cloneTree(nodes: OutlineNode[]): OutlineNode[] {
 }
 
 registerCommand(CommandType.UPDATE_OUTLINE, UpdateOutlineCommand)
+

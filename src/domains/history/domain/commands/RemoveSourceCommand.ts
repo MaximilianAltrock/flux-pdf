@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand, PageSnapshot } from './types'
 import type { SourceFile, PageEntry, PageReference } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**
  * Command to remove a source file and all of its pages.
@@ -99,3 +99,4 @@ export class RemoveSourceCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.REMOVE_SOURCE, RemoveSourceCommand)
+

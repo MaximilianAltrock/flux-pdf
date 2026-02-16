@@ -2,8 +2,12 @@ import type { Ref } from 'vue'
 import JSZip from 'jszip'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { DEFAULT_PROJECT_TITLE, EXPORT_PROGRESS, PROGRESS } from '@/constants'
-import type { Command } from '@/commands/types'
-import { AddPagesCommand, AddSourceCommand, BatchCommand } from '@/commands'
+import type { Command } from '@/domains/history/domain/commands/types'
+import {
+  AddPagesCommand,
+  AddSourceCommand,
+  BatchCommand,
+} from '@/domains/history/domain/commands'
 import type { DocumentMetadata, FileUploadResult, PageEntry, PageReference } from '@/types'
 import type { Result } from '@/types/result'
 import {
@@ -31,7 +35,7 @@ import {
 import type { DocumentError, ExportErrorCode } from '@/domain/document/errors'
 import { loadPdfFiles } from '@/domain/document/import'
 import type { JobState } from '@/stores/ui'
-import type { useDocumentStore } from '@/stores/document'
+import type { useDocumentStore } from '@/domains/document/store/document.store'
 import { formatFilenamePattern, stripPdfExtension } from '@/utils/filename-pattern'
 
 export interface PdfRepository {

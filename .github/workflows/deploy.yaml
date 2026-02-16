@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Type Check
+        run: npm run type-check
+
       - name: Lint
         run: |
           npm exec -- eslint . --max-warnings 0

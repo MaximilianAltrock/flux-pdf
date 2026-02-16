@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { SourceFile } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**
  * Command to add a source file to the registry (without inserting pages).
@@ -50,3 +50,4 @@ export class AddSourceCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.ADD_SOURCE, AddSourceCommand)
+

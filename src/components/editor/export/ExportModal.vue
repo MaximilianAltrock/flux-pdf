@@ -11,7 +11,7 @@ import {
   DialogScrollContent,
 } from '@/components/ui/dialog'
 import { useMobile } from '@/composables'
-import type { ExportOptions } from '@/services/documentService'
+import type { ExportOptions } from '@/domains/document/application/document.service'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
 

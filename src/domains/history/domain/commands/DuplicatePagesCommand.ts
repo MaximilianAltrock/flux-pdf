@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { PageReference } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**
  * Command to duplicate one or more pages
@@ -128,3 +128,4 @@ export class DuplicatePagesCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.DUPLICATE, DuplicatePagesCommand)
+

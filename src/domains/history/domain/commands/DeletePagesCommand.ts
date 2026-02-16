@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand, PageSnapshot } from './types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**
  * Command to delete one or more pages
@@ -114,3 +114,4 @@ export class DeletePagesCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.DELETE, DeletePagesCommand)
+

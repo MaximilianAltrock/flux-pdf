@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 export type ResizeTarget = {
   pageId: string
@@ -93,3 +93,4 @@ export class ResizePagesCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.RESIZE, ResizePagesCommand)
+

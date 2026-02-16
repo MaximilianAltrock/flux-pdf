@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { RedactionMark } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 export class DeleteRedactionCommand extends BaseCommand {
   public readonly type = CommandType.DELETE_REDACTION
@@ -53,3 +53,4 @@ export class DeleteRedactionCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.DELETE_REDACTION, DeleteRedactionCommand)
+

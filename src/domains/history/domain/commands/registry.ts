@@ -99,3 +99,4 @@ export const commandRegistry = new CommandRegistry()
 export function registerCommand(type: string, constructor: CommandConstructor): void {
   commandRegistry.register(type, constructor)
 }
+

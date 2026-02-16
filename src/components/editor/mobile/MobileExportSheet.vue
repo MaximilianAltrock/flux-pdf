@@ -12,7 +12,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/composables'
-import type { ExportOptions } from '@/services/documentService'
+import type { ExportOptions } from '@/domains/document/application/document.service'
 import { useDocumentActionsContext } from '@/composables/useDocumentActions'
 import { useDocumentStore } from '@/stores/document'
 import ExportConfiguration, { type ExportSettings } from '@/components/editor/export/ExportConfiguration.vue'

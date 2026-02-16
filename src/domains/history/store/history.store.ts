@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { HISTORY } from '@/constants'
-import { useDocumentStore } from '@/stores/document'
-import { commandRegistry } from '@/commands'
+import { useDocumentStore } from '@/domains/document/store/document.store'
+import { commandRegistry } from '@/domains/history/domain/commands'
 import type {
   Command,
   HistoryEntry,
   HistoryDisplayEntry,
   SerializedCommand,
-} from '@/commands'
+} from '@/domains/history/domain/commands'
 
 /**
  * Command History Store
@@ -89,12 +89,12 @@ export const useHistoryStore = defineStore('history', () => {
 
   const undoName = computed((): string | null => {
     if (!canUndo.value) return null
-    return history.value[historyPointer.value]?.command.name ?? null
+    return history.value[historyPointer.value]?.command.label ?? null
   })
 
   const redoName = computed((): string | null => {
     if (!canRedo.value) return null
-    return history.value[historyPointer.value + 1]?.command.name ?? null
+    return history.value[historyPointer.value + 1]?.command.label ?? null
   })
 
   const historyList = computed((): HistoryDisplayEntry[] => {
@@ -103,6 +103,7 @@ export const useHistoryStore = defineStore('history', () => {
       id: 'root',
       type: 'Root',
       name: 'Session Start',
+      label: 'Session Start',
       createdAt: sessionStartTime.value,
       execute() {},
       undo() {},

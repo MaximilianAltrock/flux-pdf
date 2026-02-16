@@ -1,7 +1,7 @@
 import { storeToRefs } from 'pinia'
-import { computed, inject, provide, type InjectionKey } from 'vue'
-import { useDocumentStore } from '@/stores/document'
-import { useHistoryStore } from '@/stores/history'
+import { computed, inject, provide, shallowRef, type InjectionKey } from 'vue'
+import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useHistoryStore } from '@/domains/history/store/history.store'
 import { useUiStore } from '@/stores/ui'
 import { useProjectsStore } from '@/stores/projects'
 import { useSettingsStore } from '@/stores/settings'
@@ -18,8 +18,12 @@ import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useMobile } from '@/composables/useMobile'
 import { useActiveElementBlur } from '@/composables/useActiveElementBlur'
-import { usePdfRepository } from '@/services/pdfRepository'
-import { createDocumentService, type ExportOptions } from '@/services/documentService'
+import { usePdfRepository } from '@/domains/document/infrastructure/pdf.repository'
+import {
+  createDocumentService,
+  type ExportOptions,
+} from '@/domains/document/application/document.service'
+import { usePageRedactionStats } from '@/domains/document/application/composables/usePageRedactionStats'
 import { useFileInput } from '@/composables/useFileInput'
 import { getImportErrorMessage } from '@/domain/document/errors'
 import { autoGenOutlineFromPages } from '@/utils/auto-gen-tree'
@@ -32,20 +36,20 @@ import {
   setOutlineNodeTitle,
 } from '@/utils/outline-tree'
 import {
-  RotatePagesCommand,
-  DuplicatePagesCommand,
+  BatchCommand,
   DeletePagesCommand,
-  AddPagesCommand,
-  RemoveSourceCommand,
+  DeleteRedactionCommand,
+  DuplicatePagesCommand,
   ReorderPagesCommand,
-  SplitGroupCommand,
+  RemoveSourceCommand,
   ResizePagesCommand,
+  RotatePagesCommand,
+  SplitGroupCommand,
+  UpdateOutlineCommand,
+  AddPagesCommand,
   AddRedactionCommand,
   UpdateRedactionCommand,
-  DeleteRedactionCommand,
-  UpdateOutlineCommand,
-  BatchCommand,
-} from '@/commands'
+} from '@/domains/history/domain/commands'
 import { UserAction } from '@/types/actions'
 import type {
   OutlineNode,
@@ -118,6 +122,8 @@ export function useDocumentActions() {
     settings: { autoGenerateOutlineSinglePage, filenamePattern },
   })
   const exportJob = uiExportJob
+  const pagesForExportWarning = shallowRef<PageReference[]>([])
+  const { redactionCount: exportRedactionCount } = usePageRedactionStats(pagesForExportWarning)
 
   function normalizeProjectTitle(value: string) {
     let next = value.trim()
@@ -309,7 +315,8 @@ export function useDocumentActions() {
   }
 
   function warnIfRedactions(pages: PageReference[]) {
-    const count = pages.reduce((sum, page) => sum + (page.redactions?.length ?? 0), 0)
+    pagesForExportWarning.value = pages
+    const count = exportRedactionCount.value
     if (count <= 0) return
     const label = count === 1 ? '1 Redaction' : `${count} Redactions`
     toast.warning(

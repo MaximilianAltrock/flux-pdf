@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { RedactionMark } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 export class UpdateRedactionCommand extends BaseCommand {
   public readonly type = CommandType.UPDATE_REDACTION
@@ -63,3 +63,4 @@ export class UpdateRedactionCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.UPDATE_REDACTION, UpdateRedactionCommand)
+

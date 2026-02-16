@@ -62,3 +62,4 @@ export class BatchCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.BATCH, BatchCommand)
+

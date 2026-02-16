@@ -29,4 +29,85 @@ export default defineConfigWithVueTs(
       'vue/multi-word-component-names': 'off',
     },
   },
+
+  {
+    name: 'app/domain-boundaries-domain',
+    files: ['src/domains/**/domain/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@/components/**',
+                '@/layouts/**',
+                '@/views/**',
+                '@/services/**',
+                '@/stores/**',
+                '@/domains/*/ui/**',
+                '@/domains/*/store/**',
+                '@/domains/*/infrastructure/**',
+                'vue',
+                'pinia',
+                'vue-router',
+              ],
+              message: 'Domain layer must stay framework-free and independent of UI/infrastructure.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    name: 'app/domain-boundaries-domain-history-commands-transitional',
+    files: ['src/domains/history/domain/commands/**/*.{ts,tsx}'],
+    rules: {
+      // Transitional exception: history commands currently orchestrate store mutations.
+      // Goal is to move these imports behind an application executor in later phases.
+      'no-restricted-imports': 'off',
+    },
+  },
+
+  {
+    name: 'app/domain-boundaries-application',
+    files: ['src/domains/**/application/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@/components/**',
+                '@/layouts/**',
+                '@/views/**',
+                '@/domains/*/ui/**',
+              ],
+              message: 'Application layer should orchestrate use-cases and not depend on UI components.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    name: 'app/domain-boundaries-ui',
+    files: ['src/domains/**/ui/**/*.{ts,tsx,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/domains/*/infrastructure/**'],
+              message: 'UI should depend on application/domain APIs, not infrastructure adapters directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )

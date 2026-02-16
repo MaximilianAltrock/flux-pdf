@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { DividerReference } from '@/types'
-import { useDocumentStore } from '@/stores/document'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**
  * Command to split the document at a specific position
@@ -74,3 +74,4 @@ export class SplitGroupCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.SPLIT, SplitGroupCommand)
+
