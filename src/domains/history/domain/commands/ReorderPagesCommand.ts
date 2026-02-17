@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { PageEntry } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { clonePageEntries } from '@/shared/utils/document-clone'
 
 /**
  * Command to reorder pages via drag-and-drop
@@ -34,27 +34,14 @@ export class ReorderPagesCommand extends BaseCommand {
       throw new Error('ReorderPagesCommand: previousOrder and newOrder must have same length')
     }
 
-    // TODO: Move defensive copying to store layer
-    this.previousOrder = BaseCommand.clonePages(previousOrder)
-    this.newOrder = BaseCommand.clonePages(newOrder)
-  }
-
-  execute(): void {
-    const store = useDocumentStore()
-    // TODO: Move defensive copying to store layer
-    store.reorderPages(BaseCommand.clonePages(this.newOrder))
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    // TODO: Move defensive copying to store layer
-    store.reorderPages(BaseCommand.clonePages(this.previousOrder))
+    this.previousOrder = clonePageEntries(previousOrder)
+    this.newOrder = clonePageEntries(newOrder)
   }
 
   protected getPayload(): Record<string, unknown> {
     return {
-      previousOrder: this.previousOrder,
-      newOrder: this.newOrder,
+      previousOrder: clonePageEntries(this.previousOrder),
+      newOrder: clonePageEntries(this.newOrder),
     }
   }
 

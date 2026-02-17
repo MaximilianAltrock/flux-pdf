@@ -19,6 +19,6 @@ export type {
   OutlineNode,
   PdfOutlineNode,
   FileUploadResult,
-} from '@/domains/document/domain/types'
+} from './document'
 
-export { isDividerEntry, isPageEntry } from '@/domains/document/domain/types'
+export { isDividerEntry, isPageEntry } from './document'

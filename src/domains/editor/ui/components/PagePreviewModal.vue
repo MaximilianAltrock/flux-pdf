@@ -5,7 +5,7 @@ import {
   ChevronRight,
 } from 'lucide-vue-next'
 import { useSwipe, useEventListener, useResizeObserver } from '@vueuse/core'
-import { useThumbnailRenderer } from '@/domains/document/application/useThumbnailRenderer'
+import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
 import { useRedactionOverlay } from '@/domains/editor/ui/useRedactionOverlay'
 import type { PageReference } from '@/shared/types'
 import { useMobile } from '@/shared/composables/useMobile'

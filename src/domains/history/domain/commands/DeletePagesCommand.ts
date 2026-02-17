@@ -1,7 +1,7 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand, PageSnapshot } from './types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { clonePageReference } from '@/shared/utils/document-clone'
 
 /**
  * Command to delete one or more pages
@@ -20,7 +20,7 @@ export class DeletePagesCommand extends BaseCommand {
    * Snapshots of pages BEFORE deletion
    * Populated on first execute(), restored on undo()
    */
-  private backupSnapshots: PageSnapshot[] = []
+  public backupSnapshots: PageSnapshot[] = []
 
   constructor(
     pageIds: string[],
@@ -35,69 +35,23 @@ export class DeletePagesCommand extends BaseCommand {
       throw new Error('DeletePagesCommand requires at least one page ID')
     }
 
-    // TODO: Move defensive copying to store layer
     this.pageIds = [...pageIds]
     this.name = pageIds.length === 1 ? 'Delete page' : `Delete ${pageIds.length} pages`
 
     // Restore backup snapshots if provided (from deserialization)
     if (backupSnapshots) {
-      // TODO: Move defensive copying to store layer
       this.backupSnapshots = backupSnapshots.map((s) => ({
-        page: { ...s.page },
+        page: clonePageReference(s.page),
         index: s.index,
       }))
     }
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-
-    // Capture state on first execution (not on redo)
-    if (this.backupSnapshots.length === 0) {
-      this.captureSnapshots(store)
-    }
-
-    // Perform deletion
-    store.deletePages(this.pageIds)
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-
-    // Restore pages in correct order (ascending index)
-    // This ensures page 5 is inserted before page 10,
-    // so indices remain valid during restoration
-    const sorted = [...this.backupSnapshots].sort((a, b) => a.index - b.index)
-
-    for (const { page, index } of sorted) {
-      // TODO: Move defensive copying to store layer
-      store.insertPages(index, [{ ...page }])
-    }
-  }
-
-  /**
-   * Capture snapshots of pages before deletion
-   */
-  private captureSnapshots(store: ReturnType<typeof useDocumentStore>): void {
-    const pageIdSet = new Set(this.pageIds)
-
-    store.pages.forEach((page, index) => {
-      if (page.isDivider) return
-      if (pageIdSet.has(page.id)) {
-        this.backupSnapshots.push({
-          page: { ...page },
-          index,
-        })
-      }
-    })
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
       pageIds: this.pageIds,
-      // TODO: Move defensive copying to store layer
       backupSnapshots: this.backupSnapshots.map((s) => ({
-        page: { ...s.page },
+        page: clonePageReference(s.page),
         index: s.index,
       })),
     }

@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { SourceFile } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { cloneSourceFile } from '@/shared/utils/document-clone'
 
 /**
  * Command to add a source file to the registry (without inserting pages).
@@ -19,27 +19,13 @@ export class AddSourceCommand extends BaseCommand {
       throw new Error('AddSourceCommand requires a valid source file')
     }
 
-    // TODO: Move defensive copying to store layer
-    this.sourceFile = { ...sourceFile }
+    this.sourceFile = cloneSourceFile(sourceFile)
     this.name = `Add source "${sourceFile.filename}"`
-  }
-
-  execute(): void {
-    const store = useDocumentStore()
-    if (!store.sources.has(this.sourceFile.id)) {
-      // TODO: Move defensive copying to store layer
-      store.addSourceFile({ ...this.sourceFile })
-    }
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    store.removeSourceOnly(this.sourceFile.id)
   }
 
   protected getPayload(): Record<string, unknown> {
     return {
-      sourceFile: this.sourceFile,
+      sourceFile: cloneSourceFile(this.sourceFile),
     }
   }
 

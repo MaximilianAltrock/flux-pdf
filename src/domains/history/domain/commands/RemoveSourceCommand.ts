@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand, PageSnapshot } from './types'
 import type { SourceFile, PageEntry, PageReference } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { clonePageReference, cloneSourceFile } from '@/shared/utils/document-clone'
 
 /**
  * Command to remove a source file and all of its pages.
@@ -15,7 +15,7 @@ export class RemoveSourceCommand extends BaseCommand {
   public readonly name: string
 
   public readonly sourceFile: SourceFile
-  private readonly pageSnapshots: PageSnapshot[]
+  public readonly pageSnapshots: PageSnapshot[]
 
   constructor(
     sourceFile: SourceFile,
@@ -30,15 +30,13 @@ export class RemoveSourceCommand extends BaseCommand {
       throw new Error('RemoveSourceCommand requires a valid source file')
     }
 
-    // TODO: Move defensive copying to store layer
-    this.sourceFile = { ...sourceFile }
+    this.sourceFile = cloneSourceFile(sourceFile)
     this.name = `Remove "${sourceFile.filename}"`
 
     // Capture positions of pages belonging to this source for undo
     if (existingSnapshots && existingSnapshots.length > 0) {
-      // TODO: Move defensive copying to store layer
       this.pageSnapshots = existingSnapshots.map((s) => ({
-        page: { ...s.page },
+        page: clonePageReference(s.page),
         index: s.index,
       }))
     } else {
@@ -49,41 +47,19 @@ export class RemoveSourceCommand extends BaseCommand {
             !item.page.isDivider && item.page.sourceFileId === sourceFile.id,
         )
         .map(({ page, index }) => ({
-          page: { ...page },
+          page: clonePageReference(page),
           index,
         }))
     }
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-
-    const pageIds = this.pageSnapshots.map((p) => p.page.id)
-    store.deletePages(pageIds)
-    store.removeSourceOnly(this.sourceFile.id)
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-
-    // Re-add source metadata if missing
-    if (!store.sources.has(this.sourceFile.id)) {
-      // TODO: Move defensive copying to store layer
-      store.addSourceFile({ ...this.sourceFile })
-    }
-
-    // Restore pages at original positions (ascending index)
-    const sorted = [...this.pageSnapshots].sort((a, b) => a.index - b.index)
-    for (const { page, index } of sorted) {
-      // TODO: Move defensive copying to store layer
-      store.insertPages(index, [{ ...page }])
-    }
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
-      sourceFile: this.sourceFile,
-      pageSnapshots: this.pageSnapshots,
+      sourceFile: cloneSourceFile(this.sourceFile),
+      pageSnapshots: this.pageSnapshots.map((snapshot) => ({
+        page: clonePageReference(snapshot.page),
+        index: snapshot.index,
+      })),
     }
   }
 

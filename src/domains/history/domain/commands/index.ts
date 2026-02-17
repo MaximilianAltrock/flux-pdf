@@ -12,11 +12,12 @@
  * Usage:
  * ```ts
  * import { RotatePagesCommand, commandRegistry } from '@/domains/history/domain/commands'
+ * import { executeCommand } from '@/domains/history/application'
  * import { ROTATION_DELTA_DEGREES } from '@/shared/constants'
  *
- * // Create and execute a command
+ * // Create and execute a command through history
  * const cmd = new RotatePagesCommand(['page-1', 'page-2'], ROTATION_DELTA_DEGREES.RIGHT)
- * cmd.execute()
+ * executeCommand(historyStore, cmd)
  *
  * // Serialize for persistence
  * const serialized = cmd.serialize()
@@ -36,6 +37,7 @@ export type {
   HistoryEntry,
   HistoryDisplayEntry,
 } from './types'
+export { toJsonSafeSerializedCommand } from './serialization'
 
 // Base class
 export { BaseCommand } from './BaseCommand'

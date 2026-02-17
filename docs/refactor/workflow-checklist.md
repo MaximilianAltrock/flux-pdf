@@ -12,6 +12,7 @@ Use this checklist when implementing or reviewing features in the refactored arc
 
 - [x] `ui` depends on `application`/`domain`, not infrastructure adapters.
 - [x] `application` orchestrates use-cases and history execution.
+- [x] `application` may use Vue reactivity/composables for orchestration when needed.
 - [x] `domain` stays framework-free and deterministic.
 - [x] Infrastructure integrations are isolated in `infrastructure`.
 
@@ -25,6 +26,7 @@ Use this checklist when implementing or reviewing features in the refactored arc
 
 - [x] Mutations that should be undoable use command execution paths.
 - [x] Command payloads are serializable and deserializable.
+- [x] History command execution/undo is wired through `history/application` executors with injected deps, not domain/store imports.
 - [x] Batch/group commands are used for multi-step interactions.
 - [x] Core document workflows call use-cases first (`importPdf`, `exportPdf`, `reorderPages`, `updateMetadata`) instead of direct store/command wiring.
 - [x] Direct command execution is allowed only with a documented temporary exception approved in architecture docs (currently none).

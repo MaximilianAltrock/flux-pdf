@@ -2,7 +2,6 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/shared/constants'
-import { useDocumentStore } from '@/domains/document/store/document.store'
 
 /**
  * Command to rotate one or more pages
@@ -33,7 +32,6 @@ export class RotatePagesCommand extends BaseCommand {
       )
     }
 
-    // TODO: Move defensive copying to store layer
     this.pageIds = [...pageIds]
     this.degrees = degrees
 
@@ -44,27 +42,9 @@ export class RotatePagesCommand extends BaseCommand {
         : `Rotate ${direction} ${pageIds.length} pages`
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-    for (const pageId of this.pageIds) {
-      store.rotatePage(pageId, this.degrees)
-    }
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    const reverseDegrees =
-      this.degrees === ROTATION_DELTA_DEGREES.RIGHT
-        ? ROTATION_DELTA_DEGREES.LEFT
-        : ROTATION_DELTA_DEGREES.RIGHT
-    for (const pageId of this.pageIds) {
-      store.rotatePage(pageId, reverseDegrees)
-    }
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
-      pageIds: this.pageIds,
+      pageIds: [...this.pageIds],
       degrees: this.degrees,
     }
   }

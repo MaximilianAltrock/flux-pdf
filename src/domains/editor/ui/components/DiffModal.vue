@@ -2,7 +2,7 @@
 import { ref, shallowRef, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { X, ZoomIn, ZoomOut, Eye, Layers, Zap, Columns } from 'lucide-vue-next'
-import { useThumbnailRenderer } from '@/domains/document/application/useThumbnailRenderer'
+import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
 import type { PageReference } from '@/shared/types'
 import {
   Dialog,

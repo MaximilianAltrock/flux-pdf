@@ -5,6 +5,7 @@ import type { useUiStore } from '@/domains/editor/store/ui.store'
 import type { useExportStore } from '@/domains/export/store/export.store'
 import type { useProjectsStore } from '@/domains/workspace/store/projects.store'
 import type { Router } from 'vue-router'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 interface ProjectActionsToast {
   success: (title: string, detail?: string) => unknown
@@ -53,6 +54,8 @@ export function createProjectActions({
   activeProjectMeta,
   normalizeProjectTitle,
 }: CreateProjectActionsDeps) {
+  const log = createLogger('project-actions')
+
   function resetWorkspaceUi() {
     ui.closeCommandPalette()
     ui.closePreflightPanel()
@@ -79,7 +82,7 @@ export function createProjectActions({
     try {
       await projects.persistActiveProject()
     } catch (error) {
-      console.error('Failed to persist cleared project:', error)
+      log.error('Failed to persist cleared project:', error)
       toast.error('Failed to save cleared project')
     }
   }

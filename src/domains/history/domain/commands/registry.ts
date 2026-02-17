@@ -1,4 +1,5 @@
 import type { Command, CommandConstructor, SerializedCommand } from './types'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 /**
  * Command type constants
@@ -31,6 +32,7 @@ export type CommandTypeValue = (typeof CommandType)[keyof typeof CommandType]
  * reconstruction from persisted state.
  */
 class CommandRegistry {
+  private readonly log = createLogger('history-command-registry')
   private readonly commands = new Map<string, CommandConstructor>()
 
   /**
@@ -39,7 +41,7 @@ class CommandRegistry {
    */
   register(type: string, constructor: CommandConstructor): void {
     if (this.commands.has(type)) {
-      console.warn(`Command type "${type}" is already registered. Overwriting.`)
+      this.log.warn(`Command type "${type}" is already registered. Overwriting.`)
     }
     this.commands.set(type, constructor)
   }
@@ -68,7 +70,7 @@ class CommandRegistry {
     const Constructor = this.commands.get(data.type)
 
     if (!Constructor) {
-      console.warn(
+      this.log.warn(
         `Unknown command type: "${data.type}". Registered types: ${this.getRegisteredTypes().join(', ')}`,
       )
       return null
@@ -77,7 +79,7 @@ class CommandRegistry {
     try {
       return Constructor.deserialize(data)
     } catch (error) {
-      console.error(`Failed to deserialize command "${data.type}":`, error)
+      this.log.error(`Failed to deserialize command "${data.type}":`, error)
       return null
     }
   }

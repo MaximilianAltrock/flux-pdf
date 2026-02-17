@@ -1,4 +1,7 @@
 import { normalizeProjectIdParam } from '@/domains/workspace/application/router-guards'
+import { createLogger } from '@/shared/infrastructure/logger'
+
+const log = createLogger('project-route-sync')
 
 type ProjectRouteSyncOptions = {
   switchProject: (projectId: string) => Promise<boolean>
@@ -21,7 +24,7 @@ export function createProjectRouteSync(options: ProjectRouteSyncOptions) {
     try {
       loaded = await options.switchProject(projectId)
     } catch (error) {
-      console.error(`Failed to switch project "${projectId}" from route param:`, error)
+      log.error(`Failed to switch project "${projectId}" from route param:`, error)
       loaded = false
     }
 

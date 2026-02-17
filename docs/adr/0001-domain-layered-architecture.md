@@ -15,6 +15,7 @@ Adopt and enforce a layered domain-first structure:
 - Dependency direction: `ui -> application -> domain -> infrastructure`
 - Domain modules under `src/domains/{workspace,document,editor,history,export}`
 - Layer names are standardized as: `ui`, `store`, `application`, `domain`, `infrastructure`
+- Application layer may use Vue reactivity/composables for orchestration; domain remains framework-free.
 - Per-domain required/optional/deferred layers are defined in `docs/refactor/domain-layer-matrix.json` (single source of truth)
 - Legacy paths (`src/stores/*`, `src/services/*`, `src/commands/*`) are removed and blocked by architecture validation
 
@@ -37,6 +38,7 @@ Adopt and enforce a layered domain-first structure:
 - ESLint boundary rules are active in `eslint.config.ts` for `src/domains/**`.
 - Domain layer matrix is enforced by `scripts/validate-domain-layer-matrix.mjs` (via `npm run validate:architecture`).
 - Core document workflows are guarded by `scripts/validate-core-usecase-boundaries.mjs` to prevent runtime bypass of application use-cases.
+- History commands are data-only payloads; execution/undo is centralized in `src/domains/history/application/command-executor.ts`.
 - PR checklist enforces typed APIs, no side effects in computed, props-down/events-up, and behavior tests for changes.
 
 ## Migration Notes

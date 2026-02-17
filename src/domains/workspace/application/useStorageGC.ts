@@ -2,12 +2,13 @@ import { shallowRef } from 'vue'
 import { db, type ProjectState } from '@/shared/infrastructure/db'
 import { collectReachableSourceIdsFromState } from '@/domains/document/domain/storage-gc'
 import { clearPdfCache } from '@/domains/document/infrastructure/import'
-import { useThumbnailRenderer } from '@/domains/document/application/useThumbnailRenderer'
+import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
 import { useDocumentStore } from '@/domains/document/store/document.store'
 import { useHistoryStore } from '@/domains/history/store/history.store'
 import { useProjectsStore } from '@/domains/workspace/store/projects.store'
 import { useSettingsStore } from '@/domains/workspace/store/settings.store'
 import { STORAGE_KEYS } from '@/shared/constants'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 type SourceUsage = {
   active: boolean
@@ -32,6 +33,8 @@ const EMPTY_BREAKDOWN: StorageBreakdown = {
   freeBytes: null,
 }
 
+const log = createLogger('storage-gc')
+
 function resolveFileSizeBytes(fileSize: unknown, buffer: ArrayBuffer): number {
   if (typeof fileSize === 'number' && Number.isFinite(fileSize) && fileSize > 0) {
     return fileSize
@@ -49,7 +52,7 @@ async function resolveStorageQuotaBytes(): Promise<number | null> {
     const quota = Number(estimate.quota ?? 0)
     return Number.isFinite(quota) && quota > 0 ? quota : null
   } catch (error) {
-    console.warn('Failed to read storage estimate:', error)
+    log.warn('Failed to read storage estimate:', error)
     return null
   }
 }

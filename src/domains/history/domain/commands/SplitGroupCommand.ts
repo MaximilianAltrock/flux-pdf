@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { DividerReference } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { cloneDividerReference } from '@/shared/utils/document-clone'
 
 /**
  * Command to split the document at a specific position
@@ -31,7 +31,7 @@ export class SplitGroupCommand extends BaseCommand {
     this.index = index
 
     // Use existing divider (from deserialization) or create new one
-    this.divider = existingDivider ?? this.createDivider()
+    this.divider = existingDivider ? cloneDividerReference(existingDivider) : this.createDivider()
   }
 
   /**
@@ -44,22 +44,10 @@ export class SplitGroupCommand extends BaseCommand {
     }
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-    // TODO: Move defensive copying to store layer
-    store.insertPages(this.index, [{ ...this.divider }])
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    store.deletePages([this.divider.id])
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
       index: this.index,
-      // TODO: Move defensive copying to store layer
-      divider: { ...this.divider },
+      divider: cloneDividerReference(this.divider),
     }
   }
 

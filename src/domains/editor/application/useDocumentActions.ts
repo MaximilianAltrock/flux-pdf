@@ -1,18 +1,12 @@
 import { storeToRefs } from 'pinia'
-import { computed, inject, provide, type InjectionKey } from 'vue'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { useHistoryStore } from '@/domains/history/store/history.store'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useExportStore } from '@/domains/export/store/export.store'
-import { useProjectsStore } from '@/domains/workspace/store/projects.store'
-import { useSettingsStore } from '@/domains/workspace/store/settings.store'
+import { inject, provide, type InjectionKey } from 'vue'
+import { useEditorCompositionRoot } from '@/app/composition-root'
 import { useRouter } from 'vue-router'
 import { DEFAULT_PROJECT_TITLE } from '@/shared/constants'
 import { useToast } from '@/shared/composables/useToast'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useActiveElementBlur } from '@/shared/composables/useActiveElementBlur'
-import { useDocumentServiceBindings } from '@/domains/document/application/useDocumentServiceBindings'
 import { useSourceDropHandlers } from '@/domains/document/application/composables/useSourceDropHandlers'
 import { createCommandActions } from '@/domains/editor/application/actions/command-actions'
 import { createFileExportActions } from '@/domains/editor/application/actions/file-export-actions'
@@ -28,20 +22,14 @@ import type { DocumentUiState } from '@/shared/types/ui'
  * All business logic lives here, keeping components thin
  */
 export function useDocumentActions() {
-  const store = useDocumentStore()
-  const history = useHistoryStore()
-  const ui = useUiStore()
-  const exportState = useExportStore()
-  const projects = useProjectsStore()
-  const settings = useSettingsStore()
-  const { zoom, importJob: uiImportJob, ignoredPreflightRuleIds } = storeToRefs(ui)
-  const { exportJob: exportStateJob } = storeToRefs(exportState)
-  const { preferences } = storeToRefs(settings)
-  const autoGenerateOutlineSinglePage = computed(
-    () => preferences.value.autoGenerateOutlineSinglePage,
-  )
-  const filenamePattern = computed(() => preferences.value.filenamePattern)
-  const { activeProjectId, activeProjectMeta } = storeToRefs(projects)
+  const root = useEditorCompositionRoot()
+  const store = root.stores.documentStore
+  const history = root.stores.historyStore
+  const ui = root.stores.uiStore
+  const exportState = root.stores.exportStore
+  const projects = root.stores.projectsStore
+  const { zoom, ignoredPreflightRuleIds } = root.refs
+  const { exportJob: exportStateJob, activeProjectId, activeProjectMeta } = root.refs
   const { openFileDialog, clearFileInput } = useFileInput()
   const { undo, redo, jumpTo, clearHistory } = history
   const { canUndo, canRedo, undoName, redoName, historyList } = storeToRefs(history)
@@ -67,12 +55,7 @@ export function useDocumentActions() {
     clearExportError,
     parsePageRange,
     validatePageRange,
-  } = useDocumentServiceBindings({
-    documentStore: store,
-    historyStore: history,
-    ui: { setLoading: ui.setLoading, importJob: uiImportJob, exportJob: exportStateJob },
-    settings: { autoGenerateOutlineSinglePage, filenamePattern },
-  })
+  } = root.services.documentService
   const exportJob = exportStateJob
   const { handleSourceDropped, handleSourcePageDropped, handleSourcePagesDropped } =
     useSourceDropHandlers({

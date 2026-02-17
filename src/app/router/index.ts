@@ -5,6 +5,9 @@ import {
   normalizeProjectIdParam,
 } from '@/domains/workspace/application/router-guards'
 import { STORAGE_KEYS } from '@/shared/constants'
+import { createLogger } from '@/shared/infrastructure/logger'
+
+const log = createLogger('router')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -59,7 +62,7 @@ async function getProjectById(id: string) {
   try {
     return await db.projects.get(id)
   } catch (error) {
-    console.error(`Failed to lookup project "${id}" in route guard:`, error)
+    log.error(`Failed to lookup project "${id}" in route guard:`, error)
     return undefined
   }
 }
@@ -96,7 +99,7 @@ router.beforeEach(async (to) => {
 
     return true
   } catch (error) {
-    console.error('Router guard failed:', error)
+    log.error('Router guard failed:', error)
     return true
   }
 })

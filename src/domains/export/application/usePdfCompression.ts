@@ -1,5 +1,6 @@
 import { shallowRef } from 'vue'
 import { PROGRESS, TIMEOUTS_MS } from '@/shared/constants'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 /**
  * Compression quality presets
@@ -28,6 +29,7 @@ export interface CompressionResult {
  * The WASM binary (~14MB) is loaded on first use.
  */
 export function usePdfCompression() {
+  const log = createLogger('pdf-compression')
   const isCompressing = shallowRef(false)
   const compressionProgress = shallowRef<number>(PROGRESS.MIN)
   const compressionError = shallowRef<string | null>(null)
@@ -113,7 +115,7 @@ export function usePdfCompression() {
 
             // Fallback if compression increased size
             if (compressedSize >= originalSize) {
-              console.warn(
+              log.warn(
                 `Compression increased file size (${originalSize} -> ${compressedSize}). Keeping original.`,
               )
               compressedData = pdfData
@@ -134,7 +136,7 @@ export function usePdfCompression() {
 
           case 'error':
             if (import.meta.env.DEV) {
-              console.error('[Compression] Worker error:', error)
+              log.error('Worker error:', error)
             }
             compressionError.value = error
             cleanup()
@@ -145,7 +147,7 @@ export function usePdfCompression() {
 
       const handleError = (error: ErrorEvent) => {
         if (import.meta.env.DEV) {
-          console.error('[Compression] Worker exception:', error)
+          log.error('Worker exception:', error)
         }
         compressionError.value = error.message || 'Worker error'
         cleanup()

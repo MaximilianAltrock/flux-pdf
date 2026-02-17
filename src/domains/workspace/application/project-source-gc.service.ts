@@ -5,6 +5,7 @@ import {
   resolveOrphanSourceIds,
   type GcStateSnapshot,
 } from '@/domains/workspace/application/project-storage-gc'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 export interface ProjectSourceGcRepository {
   listProjectStates(): Promise<ProjectState[]>
@@ -26,12 +27,13 @@ export function createProjectSourceGcService(
   repository: ProjectSourceGcRepository,
   options?: ProjectSourceGcServiceOptions,
 ): ProjectSourceGcService {
+  const log = createLogger('project-source-gc')
   const isRunning = shallowRef(false)
   const evictSourceCache = options?.evictSourceCache ?? (() => {})
   const onError =
     options?.onError ??
     ((error: unknown) => {
-      console.warn('Failed to garbage collect stored sources:', error)
+      log.warn('Failed to garbage collect stored sources:', error)
     })
 
   async function run(currentState?: GcStateSnapshot): Promise<void> {

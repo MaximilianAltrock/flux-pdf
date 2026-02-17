@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { HISTORY } from '@/shared/constants'
 import { useDocumentStore } from '@/domains/document/store/document.store'
+import { createHistoryCommandExecutor } from '@/domains/history/application'
 import { BatchCommand, commandRegistry } from '@/domains/history/domain/commands'
 import type {
   Command,
@@ -9,6 +10,8 @@ import type {
   HistoryDisplayEntry,
   SerializedCommand,
 } from '@/domains/history/domain/commands'
+import { createLogger } from '@/shared/infrastructure/logger'
+import { toJsonSafeSerializedCommand } from '@/domains/history/domain/commands/serialization'
 
 /**
  * Command History Store
@@ -17,7 +20,12 @@ import type {
  * Persists history to IndexedDB for session restoration.
  */
 export const useHistoryStore = defineStore('history', () => {
+  const log = createLogger('history-store')
   const store = useDocumentStore()
+  const commandExecutor = createHistoryCommandExecutor({
+    documentStore: store,
+    logger: log,
+  })
 
   // ============================================
   // State
@@ -30,8 +38,7 @@ export const useHistoryStore = defineStore('history', () => {
   // Serialization Helpers
   // ============================================
   function serializeHistory(): SerializedCommand[] {
-    const toPlain = <T>(value: T): T => JSON.parse(JSON.stringify(value))
-    return history.value.map((entry) => toPlain(entry.command.serialize()))
+    return history.value.map((entry) => toJsonSafeSerializedCommand(entry.command.serialize()))
   }
 
   function getHistoryPointer(): number {
@@ -48,7 +55,15 @@ export const useHistoryStore = defineStore('history', () => {
     const rehydratedEntries: HistoryEntry[] = []
 
     for (const serialized of serializedHistory) {
-      const command = commandRegistry.deserialize(serialized)
+      let normalized: SerializedCommand
+      try {
+        normalized = toJsonSafeSerializedCommand(serialized)
+      } catch (error) {
+        log.warn('Skipping invalid serialized command during restore:', error)
+        continue
+      }
+
+      const command = commandRegistry.deserialize(normalized)
 
       if (command) {
         rehydratedEntries.push({
@@ -56,7 +71,7 @@ export const useHistoryStore = defineStore('history', () => {
           timestamp: command.createdAt,
         })
       } else {
-        console.warn(`Skipping unknown command type during restore: ${serialized.type}`)
+        log.warn(`Skipping unknown command type during restore: ${serialized.type}`)
       }
     }
 
@@ -71,9 +86,11 @@ export const useHistoryStore = defineStore('history', () => {
     if (store.pages.length === 0 && clampedPointer >= 0) {
       for (let i = 0; i <= clampedPointer; i++) {
         try {
-          rehydratedEntries[i]?.command.execute()
+          const command = rehydratedEntries[i]?.command
+          if (!command) continue
+          commandExecutor.execute(command)
         } catch (error) {
-          console.error('Failed to replay command during restore:', error)
+          log.error('Failed to replay command during restore:', error)
           break
         }
       }
@@ -105,8 +122,6 @@ export const useHistoryStore = defineStore('history', () => {
       name: 'Session Start',
       label: 'Session Start',
       createdAt: sessionStartTime.value,
-      execute() {},
-      undo() {},
       serialize() {
         return {
           type: 'Root',
@@ -143,7 +158,7 @@ export const useHistoryStore = defineStore('history', () => {
       history.value = history.value.slice(0, historyPointer.value + 1)
     }
 
-    command.execute()
+    commandExecutor.execute(command)
 
     history.value.push({
       command,
@@ -179,7 +194,7 @@ export const useHistoryStore = defineStore('history', () => {
     const entry = history.value[historyPointer.value]
     if (!entry) return false
 
-    entry.command.undo()
+    commandExecutor.undo(entry.command)
     historyPointer.value--
 
     return true
@@ -192,7 +207,7 @@ export const useHistoryStore = defineStore('history', () => {
     const entry = history.value[historyPointer.value]
     if (!entry) return false
 
-    entry.command.execute()
+    commandExecutor.execute(entry.command)
 
     return true
   }

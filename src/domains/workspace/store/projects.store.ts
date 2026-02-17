@@ -3,7 +3,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { useDocumentStore } from '@/domains/document/store/document.store'
 import { useHistoryStore } from '@/domains/history/store/history.store'
 import { useSettingsStore } from './settings.store'
-import { useThumbnailRenderer } from '@/domains/document/application/useThumbnailRenderer'
+import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
 import type { ProjectMeta, ProjectState } from '@/shared/infrastructure/db'
 import { evictPdfCache } from '@/domains/document/infrastructure/import'
 import { createProjectAuthoringService } from '@/domains/workspace/application/project-authoring.service'
@@ -21,8 +21,10 @@ import {
 import type { PageReference } from '@/shared/types'
 import type { DocumentUiState } from '@/shared/types/ui'
 import { STORAGE_KEYS } from '@/shared/constants'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 export const useProjectsStore = defineStore('projects', () => {
+  const log = createLogger('projects-store')
   const store = useDocumentStore()
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
@@ -151,7 +153,7 @@ export const useProjectsStore = defineStore('projects', () => {
     setHydrating: projectState.setHydrating,
     setLoading: projectState.setLoading,
     onLoadError: (error) => {
-      console.error('Failed to load project:', error)
+      log.error('Failed to load project:', error)
     },
   })
 

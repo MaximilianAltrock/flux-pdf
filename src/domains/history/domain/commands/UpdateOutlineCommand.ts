@@ -2,16 +2,16 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { OutlineNode } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { cloneOutlineTree } from '@/shared/utils/document-clone'
 
 export class UpdateOutlineCommand extends BaseCommand {
   public readonly type = CommandType.UPDATE_OUTLINE
   public readonly name: string
 
-  private readonly previousTree: OutlineNode[]
-  private readonly nextTree: OutlineNode[]
-  private readonly previousDirty: boolean
-  private readonly nextDirty: boolean
+  public readonly previousTree: OutlineNode[]
+  public readonly nextTree: OutlineNode[]
+  public readonly previousDirty: boolean
+  public readonly nextDirty: boolean
 
   constructor(
     previousTree: OutlineNode[],
@@ -23,29 +23,17 @@ export class UpdateOutlineCommand extends BaseCommand {
     createdAt?: number,
   ) {
     super(id, createdAt)
-    this.previousTree = cloneTree(previousTree ?? [])
-    this.nextTree = cloneTree(nextTree ?? [])
+    this.previousTree = cloneOutlineTree(previousTree ?? [])
+    this.nextTree = cloneOutlineTree(nextTree ?? [])
     this.previousDirty = previousDirty
     this.nextDirty = nextDirty
     this.name = name
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-    store.setOutlineTree(this.nextTree, false)
-    store.setOutlineDirty(this.nextDirty)
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    store.setOutlineTree(this.previousTree, false)
-    store.setOutlineDirty(this.previousDirty)
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
-      previousTree: this.previousTree,
-      nextTree: this.nextTree,
+      previousTree: cloneOutlineTree(this.previousTree),
+      nextTree: cloneOutlineTree(this.nextTree),
       previousDirty: this.previousDirty,
       nextDirty: this.nextDirty,
       name: this.name,
@@ -71,10 +59,6 @@ export class UpdateOutlineCommand extends BaseCommand {
       data.timestamp,
     )
   }
-}
-
-function cloneTree(nodes: OutlineNode[]): OutlineNode[] {
-  return JSON.parse(JSON.stringify(nodes)) as OutlineNode[]
 }
 
 registerCommand(CommandType.UPDATE_OUTLINE, UpdateOutlineCommand)

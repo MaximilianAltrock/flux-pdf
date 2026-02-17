@@ -17,6 +17,12 @@ import type {
   RedactionMark,
 } from '@/shared/types'
 import { isPageEntry } from '@/shared/types'
+import {
+  clonePageEntries,
+  clonePageReferences,
+  cloneRedactionMark,
+  cloneSourceFile,
+} from '@/shared/utils/document-clone'
 
 export const useDocumentStore = defineStore('document', () => {
   // ============================================
@@ -113,7 +119,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function addSourceFile(sourceFile: SourceFile) {
-    sources.value.set(sourceFile.id, sourceFile)
+    sources.value.set(sourceFile.id, cloneSourceFile(sourceFile))
     bumpSourcesVersion()
   }
 
@@ -130,7 +136,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function addPages(newPages: PageReference[]) {
-    pages.value.push(...newPages)
+    pages.value.push(...clonePageReferences(newPages))
     bumpPagesStructureVersion()
   }
 
@@ -138,7 +144,7 @@ export const useDocumentStore = defineStore('document', () => {
     if (index < 0) index = 0
     if (index > pages.value.length) index = pages.value.length
 
-    pages.value.splice(index, 0, ...newPages)
+    pages.value.splice(index, 0, ...clonePageEntries(newPages))
     bumpPagesStructureVersion()
   }
 
@@ -158,7 +164,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function reorderPages(newOrder: PageEntry[]) {
-    pages.value = newOrder
+    pages.value = clonePageEntries(newOrder)
     bumpPagesStructureVersion()
   }
 
@@ -191,7 +197,7 @@ export const useDocumentStore = defineStore('document', () => {
     const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (!page) return
     if (!page.redactions) page.redactions = []
-    page.redactions.push({ ...redaction })
+    page.redactions.push(cloneRedactionMark(redaction))
     bumpPagesVersion()
   }
 
@@ -200,7 +206,7 @@ export const useDocumentStore = defineStore('document', () => {
     const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
     if (!page) return
     if (!page.redactions) page.redactions = []
-    page.redactions.push(...redactions.map((r) => ({ ...r })))
+    page.redactions.push(...redactions.map(cloneRedactionMark))
     bumpPagesVersion()
   }
 
@@ -362,7 +368,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   function setPages(newPages: PageEntry[]) {
-    pages.value = newPages
+    pages.value = clonePageEntries(newPages)
     bumpPagesStructureVersion()
   }
 

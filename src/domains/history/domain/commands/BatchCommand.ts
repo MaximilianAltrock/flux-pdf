@@ -1,37 +1,30 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand, commandRegistry } from './registry'
 import type { SerializedCommand, Command } from './types'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 export class BatchCommand extends BaseCommand {
+  private static readonly log = createLogger('history-batch-command')
   public readonly type = CommandType.BATCH
   public readonly name: string
 
-  private readonly commands: Command[]
+  private readonly children: Command[]
 
   constructor(commands: Command[], name?: string, id?: string, createdAt?: number) {
     super(id, createdAt)
-    this.commands = commands
+    this.children = [...commands]
     this.name = name ?? `Batch (${commands.length})`
   }
 
-  execute(): void {
-    for (const cmd of this.commands) {
-      cmd.execute()
-    }
-  }
-
-  undo(): void {
-    // Undo in reverse order
-    for (let i = this.commands.length - 1; i >= 0; i--) {
-      this.commands[i]?.undo()
-    }
+  getCommands(): readonly Command[] {
+    return this.children
   }
 
   protected getPayload(): Record<string, unknown> {
     // We must serialize the children so they can be saved to IDB
     return {
       name: this.name,
-      commands: this.commands.map((c) => c.serialize()),
+      commands: this.children.map((c) => c.serialize()),
     }
   }
 
@@ -53,7 +46,7 @@ export class BatchCommand extends BaseCommand {
       if (cmd) {
         commands.push(cmd)
       } else {
-        console.warn('BatchCommand: Failed to restore child command', serializedChild.type)
+        BatchCommand.log.warn('Failed to restore child command', serializedChild.type)
       }
     }
 

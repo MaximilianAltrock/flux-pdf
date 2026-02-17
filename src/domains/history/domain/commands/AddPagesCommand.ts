@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { PageReference, SourceFile } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { clonePageReferences, cloneSourceFile } from '@/shared/utils/document-clone'
 
 /**
  * Command to add pages from a source file
@@ -40,9 +40,8 @@ export class AddPagesCommand extends BaseCommand {
       throw new Error('AddPagesCommand requires at least one page')
     }
 
-    // TODO: Move defensive copying to store layer
-    this.sourceFile = { ...sourceFile }
-    this.pages = BaseCommand.clonePages(pages)
+    this.sourceFile = cloneSourceFile(sourceFile)
+    this.pages = clonePageReferences(pages)
     this.shouldAddSource = shouldAddSource
 
     this.name = shouldAddSource
@@ -50,36 +49,10 @@ export class AddPagesCommand extends BaseCommand {
       : `Add pages from "${sourceFile.filename}"`
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-
-    // Add source metadata if needed and not already present
-    if (this.shouldAddSource && !store.sources.has(this.sourceFile.id)) {
-      // TODO: Move defensive copying to store layer
-      store.addSourceFile({ ...this.sourceFile })
-    }
-
-    // TODO: Move defensive copying to store layer
-    store.addPages(BaseCommand.clonePages(this.pages))
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-
-    // Remove pages
-    const pageIds = this.pages.map((p) => p.id)
-    store.deletePages(pageIds)
-
-    // Remove source file only if this command added it
-    if (this.shouldAddSource) {
-      store.removeSourceOnly(this.sourceFile.id)
-    }
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
-      sourceFile: this.sourceFile,
-      pages: this.pages,
+      sourceFile: cloneSourceFile(this.sourceFile),
+      pages: clonePageReferences(this.pages),
       shouldAddSource: this.shouldAddSource,
     }
   }

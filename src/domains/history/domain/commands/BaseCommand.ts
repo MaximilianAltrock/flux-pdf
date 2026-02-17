@@ -10,7 +10,6 @@ import { type Command, type SerializedCommand } from './types'
  *
  * Subclasses must:
  * - Define `type` using a CommandType constant
- * - Implement `execute()` and `undo()`
  * - Implement `getPayload()` for serialization
  * - Implement static `deserialize()` for reconstruction
  */
@@ -29,18 +28,6 @@ export abstract class BaseCommand implements Command {
     this.id = id ?? crypto.randomUUID()
     this.createdAt = createdAt ?? Date.now()
   }
-
-  /**
-   * Execute the command
-   * Called on initial execution and redo
-   */
-  abstract execute(): void
-
-  /**
-   * Undo the command
-   * Must perfectly reverse execute()
-   */
-  abstract undo(): void
 
   /**
    * Get command-specific payload for serialization
@@ -63,12 +50,5 @@ export abstract class BaseCommand implements Command {
     }
   }
 
-  /**
-   * Helper to shallow clone page references
-   * TODO: Move defensive copying to the store layer for consistent ownership model
-   */
-  protected static clonePages<T>(pages: T[]): T[] {
-    return pages.map((p) => ({ ...p }))
-  }
 }
 

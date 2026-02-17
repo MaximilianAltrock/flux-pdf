@@ -1,25 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { useDocumentStore } from '@/domains/document/store/document.store'
 import { useHistoryStore } from '@/domains/history/store/history.store'
-import type { Command } from '@/domains/history/domain/commands/types'
+import { AddSourceCommand, RemoveSourceCommand } from '@/domains/history/domain/commands'
+import type { SourceFile } from '@/shared/types'
 
-function createCommand(
-  label = 'Test label',
-  hooks?: { onExecute?: () => void; onUndo?: () => void },
-): Command {
+function createSource(id: string): SourceFile {
   return {
-    id: crypto.randomUUID(),
-    type: 'Test',
-    name: 'Test name',
-    label,
-    createdAt: Date.now(),
-    execute: vi.fn(() => hooks?.onExecute?.()),
-    undo: vi.fn(() => hooks?.onUndo?.()),
-    serialize: () => ({
-      type: 'Test',
-      payload: { id: 'x' },
-      timestamp: Date.now(),
-    }),
+    id,
+    filename: `${id}.pdf`,
+    pageCount: 1,
+    fileSize: 128,
+    addedAt: Date.now(),
+    color: 'zinc',
+    pageMetaData: [{ width: 612, height: 792, rotation: 0 }],
   }
 }
 
@@ -29,58 +23,66 @@ describe('useHistoryStore', () => {
   })
 
   it('uses command label for undo/redo names', () => {
-    const store = useHistoryStore()
-    const command = createCommand('Rotate 2 pages')
+    const history = useHistoryStore()
+    const document = useDocumentStore()
+    const source = createSource('source-1')
+    const command = new AddSourceCommand(source)
 
-    store.execute(command)
+    history.execute(command)
 
-    expect(command.execute).toHaveBeenCalledOnce()
-    expect(store.undoName).toBe('Rotate 2 pages')
-    expect(store.canUndo).toBe(true)
-    expect(store.canRedo).toBe(false)
+    expect(document.sources.has(source.id)).toBe(true)
+    expect(history.undoName).toBe(command.label)
+    expect(history.canUndo).toBe(true)
+    expect(history.canRedo).toBe(false)
 
-    store.undo()
+    history.undo()
 
-    expect(command.undo).toHaveBeenCalledOnce()
-    expect(store.redoName).toBe('Rotate 2 pages')
-    expect(store.canRedo).toBe(true)
+    expect(document.sources.has(source.id)).toBe(false)
+    expect(history.redoName).toBe(command.label)
+    expect(history.canRedo).toBe(true)
   })
 
   it('executes grouped commands as a single history entry and undoes in reverse order', () => {
-    const store = useHistoryStore()
-    const callOrder: string[] = []
-    const first = createCommand('First', {
-      onExecute: () => callOrder.push('execute:first'),
-      onUndo: () => callOrder.push('undo:first'),
-    })
-    const second = createCommand('Second', {
-      onExecute: () => callOrder.push('execute:second'),
-      onUndo: () => callOrder.push('undo:second'),
-    })
+    const history = useHistoryStore()
+    const document = useDocumentStore()
+    const source = createSource('source-2')
 
-    const result = store.executeBatch([first, second], 'Grouped edit')
+    const first = new AddSourceCommand(source)
+    const second = new RemoveSourceCommand(source, [])
+
+    const result = history.executeBatch([first, second], 'Grouped edit')
 
     expect(result?.label).toBe('Grouped edit')
-    expect(store.history).toHaveLength(1)
-    expect(store.undoName).toBe('Grouped edit')
-    expect(callOrder).toEqual(['execute:first', 'execute:second'])
+    expect(history.history).toHaveLength(1)
+    expect(history.undoName).toBe('Grouped edit')
+    expect(document.sources.has(source.id)).toBe(false)
 
-    store.undo()
-    expect(callOrder).toEqual([
-      'execute:first',
-      'execute:second',
-      'undo:second',
-      'undo:first',
-    ])
+    history.undo()
 
-    store.redo()
-    expect(callOrder).toEqual([
-      'execute:first',
-      'execute:second',
-      'undo:second',
-      'undo:first',
-      'execute:first',
-      'execute:second',
-    ])
+    // Reverse-order undo should end with source removed:
+    // undo RemoveSource -> source added, then undo AddSource -> source removed
+    expect(document.sources.has(source.id)).toBe(false)
+
+    history.redo()
+
+    expect(document.sources.has(source.id)).toBe(false)
+  })
+
+  it('rejects non-JSON payloads during history serialization', () => {
+    const history = useHistoryStore()
+    const source = createSource('source-unsafe')
+    const unsafeCommand = new AddSourceCommand(source)
+    unsafeCommand.serialize = () => ({
+      type: unsafeCommand.type,
+      payload: {
+        id: unsafeCommand.id,
+        map: new Map([['a', 1]]),
+      },
+      timestamp: unsafeCommand.createdAt,
+    })
+
+    history.execute(unsafeCommand)
+
+    expect(() => history.serializeHistory()).toThrow('Map/Set')
   })
 })

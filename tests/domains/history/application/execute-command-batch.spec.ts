@@ -10,8 +10,6 @@ function createCommand(label = 'Test command'): Command {
     name: label,
     label,
     createdAt: Date.now(),
-    execute: vi.fn(),
-    undo: vi.fn(),
     serialize: () => ({
       type: 'Test',
       payload: { id: 'x' },

@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { RedactionMark } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { cloneRedactionMark } from '@/shared/utils/document-clone'
 
 export class UpdateRedactionCommand extends BaseCommand {
   public readonly type = CommandType.UPDATE_REDACTION
@@ -29,25 +29,15 @@ export class UpdateRedactionCommand extends BaseCommand {
     }
 
     this.pageId = pageId
-    this.previous = { ...previous }
-    this.next = { ...next }
-  }
-
-  execute(): void {
-    const store = useDocumentStore()
-    store.updateRedaction(this.pageId, this.next)
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    store.updateRedaction(this.pageId, this.previous)
+    this.previous = cloneRedactionMark(previous)
+    this.next = cloneRedactionMark(next)
   }
 
   protected getPayload(): Record<string, unknown> {
     return {
       pageId: this.pageId,
-      previous: this.previous,
-      next: this.next,
+      previous: cloneRedactionMark(this.previous),
+      next: cloneRedactionMark(this.next),
     }
   }
 

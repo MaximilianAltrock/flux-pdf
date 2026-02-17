@@ -1,7 +1,6 @@
 import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
 
 export type ResizeTarget = {
   pageId: string
@@ -13,7 +12,7 @@ export class ResizePagesCommand extends BaseCommand {
   public readonly name: string
 
   public readonly targets: ResizeTarget[]
-  private previousTargets: ResizeTarget[] = []
+  public previousTargets: ResizeTarget[] = []
 
   constructor(
     targets: ResizeTarget[],
@@ -27,58 +26,19 @@ export class ResizePagesCommand extends BaseCommand {
       throw new Error('ResizePagesCommand requires at least one target')
     }
 
-    // TODO: Move defensive copying to store layer
-    this.targets = targets.map((t) => ({
-      pageId: t.pageId,
-      targetDimensions: t.targetDimensions
-        ? { ...t.targetDimensions }
-        : (t.targetDimensions ?? null),
-    }))
+    this.targets = cloneResizeTargets(targets)
 
     if (previousTargets) {
-      // TODO: Move defensive copying to store layer
-      this.previousTargets = previousTargets.map((t) => ({
-        pageId: t.pageId,
-        targetDimensions: t.targetDimensions
-          ? { ...t.targetDimensions }
-          : (t.targetDimensions ?? null),
-      }))
+      this.previousTargets = cloneResizeTargets(previousTargets)
     }
 
     this.name = this.targets.length === 1 ? 'Resize page' : `Resize ${this.targets.length} pages`
   }
 
-  execute(): void {
-    const store = useDocumentStore()
-
-    if (this.previousTargets.length === 0) {
-      this.previousTargets = this.targets.map((target) => {
-        const page = store.pages.find((p) => !p.isDivider && p.id === target.pageId)
-        return {
-          pageId: target.pageId,
-          targetDimensions:
-            page && !page.isDivider && page.targetDimensions ? { ...page.targetDimensions } : null,
-        }
-      })
-    }
-
-    for (const target of this.targets) {
-      store.setPageTargetDimensions(target.pageId, target.targetDimensions ?? null)
-    }
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-
-    for (const previous of this.previousTargets) {
-      store.setPageTargetDimensions(previous.pageId, previous.targetDimensions ?? null)
-    }
-  }
-
   protected getPayload(): Record<string, unknown> {
     return {
-      targets: this.targets,
-      previousTargets: this.previousTargets,
+      targets: cloneResizeTargets(this.targets),
+      previousTargets: cloneResizeTargets(this.previousTargets),
     }
   }
 
@@ -93,4 +53,15 @@ export class ResizePagesCommand extends BaseCommand {
 }
 
 registerCommand(CommandType.RESIZE, ResizePagesCommand)
+
+function cloneResizeTarget(target: ResizeTarget): ResizeTarget {
+  return {
+    pageId: target.pageId,
+    targetDimensions: target.targetDimensions ? { ...target.targetDimensions } : (target.targetDimensions ?? null),
+  }
+}
+
+function cloneResizeTargets(targets: ReadonlyArray<ResizeTarget>): ResizeTarget[] {
+  return targets.map(cloneResizeTarget)
+}
 

@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { RedactionMark } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { cloneRedactionMark } from '@/shared/utils/document-clone'
 
 export class DeleteRedactionCommand extends BaseCommand {
   public readonly type = CommandType.DELETE_REDACTION
@@ -22,23 +22,13 @@ export class DeleteRedactionCommand extends BaseCommand {
     }
 
     this.pageId = pageId
-    this.redaction = { ...redaction }
-  }
-
-  execute(): void {
-    const store = useDocumentStore()
-    store.removeRedaction(this.pageId, this.redaction.id)
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    store.addRedaction(this.pageId, this.redaction)
+    this.redaction = cloneRedactionMark(redaction)
   }
 
   protected getPayload(): Record<string, unknown> {
     return {
       pageId: this.pageId,
-      redaction: this.redaction,
+      redaction: cloneRedactionMark(this.redaction),
     }
   }
 

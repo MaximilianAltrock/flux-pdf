@@ -24,7 +24,7 @@ export interface SerializedCommand {
 
 /**
  * Base interface for all commands
- * Commands encapsulate mutations for undo/redo support
+ * Commands describe serializable mutation intent for undo/redo support.
  */
 export interface Command {
   /** Unique identifier for this command instance */
@@ -44,12 +44,6 @@ export interface Command {
 
   /** Creation timestamp for ordering and serialization */
   readonly createdAt: number
-
-  /** Execute the command (do/redo) */
-  execute(): void
-
-  /** Reverse the command (undo) */
-  undo(): void
 
   /**
    * Serialize command state for persistence

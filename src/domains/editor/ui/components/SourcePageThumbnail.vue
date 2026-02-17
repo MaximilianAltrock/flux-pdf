@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { shallowRef, watch, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
-import { useThumbnailRenderer } from '@/domains/document/application/useThumbnailRenderer'
+import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
 import { ROTATION_DEFAULT_DEGREES } from '@/shared/constants'
 import type { PageReference } from '@/shared/types'
 import { Skeleton } from '@/shared/components/ui/skeleton'

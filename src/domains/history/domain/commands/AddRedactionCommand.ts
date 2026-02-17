@@ -2,7 +2,7 @@ import { BaseCommand } from './BaseCommand'
 import { CommandType, registerCommand } from './registry'
 import type { SerializedCommand } from './types'
 import type { RedactionMark } from '@/shared/types'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { cloneRedactionMark } from '@/shared/utils/document-clone'
 
 export class AddRedactionCommand extends BaseCommand {
   public readonly type = CommandType.REDACT
@@ -22,28 +22,15 @@ export class AddRedactionCommand extends BaseCommand {
     }
 
     this.pageId = pageId
-    this.redactions = redactions.map((r) => ({ ...r }))
+    this.redactions = redactions.map(cloneRedactionMark)
     this.name =
       this.redactions.length === 1 ? 'Add redaction' : `Add ${this.redactions.length} redactions`
-  }
-
-  execute(): void {
-    const store = useDocumentStore()
-    store.addRedactions(this.pageId, this.redactions)
-  }
-
-  undo(): void {
-    const store = useDocumentStore()
-    store.removeRedactions(
-      this.pageId,
-      this.redactions.map((r) => r.id),
-    )
   }
 
   protected getPayload(): Record<string, unknown> {
     return {
       pageId: this.pageId,
-      redactions: this.redactions,
+      redactions: this.redactions.map(cloneRedactionMark),
     }
   }
 

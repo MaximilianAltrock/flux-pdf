@@ -13,6 +13,7 @@
 ## Working Rules
 
 - [ ] Add new behavior in `src/domains/*` first.
+- [ ] Keep app-level wiring in `src/app/*` (for example `src/app/composition-root.ts`, `src/app/document-service.bindings.ts`).
 - [ ] Do not reintroduce legacy paths (`src/stores/*`, `src/services/*`, `src/commands/*`).
 - [ ] Follow PR checklist in `.github/pull_request_template.md`.
 - [ ] For UI refactors, run `npm run validate:shadcn`.

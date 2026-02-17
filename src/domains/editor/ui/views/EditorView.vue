@@ -18,6 +18,7 @@ import { useUiStore } from '@/domains/editor/store/ui.store'
 import { useExportStore } from '@/domains/export/store/export.store'
 import { useProjectsStore } from '@/domains/workspace/store/projects.store'
 import { createProjectRouteSync } from '@/domains/workspace/application/project-route-sync'
+import { createLogger } from '@/shared/infrastructure/logger'
 
 // Layouts
 import DesktopLayout from '@/domains/editor/ui/layouts/DesktopLayout.vue'
@@ -52,6 +53,7 @@ const hasOpenModal = computed(() => hasOpenUiModal.value || showExportModal.valu
 const { setFileInputRef } = useFileInput()
 const route = useRoute()
 const router = useRouter()
+const log = createLogger('editor-view')
 const routeSync = createProjectRouteSync({
   switchProject: (projectId) => projects.switchProject(projectId),
   redirectToDashboard: () => router.replace('/'),
@@ -79,7 +81,7 @@ onBeforeRouteLeave(async () => {
   try {
     await projects.persistActiveProject()
   } catch (error) {
-    console.error('Failed to persist project before leaving:', error)
+    log.error('Failed to persist project before leaving:', error)
   }
 })
 

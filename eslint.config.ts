@@ -61,16 +61,6 @@ export default defineConfigWithVueTs(
   },
 
   {
-    name: 'app/domain-boundaries-domain-history-commands-transitional',
-    files: ['src/domains/history/domain/commands/**/*.{ts,tsx}'],
-    rules: {
-      // Transitional exception: history commands currently orchestrate store mutations.
-      // Goal is to move these imports behind an application executor in later phases.
-      'no-restricted-imports': 'off',
-    },
-  },
-
-  {
     name: 'app/domain-boundaries-application',
     files: ['src/domains/**/application/**/*.{ts,tsx}'],
     rules: {

@@ -10,8 +10,6 @@ function createCommand(name: string): Command {
     name,
     label: name,
     createdAt: 1,
-    execute() {},
-    undo() {},
     serialize() {
       return {
         type: name,
