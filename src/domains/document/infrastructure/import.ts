@@ -279,6 +279,8 @@ export async function loadPdfFile(
     const sourceFileId = crypto.randomUUID()
     const color = getNextColor(options.colorIndex)
     const addedAt = Date.now()
+    const outlinePayload = outline.length > 0 ? { outline } : {}
+    const metadataPayload = extractedMetadata ? { metadata: extractedMetadata } : {}
 
     const groupId = crypto.randomUUID()
     const pageMetaData: PageMetrics[] = []
@@ -322,8 +324,8 @@ export async function loadPdfFile(
       color,
       pageMetaData,
       isImageSource: options.isImageSource ?? false,
-      outline: outline.length ? outline : undefined,
-      metadata: extractedMetadata ?? undefined,
+      ...outlinePayload,
+      ...metadataPayload,
     })
 
     const sourceFile: SourceFile = {
@@ -335,8 +337,8 @@ export async function loadPdfFile(
       color,
       pageMetaData,
       isImageSource: options.isImageSource ?? false,
-      outline: outline.length ? outline : undefined,
-      metadata: extractedMetadata ?? undefined,
+      ...outlinePayload,
+      ...metadataPayload,
     }
 
     pdfDocCache.set(sourceFileId, pdfDoc)
@@ -447,12 +449,14 @@ async function mapItems(
     }
 
     const title = typeof item.title === 'string' ? item.title.trim() : ''
-
-    nodes.push({
+    const node: PdfOutlineNode = {
       title: title || 'Untitled',
       pageIndex,
-      children: children.length ? children : undefined,
-    })
+    }
+    if (children.length > 0) {
+      node.children = children
+    }
+    nodes.push(node)
   }
 
   return nodes

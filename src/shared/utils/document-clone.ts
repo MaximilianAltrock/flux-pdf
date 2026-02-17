@@ -11,16 +11,24 @@ import type {
 } from '@/shared/types'
 import { isDividerEntry } from '@/shared/types'
 
+function omitUndefinedProperties<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, nested]) => nested !== undefined),
+  ) as T
+}
+
 export function cloneRedactionMark(value: RedactionMark): RedactionMark {
-  return { ...value }
+  return omitUndefinedProperties({
+    ...value,
+  })
 }
 
 export function clonePageReference(value: PageReference): PageReference {
-  return {
+  return omitUndefinedProperties({
     ...value,
     targetDimensions: value.targetDimensions ? { ...value.targetDimensions } : undefined,
     redactions: value.redactions?.map(cloneRedactionMark),
-  }
+  })
 }
 
 export function cloneDividerReference(value: DividerReference): DividerReference {
@@ -46,30 +54,32 @@ export function clonePageReferences(values: ReadonlyArray<PageReference>): PageR
 }
 
 export function clonePageMetrics(value: PageMetrics): PageMetrics {
-  return { ...value }
+  return omitUndefinedProperties({
+    ...value,
+  })
 }
 
 export function cloneDocumentMetadata(value: DocumentMetadata): DocumentMetadata {
-  return {
+  return omitUndefinedProperties({
     ...value,
     keywords: [...value.keywords],
-  }
+  })
 }
 
 export function clonePdfOutlineNode(value: PdfOutlineNode): PdfOutlineNode {
-  return {
+  return omitUndefinedProperties({
     title: value.title,
     pageIndex: value.pageIndex,
     children: value.children?.map(clonePdfOutlineNode),
-  }
+  })
 }
 
 export function cloneOutlineNode(value: OutlineNode): OutlineNode {
-  return {
+  return omitUndefinedProperties({
     ...value,
-    dest: { ...value.dest },
-    children: value.children.map(cloneOutlineNode),
-  }
+    dest: omitUndefinedProperties({ ...value.dest }),
+    children: (value.children ?? []).map(cloneOutlineNode),
+  })
 }
 
 export function cloneOutlineTree(values: ReadonlyArray<OutlineNode>): OutlineNode[] {
@@ -77,10 +87,10 @@ export function cloneOutlineTree(values: ReadonlyArray<OutlineNode>): OutlineNod
 }
 
 export function cloneSourceFile(value: SourceFile): SourceFile {
-  return {
+  return omitUndefinedProperties({
     ...value,
     pageMetaData: value.pageMetaData.map(clonePageMetrics),
     outline: value.outline?.map(clonePdfOutlineNode),
     metadata: value.metadata ? cloneDocumentMetadata(value.metadata) : undefined,
-  }
+  })
 }
