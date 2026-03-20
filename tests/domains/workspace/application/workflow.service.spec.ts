@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createWorkflowService, type WorkflowRepository } from '@/domains/workspace/application/workflow.service'
+import { createWorkflowService, type WorkflowRepository } from '@/domains/workflows/application/workflow.service'
 import type { Workflow, WorkflowStep } from '@/shared/types/workflow'
 
 function createWorkflow(id: string, updatedAt: number, steps: WorkflowStep[] = []): Workflow {

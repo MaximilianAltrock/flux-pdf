@@ -6,18 +6,16 @@
  */
 
 import { computed, onBeforeUnmount, watch, watchEffect, useTemplateRef } from 'vue'
-import { storeToRefs } from 'pinia'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 // Composables
 import { useKeyboardShortcuts } from '@/domains/editor/application/useKeyboardShortcuts'
 import { provideDocumentActions, useDocumentActions } from '@/domains/editor/application/useDocumentActions'
+import { providePreflight, usePreflight } from '@/domains/editor/application/usePreflight'
+import { createProjectSession, provideProjectSession } from '@/domains/project-session/session'
 import { useFileInput } from '@/shared/composables/useFileInput'
 import { useMobile } from '@/shared/composables/useMobile'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useExportStore } from '@/domains/export/store/export.store'
-import { useProjectsStore } from '@/domains/workspace/store/projects.store'
-import { createProjectRouteSync } from '@/domains/workspace/application/project-route-sync'
+import { createProjectRouteSync } from '@/domains/project-session/application/project-route-sync'
 import { createLogger } from '@/shared/infrastructure/logger'
 
 // Layouts
@@ -25,8 +23,8 @@ import DesktopLayout from '@/domains/editor/ui/layouts/DesktopLayout.vue'
 import MobileLayout from '@/domains/editor/ui/layouts/MobileLayout.vue'
 
 // Shared Overlays (used by both layouts)
-import ExportModal from '@/domains/editor/ui/components/export/ExportModal.vue'
-import MobileExportSheet from '@/domains/editor/ui/components/mobile/MobileExportSheet.vue'
+import ExportModal from '@/domains/export/ui/components/ExportModal.vue'
+import MobileExportSheet from '@/domains/export/ui/components/mobile/MobileExportSheet.vue'
 import DiffModal from '@/domains/editor/ui/components/DiffModal.vue'
 import PagePreviewModal from '@/domains/editor/ui/components/PagePreviewModal.vue'
 
@@ -35,32 +33,25 @@ import PagePreviewModal from '@/domains/editor/ui/components/PagePreviewModal.vu
 // ============================================
 
 // Initialize stores and actions
-const ui = useUiStore()
-const exportState = useExportStore()
-const actions = useDocumentActions()
+const session = provideProjectSession(createProjectSession())
+const actions = useDocumentActions(session)
 provideDocumentActions(actions)
-const projects = useProjectsStore()
+providePreflight(usePreflight(session))
 const { isMobile } = useMobile()
-const {
-  hasOpenModal: hasOpenUiModal,
-  showPreviewModal,
-  previewPageRef,
-  showDiffModal,
-  diffPages,
-} = storeToRefs(ui)
-const { showExportModal, exportSelectedOnly } = storeToRefs(exportState)
-const hasOpenModal = computed(() => hasOpenUiModal.value || showExportModal.value)
+const hasOpenModal = computed(
+  () => session.editor.hasOpenModal || session.exportOperation.showExportModal,
+)
 const { setFileInputRef } = useFileInput()
 const route = useRoute()
 const router = useRouter()
 const log = createLogger('editor-view')
 const routeSync = createProjectRouteSync({
-  switchProject: (projectId) => projects.switchProject(projectId),
+  switchProject: (projectId) => session.project.switchProject(projectId),
   redirectToDashboard: () => router.replace('/'),
 })
 
 // Initialize keyboard shortcuts (desktop only)
-useKeyboardShortcuts(actions, { isModalOpen: hasOpenModal })
+useKeyboardShortcuts(actions, { isModalOpen: hasOpenModal }, session)
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
@@ -79,7 +70,7 @@ watch(
 onBeforeRouteLeave(async () => {
   actions.commitProjectTitle()
   try {
-    await projects.persistActiveProject()
+    await session.project.persistActiveProject()
   } catch (error) {
     log.error('Failed to persist project before leaving:', error)
   }
@@ -91,7 +82,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <div
-    class="h-[100dvh] w-full flex flex-col bg-background text-foreground overflow-hidden supports-[height:100dvh]:h-[100dvh]"
+    class="h-dvh w-full flex flex-col bg-background text-foreground overflow-hidden supports-[height:100dvh]:h-dvh"
   >
     <!-- Hidden File Input (shared across layouts) -->
     <input
@@ -116,38 +107,36 @@ onBeforeUnmount(() => {
     <!-- Export Modal / Sheet -->
     <MobileExportSheet
       v-if="isMobile"
-      :open="showExportModal"
-      :export-selected="exportSelectedOnly"
-      @close="exportState.closeExportModal"
+      :open="session.exportOperation.showExportModal"
+      :export-selected="session.exportOperation.exportSelectedOnly"
+      @close="session.exportOperation.closeExportModal"
       @success="actions.handleExportSuccess"
     />
     <ExportModal
       v-else
-      :open="showExportModal"
-      :export-selected="exportSelectedOnly"
-      @close="exportState.closeExportModal"
+      :open="session.exportOperation.showExportModal"
+      :export-selected="session.exportOperation.exportSelectedOnly"
+      @close="session.exportOperation.closeExportModal"
       @success="actions.handleExportSuccess"
     />
 
     <!-- Page Preview Modal -->
     <PagePreviewModal
-      :open="showPreviewModal"
+      :open="session.editor.showPreviewModal"
       @update:open="(val: boolean) => !val && actions.handleClosePreview()"
-      :page-ref="previewPageRef"
-      @navigate="ui.navigatePreview"
+      :page-ref="session.editor.previewPageRef"
+      @navigate="session.editor.navigatePreview"
     />
 
     <!-- Ghost Overlay -->
     <DiffModal
-      :open="showDiffModal"
-      @update:open="(val: boolean) => !val && ui.closeDiffModal()"
-      :pages="diffPages"
-      @close="ui.closeDiffModal"
+      :open="session.editor.showDiffModal"
+      @update:open="(val: boolean) => !val && session.editor.closeDiffModal()"
+      :pages="session.editor.diffPages"
+      @close="session.editor.closeDiffModal"
     />
   </div>
 </template>
 
 <style scoped>
-/* Minimal styles - layout-specific styles live in layout components */
 </style>
-

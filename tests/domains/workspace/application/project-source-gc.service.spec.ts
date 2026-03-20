@@ -3,8 +3,8 @@ import type { ProjectState } from '@/shared/infrastructure/db'
 import {
   createProjectSourceGcService,
   type ProjectSourceGcRepository,
-} from '@/domains/workspace/application/project-source-gc.service'
-import type { GcStateSnapshot } from '@/domains/workspace/application/project-storage-gc'
+} from '@/domains/project-session/application/project-source-gc.service'
+import type { GcStateSnapshot } from '@/domains/project-session/domain/project-storage-gc'
 
 function createProjectState(partial: Partial<ProjectState>): ProjectState {
   return {

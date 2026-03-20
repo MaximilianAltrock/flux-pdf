@@ -11,7 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/shared/components/ui/toggle-grou
 import { Button } from '@/shared/components/ui/button'
 import MobileDrawerHeader from '@/domains/editor/ui/components/mobile/MobileDrawerHeader.vue'
 
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
 defineProps<{
   open: boolean
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 }>()
 
 const { haptic } = useMobile()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 const insertAtEnd = shallowRef('true')
 const hasExistingPages = computed(() => document.pageCount > 0)

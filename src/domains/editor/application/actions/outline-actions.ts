@@ -1,7 +1,7 @@
 import { updateOutlineTree as updateOutlineTreeUseCase } from '@/domains/document/application/use-cases'
 import type { HistoryCommandExecutor } from '@/domains/history/application'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import { autoGenOutlineFromPages } from '@/shared/utils/auto-gen-tree'
 import {
   removeOutlineNode,
@@ -18,9 +18,9 @@ interface OutlineActionsToast {
 }
 
 export interface CreateOutlineActionsDeps {
-  store: ReturnType<typeof useDocumentStore>
+  store: DocumentState
   history: HistoryCommandExecutor
-  ui: Pick<ReturnType<typeof useUiStore>, 'beginOutlineTargeting' | 'endOutlineTargeting'> & {
+  ui: Pick<EditorUiState, 'beginOutlineTargeting' | 'endOutlineTargeting'> & {
     outlineTargetNodeId: string | null
   }
   toast: OutlineActionsToast

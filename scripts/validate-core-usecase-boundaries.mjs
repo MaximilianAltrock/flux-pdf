@@ -7,15 +7,11 @@ const EDITOR_APP_DIR = path.join(ROOT_DIR, 'src', 'domains', 'editor', 'applicat
 
 const RULES = [
   {
-    file: path.join('src', 'domains', 'editor', 'application', 'actions', 'file-export-actions.ts'),
+    file: path.join('src', 'domains', 'editor', 'application', 'actions', 'file-import-actions.ts'),
     required: [
       {
         pattern: /\bimportPdfUseCase\s*\(/,
         message: 'import flow must call importPdf use-case',
-      },
-      {
-        pattern: /\bexportPdfUseCase\s*\(/,
-        message: 'export flow must call exportPdf use-case',
       },
     ],
     forbidden: [
@@ -23,6 +19,17 @@ const RULES = [
         pattern: /\bservices\.importFiles\s*\(/,
         message: 'import flow must not call document service importFiles directly',
       },
+    ],
+  },
+  {
+    file: path.join('src', 'domains', 'editor', 'application', 'actions', 'file-export-actions.ts'),
+    required: [
+      {
+        pattern: /\bexportPdfUseCase\s*\(/,
+        message: 'export flow must call exportPdf use-case',
+      },
+    ],
+    forbidden: [
       {
         pattern: /\bservices\.exportDocument\s*\(/,
         message: 'export flow must not call document service exportDocument directly',

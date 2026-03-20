@@ -15,11 +15,9 @@ import { Spinner } from '@/shared/components/ui/spinner'
 
 import type { PageReference } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
-const ui = useUiStore()
-const document = useDocumentStore()
+const { editor: ui, document } = useProjectSession()
 const actions = useDocumentActionsContext()
 
 const router = useRouter()
@@ -147,4 +145,3 @@ function onDashboard() {
   opacity: 0;
 }
 </style>
-

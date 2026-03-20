@@ -3,7 +3,7 @@ import {
   collectKeepSourceIds,
   resolveOrphanSourceIds,
   type GcStateSnapshot,
-} from '@/domains/workspace/application/project-storage-gc'
+} from '@/domains/project-session/domain/project-storage-gc'
 import type { ProjectState } from '@/shared/infrastructure/db'
 
 function createState(partial: Partial<ProjectState>): ProjectState {

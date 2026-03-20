@@ -2,34 +2,34 @@ import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { createProjectActions } from '@/domains/editor/application/actions/project-actions'
 import { DEFAULT_PROJECT_TITLE } from '@/shared/constants'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
-import type { useExportStore } from '@/domains/export/store/export.store'
-import type { useProjectsStore } from '@/domains/workspace/store/projects.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
+import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
+import type { ProjectSessionLifecycle } from '@/domains/project-session/domain/project-session'
 
 function createHarness() {
   const store = {
     projectTitle: 'Project',
     reset: vi.fn(),
-  } as unknown as ReturnType<typeof useDocumentStore>
+  } as unknown as DocumentState
   const ui = {
     closeCommandPalette: vi.fn(),
     closePreflightPanel: vi.fn(),
     closePreviewModal: vi.fn(),
     closeDiffModal: vi.fn(),
   } as unknown as Pick<
-    ReturnType<typeof useUiStore>,
+    EditorUiState,
     'closeCommandPalette' | 'closePreflightPanel' | 'closePreviewModal' | 'closeDiffModal'
   >
   const exportState = {
     closeExportModal: vi.fn(),
-  } as unknown as Pick<ReturnType<typeof useExportStore>, 'closeExportModal'>
+  } as unknown as Pick<ExportOperationState, 'closeExportModal'>
   const projects = {
     persistActiveProject: vi.fn(async () => undefined),
     trashProject: vi.fn(async () => undefined),
     createProject: vi.fn(async () => ({ id: 'project-2' })),
   } as unknown as Pick<
-    ReturnType<typeof useProjectsStore>,
+    ProjectSessionLifecycle,
     'persistActiveProject' | 'trashProject' | 'createProject'
   >
   const router = {

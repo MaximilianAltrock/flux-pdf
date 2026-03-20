@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { liveQuery } from 'dexie'
 import { useRouter } from 'vue-router'
 import { DEFAULT_PROJECT_TITLE } from '@/shared/constants'
-import { useProjectsStore } from '@/domains/workspace/store/projects.store'
+import { useProjectThumbnailUrls } from '@/domains/workspace/application'
+import { useWorkspaceCatalogStore } from '@/domains/workspace/store'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useToast } from '@/shared/composables/useToast'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
@@ -18,7 +20,7 @@ const sortOptions = [
 type SortKey = (typeof sortOptions)[number]['value']
 
 const router = useRouter()
-const projectsStore = useProjectsStore()
+const projectsStore = useWorkspaceCatalogStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 
@@ -27,12 +29,11 @@ const isLoading = shallowRef(true)
 const query = shallowRef('')
 const sort = shallowRef<SortKey>('updated')
 const editingId = shallowRef<string | null>(null)
-
-const thumbnailUrls = new Map<string, string>()
-const thumbnailBlobs = new Map<string, Blob | undefined>()
+let projectFeed: { unsubscribe(): void } | null = null
 
 const searchTerm = computed(() => query.value.trim().toLowerCase())
 const isSearchActive = computed(() => searchTerm.value.length > 0)
+const { thumbnailUrlById } = useProjectThumbnailUrls(projects)
 
 const sortComparators: Record<SortKey, (a: ProjectMeta, b: ProjectMeta) => number> = {
   updated: (a, b) => b.updatedAt - a.updatedAt,
@@ -54,53 +55,33 @@ async function refreshProjects() {
   }
 }
 
-onMounted(refreshProjects)
+function startProjectFeed() {
+  projectFeed?.unsubscribe()
+  projectFeed = liveQuery(() => projectsStore.listRecentProjects(PROJECT_LIST_LIMIT)).subscribe({
+    next: (nextProjects) => {
+      projects.value = nextProjects
+      isLoading.value = false
+    },
+    error: (error) => {
+      console.error('Failed to subscribe to recent projects:', error)
+      void refreshProjects()
+    },
+  })
+}
+
+onMounted(() => {
+  startProjectFeed()
+  void refreshProjects()
+})
+
+onBeforeUnmount(() => {
+  projectFeed?.unsubscribe()
+  projectFeed = null
+})
 
 const handleRenameCancel = () => {
   editingId.value = null
 }
-
-// Memory Management for Blob URLs
-const revokeThumbnail = (projectId: string) => {
-  const url = thumbnailUrls.get(projectId)
-  if (url) URL.revokeObjectURL(url)
-  thumbnailUrls.delete(projectId)
-  thumbnailBlobs.delete(projectId)
-}
-
-const syncThumbnail = (project: ProjectMeta) => {
-  const currentBlob = project.thumbnail
-  const previousBlob = thumbnailBlobs.get(project.id)
-
-  if (!currentBlob) {
-    revokeThumbnail(project.id)
-    return
-  }
-
-  if (currentBlob === previousBlob && thumbnailUrls.has(project.id)) return
-
-  const existingUrl = thumbnailUrls.get(project.id)
-  if (existingUrl) URL.revokeObjectURL(existingUrl)
-
-  const url = URL.createObjectURL(currentBlob)
-  thumbnailUrls.set(project.id, url)
-  thumbnailBlobs.set(project.id, currentBlob)
-}
-
-watchEffect(() => {
-  const nextIds = new Set(projects.value.map((p) => p.id))
-  for (const id of Array.from(thumbnailUrls.keys())) {
-    if (!nextIds.has(id)) revokeThumbnail(id)
-  }
-
-  for (const project of projects.value) syncThumbnail(project)
-})
-
-onBeforeUnmount(() => {
-  for (const id of Array.from(thumbnailUrls.keys())) revokeThumbnail(id)
-  thumbnailUrls.clear()
-  thumbnailBlobs.clear()
-})
 
 const filteredProjects = computed(() => {
   const term = searchTerm.value
@@ -109,18 +90,6 @@ const filteredProjects = computed(() => {
     : projects.value
   return [...list].sort(sortComparators[sort.value])
 })
-
-const thumbnailUrlById = computed<Record<string, string | undefined>>(() => {
-  const byId: Record<string, string | undefined> = {}
-  for (const project of projects.value) {
-    byId[project.id] = thumbnailFor(project)
-  }
-  return byId
-})
-
-function thumbnailFor(project: ProjectMeta): string | undefined {
-  return thumbnailUrls.get(project.id)
-}
 
 async function handleOpenProject(id: string) {
   await router.push(`/project/${id}`)
@@ -188,4 +157,3 @@ async function handleRenameCommit(project: ProjectMeta, nextTitle: string) {
     />
   </section>
 </template>
-

@@ -1,14 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useExportStore } from '@/domains/export/store/export.store'
+import { describe, expect, it } from 'vitest'
+import { createExportOperationState } from '@/domains/export/session/export-operation.state'
 
-describe('useExportStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
+describe('createExportOperationState', () => {
   it('opens and closes export modal with selection intent', () => {
-    const store = useExportStore()
+    const store = createExportOperationState()
 
     store.openExportModal(true)
     expect(store.showExportModal).toBe(true)
@@ -20,7 +15,7 @@ describe('useExportStore', () => {
   })
 
   it('resets export job state', () => {
-    const store = useExportStore()
+    const store = createExportOperationState()
 
     store.exportJob.status = 'error'
     store.exportJob.error = 'failure'

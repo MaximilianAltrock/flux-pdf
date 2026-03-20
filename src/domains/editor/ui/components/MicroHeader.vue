@@ -15,10 +15,10 @@ import { Separator } from '@/shared/components/ui/separator'
 import HeaderOmnibar from './header/HeaderOmnibar.vue'
 import HeaderControls from './header/HeaderControls.vue'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 const isEditingTitle = shallowRef(false)
 const titleInput = useTemplateRef<InstanceType<typeof Input>>('titleInput')
@@ -125,12 +125,9 @@ const emit = defineEmits<{
           @keydown.enter.prevent="startEditing"
           @keydown.space.prevent="startEditing"
           class="ui-label text-foreground/80 px-2 py-1 rounded-sm cursor-text truncate transition-colors border border-transparent hover:bg-muted/40 hover:text-foreground inline-flex items-center gap-2 focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:outline-none"
-          :class="{ 'opacity-50 pointer-events-none': document.isTitleLocked }"
-          :title="document.isTitleLocked ? 'Title locked by import' : 'Click to rename'"
-          :aria-label="
-            document.isTitleLocked ? 'Title locked by import' : 'Edit project title'
-          "
-          :tabindex="document.isTitleLocked ? -1 : 0"
+          title="Click to rename"
+          aria-label="Edit project title"
+          tabindex="0"
           role="button"
         >
           {{ displayTitle }}
@@ -149,4 +146,3 @@ const emit = defineEmits<{
     />
   </header>
 </template>
-

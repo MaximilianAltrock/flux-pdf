@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMetadataActions } from '@/domains/editor/application/actions/metadata-actions'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { SourceFile } from '@/shared/types'
 
-function createHarness(overrides?: { isTitleLocked?: boolean }) {
+function createHarness() {
   const source: SourceFile = {
     id: 'source-1',
     filename: 'source.pdf',
@@ -22,7 +22,6 @@ function createHarness(overrides?: { isTitleLocked?: boolean }) {
     },
   }
   const store = {
-    isTitleLocked: overrides?.isTitleLocked ?? false,
     projectTitle: 'Current',
     sources: new Map([[source.id, source]]),
     setProjectTitle: vi.fn(),
@@ -30,10 +29,10 @@ function createHarness(overrides?: { isTitleLocked?: boolean }) {
     addKeyword: vi.fn(),
     removeKeyword: vi.fn(),
     setSecurity: vi.fn(),
-  } as unknown as ReturnType<typeof useDocumentStore>
+  } as unknown as DocumentState
   const ui = {
     setCurrentTool: vi.fn(),
-  } as unknown as Pick<ReturnType<typeof useUiStore>, 'setCurrentTool'>
+  } as unknown as Pick<EditorUiState, 'setCurrentTool'>
   const normalizeProjectTitle = vi.fn((value: string) => `normalized:${value}`)
 
   const actions = createMetadataActions({
@@ -46,12 +45,12 @@ function createHarness(overrides?: { isTitleLocked?: boolean }) {
 }
 
 describe('metadata action module', () => {
-  it('does not update title draft when title is locked', () => {
-    const harness = createHarness({ isTitleLocked: true })
+  it('updates the project title draft directly', () => {
+    const harness = createHarness()
 
     harness.actions.setProjectTitleDraft('New Title')
 
-    expect(harness.store.setProjectTitle).not.toHaveBeenCalled()
+    expect(harness.store.setProjectTitle).toHaveBeenCalledWith('New Title')
   })
 
   it('normalizes committed project title when unlocked', () => {

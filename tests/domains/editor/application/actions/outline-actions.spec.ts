@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createOutlineActions } from '@/domains/editor/application/actions/outline-actions'
 import type { HistoryCommandExecutor } from '@/domains/history/application'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { OutlineNode, PageReference, SourceFile } from '@/shared/types'
 
 function createOutlineNode(targetPageId = 'page-1'): OutlineNode {
@@ -35,7 +35,7 @@ function createHarness(outlineTree: OutlineNode[]) {
     contentPages: [contentPage],
     sources,
     setOutlineTree: vi.fn(),
-  } as unknown as ReturnType<typeof useDocumentStore>
+  } as unknown as DocumentState
   const ui = {
     outlineTargetNodeId: null as string | null,
     beginOutlineTargeting: vi.fn((nodeId: string) => {
@@ -44,7 +44,7 @@ function createHarness(outlineTree: OutlineNode[]) {
     endOutlineTargeting: vi.fn(() => {
       ui.outlineTargetNodeId = null
     }),
-  } as unknown as Pick<ReturnType<typeof useUiStore>, 'beginOutlineTargeting' | 'endOutlineTargeting'> & {
+  } as unknown as Pick<EditorUiState, 'beginOutlineTargeting' | 'endOutlineTargeting'> & {
     outlineTargetNodeId: string | null
   }
   const toast = { success: vi.fn<(message: string) => void>() }

@@ -13,8 +13,7 @@ import PdfThumbnail from '@/domains/editor/ui/components/PdfThumbnail.vue'
 import { UserAction } from '@/shared/types/actions'
 import type { PageReference } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import type { GridInteractionPolicy } from '@/domains/editor/ui/useGridInteractionPolicy'
 import { withPrimaryModifier } from '@/shared/utils/shortcuts'
 
@@ -35,8 +34,7 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
-const ui = useUiStore()
+const { document, editor: ui } = useProjectSession()
 const selectAllShortcut = withPrimaryModifier('A')
 
 function handlePageClick(event: MouseEvent | KeyboardEvent) {

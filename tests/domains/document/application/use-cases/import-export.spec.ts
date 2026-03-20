@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { importPdf } from '@/domains/document/application/use-cases/import-pdf'
-import { exportPdf } from '@/domains/document/application/use-cases/export-pdf'
+import { importPdf } from '@/domains/import/application/use-cases/import-pdf'
+import { exportPdf } from '@/domains/export/application/use-cases/export-pdf'
 
 describe('document use-cases: import/export', () => {
   it('forwards import to document service with files and options', async () => {

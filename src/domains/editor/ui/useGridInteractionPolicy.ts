@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import type { EditorToolId } from '@/domains/editor/domain/types'
 
 export type GridInteractionPolicy = {
@@ -40,7 +40,7 @@ const TOOL_POLICIES: Record<EditorToolId, Omit<GridInteractionPolicy, 'tool'>> =
 }
 
 export function useGridInteractionPolicy() {
-  const ui = useUiStore()
+  const { editor: ui } = useProjectSession()
 
   const isInteractionBlocked = computed(() => ui.hasOpenModal || ui.isLoading)
 

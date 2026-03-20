@@ -7,15 +7,13 @@ import type { OutlineNode } from '@/shared/types'
 import { scrollToPageId } from '@/shared/utils/scroll-to-page'
 import { setOutlineNodeStyle } from '@/shared/utils/outline-tree'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import InspectorStructureHeader from './structure/InspectorStructureHeader.vue'
 import InspectorStructureNode from './structure/InspectorStructureNode.vue'
 import InspectorStructureUrlDialog from './structure/InspectorStructureUrlDialog.vue'
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
-const ui = useUiStore()
+const { document, editor: ui } = useProjectSession()
 
 const outlineTree = computed(() => document.outlineTree as OutlineNode[])
 const pageIdSet = computed(() => new Set(document.contentPages.map((p) => p.id)))

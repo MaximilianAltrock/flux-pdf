@@ -6,12 +6,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/shared/components/ui/toggle-grou
 import { Button } from '@/shared/components/ui/button'
 import { Separator } from '@/shared/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import type { PrimaryEditorToolId } from '@/domains/editor/domain/types'
 
-const ui = useUiStore()
-const document = useDocumentStore()
+const { editor: ui, document } = useProjectSession()
 
 defineEmits<{
   'zoom-in': []
@@ -65,7 +63,7 @@ const canExport = computed(() => document.pageCount > 0)
       </ToggleGroup>
     </div>
 
-    <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
+    <Separator orientation="vertical" class="h-3! mx-1 opacity-20" />
 
     <!-- Zoom Area -->
     <div class="ui-panel-muted h-8 px-1 rounded-sm flex items-center gap-0.5">
@@ -94,12 +92,12 @@ const canExport = computed(() => document.pageCount > 0)
       </Button>
     </div>
 
-    <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
+    <Separator orientation="vertical" class="h-3! mx-1 opacity-20" />
 
     <!-- Theme Toggle -->
     <ThemeToggle class="h-8 w-8 text-muted-foreground hover:text-foreground" />
 
-    <Separator orientation="vertical" class="!h-3 mx-1 opacity-20" />
+    <Separator orientation="vertical" class="h-3! mx-1 opacity-20" />
 
     <!-- Export CTA -->
 
@@ -114,4 +112,3 @@ const canExport = computed(() => document.pageCount > 0)
     </Button>
   </div>
 </template>
-

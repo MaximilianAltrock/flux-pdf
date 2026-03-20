@@ -10,7 +10,7 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import MobileDrawerHeader from '@/domains/editor/ui/components/mobile/MobileDrawerHeader.vue'
 
 const props = defineProps<{
@@ -23,7 +23,7 @@ const emit = defineEmits<{
 
 const { haptic } = useMobile()
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 const inputRef = useTemplateRef<InstanceType<typeof Input>>('inputRef')
 const editedTitle = shallowRef('')

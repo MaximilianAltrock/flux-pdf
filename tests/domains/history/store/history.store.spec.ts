@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { useHistoryStore } from '@/domains/history/store/history.store'
+import { describe, expect, it } from 'vitest'
+import { createDocumentState } from '@/domains/project-session/session/document-state'
+import { createHistorySession } from '@/domains/history/session/create-history-session'
 import { AddSourceCommand, RemoveSourceCommand } from '@/domains/history/domain/commands'
 import type { SourceFile } from '@/shared/types'
 
@@ -17,14 +16,10 @@ function createSource(id: string): SourceFile {
   }
 }
 
-describe('useHistoryStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
+describe('createHistorySession', () => {
   it('uses command label for undo/redo names', () => {
-    const history = useHistoryStore()
-    const document = useDocumentStore()
+    const document = createDocumentState()
+    const history = createHistorySession(document)
     const source = createSource('source-1')
     const command = new AddSourceCommand(source)
 
@@ -43,8 +38,8 @@ describe('useHistoryStore', () => {
   })
 
   it('executes grouped commands as a single history entry and undoes in reverse order', () => {
-    const history = useHistoryStore()
-    const document = useDocumentStore()
+    const document = createDocumentState()
+    const history = createHistorySession(document)
     const source = createSource('source-2')
 
     const first = new AddSourceCommand(source)
@@ -69,7 +64,7 @@ describe('useHistoryStore', () => {
   })
 
   it('rejects non-JSON payloads during history serialization', () => {
-    const history = useHistoryStore()
+    const history = createHistorySession(createDocumentState())
     const source = createSource('source-unsafe')
     const unsafeCommand = new AddSourceCommand(source)
     unsafeCommand.serialize = () => ({

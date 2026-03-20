@@ -1,13 +1,12 @@
 import { type Ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { GRID_NAVIGATION } from '@/shared/constants'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { useHistoryStore } from '@/domains/history/store/history.store'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useEditorActionAvailability } from '@/domains/editor/application/useEditorActionAvailability'
 import { UserAction } from '@/shared/types/actions'
 import type { DocumentActions } from '@/domains/editor/application/useDocumentActions'
+import type { ProjectSession } from '@/domains/project-session/domain/project-session'
 import { SHORTCUT_KEYS } from '@/shared/constants'
 
 type KeyboardShortcutOptions = {
@@ -18,11 +17,11 @@ type KeyboardShortcutOptions = {
 export function useKeyboardShortcuts(
   actions: DocumentActions,
   options?: KeyboardShortcutOptions,
+  sessionOverride?: ProjectSession,
 ) {
-  const store = useDocumentStore()
-  const history = useHistoryStore()
-  const ui = useUiStore()
-  const { hasSelection } = useEditorActionAvailability()
+  const session = sessionOverride ?? useProjectSession()
+  const { document: store, history, editor: ui } = session
+  const { hasSelection } = useEditorActionAvailability(session)
   const { isMobile } = useMobile()
   const { undo, redo } = history
   let rangeAnchorId: string | null = null
@@ -300,4 +299,3 @@ export function useKeyboardShortcuts(
 
   useEventListener('keydown', handleKeydown)
 }
-

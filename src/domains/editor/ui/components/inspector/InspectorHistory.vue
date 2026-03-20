@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
-import { storeToRefs } from 'pinia'
+import { computed, nextTick, shallowRef, toRef, useTemplateRef, watch } from 'vue'
 import { History, Save } from 'lucide-vue-next'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
@@ -19,8 +18,8 @@ import { Textarea } from '@/shared/components/ui/textarea'
 import { Timeline, TimelineItem, TimelineTime, TimelineTitle } from '@/shared/components/ui/timeline'
 import { useToast } from '@/shared/composables/useToast'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useHistoryStore } from '@/domains/history/store/history.store'
-import { useWorkflowsStore } from '@/domains/workspace/store/workflows.store'
+import { useProjectSession } from '@/domains/project-session/session'
+import { useWorkflowLibrary } from '@/domains/workflows/application'
 import { formatTime } from '@/shared/utils/format'
 import {
   buildWorkflowCandidateSteps,
@@ -29,10 +28,11 @@ import {
 } from '@/shared/utils/workflow-history'
 
 const { historyList, jumpTo } = useDocumentActionsContext()
-const historyStore = useHistoryStore()
-const workflowsStore = useWorkflowsStore()
+const { history: historyStore } = useProjectSession()
+const workflowLibrary = useWorkflowLibrary()
 const toast = useToast()
-const { history, historyPointer } = storeToRefs(historyStore)
+const history = toRef(historyStore, 'history')
+const historyPointer = toRef(historyStore, 'historyPointer')
 
 const historyScrollArea = useTemplateRef<InstanceType<typeof ScrollArea>>('historyScrollArea')
 
@@ -153,7 +153,7 @@ async function handleSaveWorkflow(): Promise<void> {
   try {
     const steps = materializeWorkflowSteps(selectedCandidates.value)
 
-    await workflowsStore.createWorkflow({
+    await workflowLibrary.createWorkflow({
       name: workflowName.value.trim(),
       description: workflowDescription.value.trim(),
       icon: 'workflow',
@@ -331,5 +331,3 @@ function onSaveDialogOpenChange(open: boolean): void {
     </DialogContent>
   </Dialog>
 </template>
-
-

@@ -18,7 +18,7 @@ import {
   Layers,
 } from 'lucide-vue-next'
 import { UserAction } from '@/shared/types/actions'
-import { useThemeToggle } from '@/domains/workspace/application/useThemeToggle'
+import { useThemeToggle } from '@/domains/settings/application'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
 import { useEditorActionAvailability } from '@/domains/editor/application/useEditorActionAvailability'
 import { withPrimaryModifier } from '@/shared/utils/shortcuts'

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { PDF_PAGE_INDEX_BASE, THUMBNAIL } from '@/shared/constants'
-import { usePdfRepository } from '@/domains/document/infrastructure/pdf.repository'
+import { usePdfRepository } from '@/shared/infrastructure/pdf.repository'
 import type { PageReference } from '@/shared/types'
 
 /**
@@ -233,4 +233,3 @@ export function useThumbnailRenderer() {
     clearCache,
   }
 }
-

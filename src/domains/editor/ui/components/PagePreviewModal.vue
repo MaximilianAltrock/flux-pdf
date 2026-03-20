@@ -10,7 +10,7 @@ import { useRedactionOverlay } from '@/domains/editor/ui/useRedactionOverlay'
 import type { PageReference } from '@/shared/types'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { UserAction } from '@/shared/types/actions'
 import {
   Dialog,
@@ -37,7 +37,7 @@ const emit = defineEmits<{
 const { renderThumbnail, getPageViewportSize } = useThumbnailRenderer()
 const { isMobile, onBackButton } = useMobile()
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 // --- State ---
 const previewUrl = shallowRef<string | null>(null)

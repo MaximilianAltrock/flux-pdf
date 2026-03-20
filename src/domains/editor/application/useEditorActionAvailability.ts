@@ -1,10 +1,11 @@
 import { computed } from 'vue'
 import { DIFF_REQUIRED_SELECTION } from '@/shared/constants'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
+import type { ProjectSession } from '@/domains/project-session/domain/project-session'
 import { UserAction } from '@/shared/types/actions'
 
-export function useEditorActionAvailability() {
-  const document = useDocumentStore()
+export function useEditorActionAvailability(sessionOverride?: Pick<ProjectSession, 'document'>) {
+  const { document } = sessionOverride ?? useProjectSession()
 
   const hasPages = computed(() => document.pageCount > 0)
   const hasSelection = computed(() => document.selectedCount > 0)
@@ -45,4 +46,3 @@ export function useEditorActionAvailability() {
     canRun,
   }
 }
-

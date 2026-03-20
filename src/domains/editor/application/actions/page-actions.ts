@@ -16,9 +16,9 @@ import {
   splitGroup as splitGroupUseCase,
   updateRedaction as updateRedactionUseCase,
 } from '@/domains/document/application/use-cases'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useHistoryStore } from '@/domains/history/store/history.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { HistorySession } from '@/domains/history/session/create-history-session'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { PageEntry, PageReference, RedactionMark } from '@/shared/types'
 import type { PreflightFix } from '@/shared/types/linter'
 
@@ -32,9 +32,9 @@ interface PageActionsToast {
 }
 
 export interface CreatePageActionsDeps {
-  store: ReturnType<typeof useDocumentStore>
-  history: ReturnType<typeof useHistoryStore>
-  ui: ReturnType<typeof useUiStore>
+  store: DocumentState
+  history: HistorySession
+  ui: EditorUiState
   toast: PageActionsToast
   isMobile: Ref<boolean>
   haptic: (pattern: 'light' | 'medium' | 'heavy' | 'success') => void

@@ -1,15 +1,15 @@
 import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/shared/constants'
 import { UserAction } from '@/shared/types/actions'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { PageReference } from '@/shared/types'
 
 export interface CreateCommandActionsDeps {
   store: Pick<
-    ReturnType<typeof useDocumentStore>,
+    DocumentState,
     'selection' | 'contentPages' | 'selectedCount' | 'selectPage' | 'selectAll'
   >
-  ui: Pick<ReturnType<typeof useUiStore>, 'closeCommandPalette'>
+  ui: Pick<EditorUiState, 'closeCommandPalette'>
   openFileDialog: () => void
   handlePagePreview: (pageRef: PageReference) => void
   handleDuplicateSelected: () => void

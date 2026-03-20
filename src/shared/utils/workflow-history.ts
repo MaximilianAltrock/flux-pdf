@@ -1,5 +1,5 @@
 import { CommandType, type Command, type SerializedCommand } from '@/domains/history/domain/commands'
-import { WorkflowActionType } from '@/domains/workspace/domain/workflow.actions'
+import { WorkflowActionType } from '@/domains/workflows/domain'
 import type { WorkflowStep } from '@/shared/types/workflow'
 
 export interface WorkflowCandidateStep {
@@ -354,5 +354,4 @@ export function materializeWorkflowSteps(
     params: toPlain(candidate.params),
   }))
 }
-
 

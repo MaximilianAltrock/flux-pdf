@@ -4,7 +4,7 @@ import { nextTick } from 'vue'
 import {
   DEFAULT_SETTINGS_PREFERENCES,
   useSettingsStore,
-} from '@/domains/workspace/store/settings.store'
+} from '@/domains/settings/store/settings.store'
 
 describe('useSettingsStore', () => {
   beforeEach(() => {

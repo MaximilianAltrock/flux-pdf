@@ -2,10 +2,10 @@
 import { Search } from 'lucide-vue-next'
 import { Spinner } from '@/shared/components/ui/spinner'
 import { Kbd } from '@/shared/components/ui/kbd'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { withPrimaryModifier } from '@/shared/utils/shortcuts'
 
-const ui = useUiStore()
+const { editor: ui } = useProjectSession()
 const commandPaletteShortcut = withPrimaryModifier('K')
 
 defineEmits<{
@@ -67,4 +67,3 @@ defineEmits<{
     </div>
   </div>
 </template>
-

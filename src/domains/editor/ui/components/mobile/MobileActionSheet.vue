@@ -9,7 +9,7 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { Separator } from '@/shared/components/ui/separator'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import MobileDrawerHeader from '@/domains/editor/ui/components/mobile/MobileDrawerHeader.vue'
 
 defineProps<{
@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 const { groupedSecondaryActions } = useMobileActionRegistry(actions)
 
 const selectedCount = computed(() => document.selectedCount)

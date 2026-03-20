@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { liveQuery } from 'dexie'
 import { RotateCcw, Trash2 } from 'lucide-vue-next'
-import { useProjectsStore } from '@/domains/workspace/store/projects.store'
+import { useProjectThumbnailUrls } from '@/domains/workspace/application'
+import { useWorkspaceCatalogStore } from '@/domains/workspace/store'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useToast } from '@/shared/composables/useToast'
 import { SidebarTrigger } from '@/shared/components/ui/sidebar'
@@ -18,18 +20,17 @@ import {
 } from '@/shared/components/ui/empty'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
 
-const projectsStore = useProjectsStore()
+const projectsStore = useWorkspaceCatalogStore()
 const { confirm } = useConfirm()
 const toast = useToast()
 
 const trashedProjects = ref<ProjectMeta[]>([])
 const isLoading = shallowRef(true)
-
-const thumbnailUrls = new Map<string, string>()
-const thumbnailBlobs = new Map<string, Blob | undefined>()
+let trashFeed: { unsubscribe(): void } | null = null
 
 const projectCount = computed(() => trashedProjects.value.length)
 const isEmpty = computed(() => !isLoading.value && projectCount.value === 0)
+const { thumbnailFor } = useProjectThumbnailUrls(trashedProjects)
 
 async function refreshTrashedProjects(): Promise<void> {
   if (trashedProjects.value.length === 0) isLoading.value = true
@@ -40,45 +41,18 @@ async function refreshTrashedProjects(): Promise<void> {
   }
 }
 
-function revokeThumbnail(projectId: string): void {
-  const url = thumbnailUrls.get(projectId)
-  if (url) URL.revokeObjectURL(url)
-  thumbnailUrls.delete(projectId)
-  thumbnailBlobs.delete(projectId)
-}
-
-function syncThumbnail(project: ProjectMeta): void {
-  const currentBlob = project.thumbnail
-  const previousBlob = thumbnailBlobs.get(project.id)
-
-  if (!currentBlob) {
-    revokeThumbnail(project.id)
-    return
-  }
-
-  if (currentBlob === previousBlob && thumbnailUrls.has(project.id)) return
-
-  const existingUrl = thumbnailUrls.get(project.id)
-  if (existingUrl) URL.revokeObjectURL(existingUrl)
-
-  const url = URL.createObjectURL(currentBlob)
-  thumbnailUrls.set(project.id, url)
-  thumbnailBlobs.set(project.id, currentBlob)
-}
-
-watchEffect(() => {
-  const nextIds = new Set(trashedProjects.value.map((project) => project.id))
-  for (const id of Array.from(thumbnailUrls.keys())) {
-    if (!nextIds.has(id)) revokeThumbnail(id)
-  }
-
-  for (const project of trashedProjects.value) {
-    syncThumbnail(project)
-  }
-})
-
-function thumbnailFor(project: ProjectMeta): string | undefined {
-  return thumbnailUrls.get(project.id)
+function startTrashFeed() {
+  trashFeed?.unsubscribe()
+  trashFeed = liveQuery(() => projectsStore.listTrashedProjects()).subscribe({
+    next: (nextProjects) => {
+      trashedProjects.value = nextProjects
+      isLoading.value = false
+    },
+    error: (error) => {
+      console.error('Failed to subscribe to trashed projects:', error)
+      void refreshTrashedProjects()
+    },
+  })
 }
 
 function formatDate(timestamp: number | null | undefined): string {
@@ -132,12 +106,14 @@ async function handleEmptyTrash(): Promise<void> {
   await refreshTrashedProjects()
 }
 
-onMounted(refreshTrashedProjects)
+onMounted(() => {
+  startTrashFeed()
+  void refreshTrashedProjects()
+})
 
 onBeforeUnmount(() => {
-  for (const id of Array.from(thumbnailUrls.keys())) {
-    revokeThumbnail(id)
-  }
+  trashFeed?.unsubscribe()
+  trashFeed = null
 })
 </script>
 
@@ -239,4 +215,3 @@ onBeforeUnmount(() => {
     </div>
   </section>
 </template>
-

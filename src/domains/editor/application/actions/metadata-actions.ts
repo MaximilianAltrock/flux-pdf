@@ -1,12 +1,12 @@
 import { updateMetadata as updateMetadataUseCase } from '@/domains/document/application/use-cases'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { PrimaryEditorToolId } from '@/domains/editor/domain/types'
 import type { DocumentMetadata, SecurityMetadata } from '@/shared/types'
 
 export interface CreateMetadataActionsDeps {
-  store: ReturnType<typeof useDocumentStore>
-  ui: Pick<ReturnType<typeof useUiStore>, 'setCurrentTool'>
+  store: DocumentState
+  ui: Pick<EditorUiState, 'setCurrentTool'>
   normalizeProjectTitle: (value: string) => string
 }
 
@@ -16,12 +16,10 @@ export function createMetadataActions({
   normalizeProjectTitle,
 }: CreateMetadataActionsDeps) {
   function setProjectTitleDraft(value: string) {
-    if (store.isTitleLocked) return
     store.setProjectTitle(value)
   }
 
   function commitProjectTitle(value?: string) {
-    if (store.isTitleLocked) return
     store.setProjectTitle(normalizeProjectTitle(value ?? store.projectTitle))
   }
 

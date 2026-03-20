@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ProjectMeta, ProjectState, StoredFile } from '@/shared/infrastructure/db'
-import { hydrateProjectWorkspace } from '@/domains/workspace/application/project-hydration.service'
+import { hydrateProjectWorkspace } from '@/domains/project-session/application/project-hydration.service'
 import type { PageEntry, SourceFile } from '@/shared/types'
 
 function createProjectMeta(partial: Partial<ProjectMeta>): ProjectMeta {

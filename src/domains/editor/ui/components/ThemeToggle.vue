@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Sun, Moon } from 'lucide-vue-next'
 import { Button } from '@/shared/components/ui/button'
-import { useThemeToggle } from '@/domains/workspace/application/useThemeToggle'
+import { useThemeToggle } from '@/domains/settings/application'
 
 const { isDark, toggleTheme } = useThemeToggle()
 </script>

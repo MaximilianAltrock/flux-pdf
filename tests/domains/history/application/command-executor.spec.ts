@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { describe, expect, it } from 'vitest'
+import { createDocumentState } from '@/domains/project-session/session/document-state'
 import { createHistoryCommandExecutor } from '@/domains/history/application'
 import { AddPagesCommand, DeletePagesCommand, DuplicatePagesCommand } from '@/domains/history/domain/commands'
 import type { PageReference, SourceFile } from '@/shared/types'
@@ -33,12 +32,8 @@ function createPage(id: string, sourceFileId: string, sourcePageIndex = 0): Page
 }
 
 describe('createHistoryCommandExecutor', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
   it('executes and undoes AddPagesCommand without domain store imports', () => {
-    const store = useDocumentStore()
+    const store = createDocumentState()
     const executor = createHistoryCommandExecutor({ documentStore: store })
     const source = createSource('source-1')
     const page = createPage('page-1', source.id)
@@ -57,7 +52,7 @@ describe('createHistoryCommandExecutor', () => {
   })
 
   it('captures delete snapshots on execute and restores exact page on undo', () => {
-    const store = useDocumentStore()
+    const store = createDocumentState()
     const executor = createHistoryCommandExecutor({ documentStore: store })
     const source = createSource('source-1')
     const page = createPage('page-1', source.id)
@@ -80,7 +75,7 @@ describe('createHistoryCommandExecutor', () => {
   })
 
   it('reuses duplicated page IDs on redo', () => {
-    const store = useDocumentStore()
+    const store = createDocumentState()
     const executor = createHistoryCommandExecutor({ documentStore: store })
     const source = createSource('source-1')
     const page = createPage('page-1', source.id)

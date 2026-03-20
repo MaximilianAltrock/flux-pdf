@@ -1,9 +1,9 @@
 import type { Ref } from 'vue'
 import { DEFAULT_PROJECT_TITLE } from '@/shared/constants'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
-import type { useExportStore } from '@/domains/export/store/export.store'
-import type { useProjectsStore } from '@/domains/workspace/store/projects.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
+import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
+import type { ProjectSessionLifecycle } from '@/domains/project-session/domain/project-session'
 import type { Router } from 'vue-router'
 import { createLogger } from '@/shared/infrastructure/logger'
 
@@ -22,14 +22,14 @@ interface ProjectConfirm {
 }
 
 export interface CreateProjectActionsDeps {
-  store: ReturnType<typeof useDocumentStore>
+  store: DocumentState
   ui: Pick<
-    ReturnType<typeof useUiStore>,
+    EditorUiState,
     'closeCommandPalette' | 'closePreflightPanel' | 'closePreviewModal' | 'closeDiffModal'
   >
-  exportState: Pick<ReturnType<typeof useExportStore>, 'closeExportModal'>
+  exportState: Pick<ExportOperationState, 'closeExportModal'>
   projects: Pick<
-    ReturnType<typeof useProjectsStore>,
+    ProjectSessionLifecycle,
     'persistActiveProject' | 'trashProject' | 'createProject'
   >
   router: Pick<Router, 'push'>
@@ -37,7 +37,7 @@ export interface CreateProjectActionsDeps {
   confirm: ProjectConfirm
   clearHistory: () => void
   activeProjectId: Ref<string | null | undefined>
-  activeProjectMeta: Ref<{ title?: string } | null | undefined>
+  activeProjectMeta: Ref<{ title?: string } | null>
   normalizeProjectTitle: (value: string) => string
 }
 

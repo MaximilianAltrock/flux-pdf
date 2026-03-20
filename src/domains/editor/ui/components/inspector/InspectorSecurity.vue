@@ -7,10 +7,10 @@ import { Checkbox } from '@/shared/components/ui/checkbox'
 import { Field, FieldContent, FieldGroup, FieldLabel } from '@/shared/components/ui/field'
 import { Eye, EyeOff } from 'lucide-vue-next'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 const showUserPassword = shallowRef(false)
 const showOwnerPassword = shallowRef(false)

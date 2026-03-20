@@ -1,14 +1,13 @@
 import type { Ref } from 'vue'
 import { TIMEOUTS_MS } from '@/shared/constants'
-import { importPdf as importPdfUseCase, exportPdf as exportPdfUseCase } from '@/domains/document/application/use-cases'
-import { getImportErrorMessage } from '@/domains/document/domain/errors'
+import { exportPdf as exportPdfUseCase } from '@/domains/export/application/use-cases/export-pdf'
 import type {
-  DocumentService,
+  ProjectSessionServices,
   ExportOptions,
-} from '@/domains/document/application/document.service'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
-import type { useExportStore } from '@/domains/export/store/export.store'
+} from '@/domains/project-session/application/create-project-session-services'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
+import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
 import type { PageReference } from '@/shared/types'
 
 interface FileExportToast {
@@ -25,17 +24,15 @@ interface FileExportMobile {
 }
 
 export interface CreateFileExportActionsDeps {
-  store: ReturnType<typeof useDocumentStore>
-  ui: Pick<ReturnType<typeof useUiStore>, 'setLoading'>
-  exportState: Pick<ReturnType<typeof useExportStore>, 'openExportModal'>
+  store: DocumentState
+  ui: Pick<EditorUiState, 'setLoading'>
+  exportState: Pick<ExportOperationState, 'openExportModal'>
   toast: FileExportToast
   mobile: FileExportMobile
-  openFileDialog: () => void
-  clearFileInput: () => void
   blurActiveElement: () => void
   services: Pick<
-    DocumentService,
-    'importFiles' | 'generateRawPdf' | 'exportDocument' | 'parsePageRange'
+    ProjectSessionServices,
+    'generateRawPdf' | 'exportDocument' | 'parsePageRange'
   >
 }
 
@@ -45,73 +42,10 @@ export function createFileExportActions({
   exportState,
   toast,
   mobile,
-  openFileDialog,
-  clearFileInput,
   blurActiveElement,
   services,
 }: CreateFileExportActionsDeps) {
   const { isMobile, canShareFiles, haptic, shareFile } = mobile
-
-  async function handleImport(files: FileList | File[], options: { addPages: boolean }) {
-    const result = await importPdfUseCase(
-      { importFiles: services.importFiles },
-      files,
-      { addPages: options.addPages },
-    )
-    if (!result.ok) {
-      toast.error('Failed to load files', result.error.message)
-      return
-    }
-
-    const { successes, errors, totalPages } = result.value
-
-    if (successes.length > 0) {
-      if (options.addPages) {
-        toast.success(
-          `Added ${successes.length} file${successes.length > 1 ? 's' : ''}`,
-          `${totalPages} page${totalPages > 1 ? 's' : ''} added`,
-        )
-      } else {
-        toast.success(
-          `Registered ${successes.length} source file${successes.length > 1 ? 's' : ''}`,
-          `${totalPages} page${totalPages > 1 ? 's' : ''} ready to add`,
-        )
-      }
-    }
-
-    if (errors.length > 0) {
-      const detail = errors
-        .map((entry) => {
-          if (entry.errorCode) {
-            return getImportErrorMessage(entry.errorCode, entry.error)
-          }
-          return entry.error
-        })
-        .filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
-        .join(', ')
-
-      toast.error(
-        `Failed to load ${errors.length} file${errors.length > 1 ? 's' : ''}`,
-        detail || 'Unknown error',
-      )
-    }
-  }
-
-  function handleFileInputChange(event: Event) {
-    const input = event.target as HTMLInputElement
-    if (input.files && input.files.length > 0) {
-      handleImport(input.files, { addPages: true })
-      clearFileInput()
-    }
-  }
-
-  async function handleFilesSelected(files: FileList) {
-    await handleImport(files, { addPages: true })
-  }
-
-  async function handleSourcesSelected(files: FileList) {
-    await handleImport(files, { addPages: false })
-  }
 
   function getExportPagesForWarning(options: ExportOptions): PageReference[] {
     if (options.pageRange) {
@@ -221,32 +155,11 @@ export function createFileExportActions({
     exportState.openExportModal(selectedOnly)
   }
 
-  function handleMobileAddFiles() {
-    openFileDialog()
-  }
-
-  function handleMobileTakePhoto() {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.capture = 'environment'
-    input.onchange = (event) => {
-      const files = (event.target as HTMLInputElement).files
-      if (files) handleImport(files, { addPages: true })
-    }
-    input.click()
-  }
-
   return {
-    handleFileInputChange,
-    handleFilesSelected,
-    handleSourcesSelected,
     exportDocument,
     handleExport,
     handleExportSelected,
     handleExportSuccess,
     openExportOptions,
-    handleMobileAddFiles,
-    handleMobileTakePhoto,
   }
 }

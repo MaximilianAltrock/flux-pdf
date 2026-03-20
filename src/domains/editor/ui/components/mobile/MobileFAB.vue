@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { useMobile } from '@/shared/composables/useMobile'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { useMobileEditorMode } from '@/domains/editor/ui/useMobileEditorMode'
 
 const emit = defineEmits<{
@@ -10,7 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const { haptic } = useMobile()
-const ui = useUiStore()
+const { editor: ui } = useProjectSession()
 const { isBrowse } = useMobileEditorMode(
   () => ui.mobileMode,
   () => ui.currentTool,

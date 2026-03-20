@@ -3,7 +3,7 @@ import type { ProjectMeta, ProjectState, StoredFile } from '@/shared/infrastruct
 import {
   createProjectPersistenceService,
   type ProjectPersistenceRepository,
-} from '@/domains/workspace/application/project-persistence.service'
+} from '@/domains/project-session/application/project-persistence.service'
 
 function createMeta(partial: Partial<ProjectMeta>): ProjectMeta {
   return {

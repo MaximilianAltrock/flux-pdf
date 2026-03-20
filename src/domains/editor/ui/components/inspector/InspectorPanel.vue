@@ -5,7 +5,7 @@ import { FileText, Tag, Lock } from 'lucide-vue-next'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/shared/components/ui/resizable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
 // Sub-components
 import InspectorStructure from './InspectorStructure.vue'
@@ -13,7 +13,7 @@ import InspectorMetadata from './InspectorMetadata.vue'
 import InspectorSecurity from './InspectorSecurity.vue'
 import InspectorHistory from './InspectorHistory.vue'
 
-const ui = useUiStore()
+const { editor: ui } = useProjectSession()
 
 type InspectorTab = 'structure' | 'metadata' | 'security'
 const inspectorTabs = new Set<InspectorTab>(['structure', 'metadata', 'security'])

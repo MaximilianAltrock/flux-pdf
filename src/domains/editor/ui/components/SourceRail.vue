@@ -10,10 +10,10 @@ import { ResizablePanel } from '@/shared/components/ui/resizable'
 import SourcePageGrid from './SourcePageGrid.vue'
 import { formatBytes } from '@/shared/utils/format'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 const files = computed(() => document.sourceFileList)
 const expandedSources = ref<Record<string, boolean>>({})

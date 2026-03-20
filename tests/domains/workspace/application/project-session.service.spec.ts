@@ -11,7 +11,7 @@ import {
   normalizeProjectTitle,
   resolveMetadataDirtyFlag,
   resolveOutlineTreeForHydration,
-} from '@/domains/workspace/application/project-session.service'
+} from '@/domains/project-session/domain/project-snapshot'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
 
 describe('project-session.service', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ProjectMeta, ProjectState } from '@/shared/infrastructure/db'
-import { createProjectAuthoringService } from '@/domains/workspace/application/project-authoring.service'
+import { createProjectAuthoringService } from '@/domains/project-session/application/project-authoring.service'
 import type { PageReference } from '@/shared/types'
 
 function createProjectMeta(partial: Partial<ProjectMeta>): ProjectMeta {
@@ -145,10 +145,181 @@ describe('project-authoring.service', () => {
     expect(meta?.pageCount).toBe(3)
     expect(meta?.updatedAt).toBe(999)
     expect(meta?.thumbnail).toBeInstanceOf(Blob)
+    expect(meta?.thumbnailKey).toBe('source-1-0-0')
     expect(ensureThumbnail).toHaveBeenCalledTimes(1)
     expect(saveProjectRecord).toHaveBeenCalledTimes(1)
     expect(states.get('project-1')?.historyPointer).toBe(0)
     expect(states.get('project-1')?.ignoredPreflightRuleIds).toEqual(['rule-1'])
+  })
+
+  it('preserves an existing thumbnail when no replacement thumbnail is generated', async () => {
+    const existingThumbnail = new Blob(['existing-thumb'])
+    const metas = new Map<string, ProjectMeta>([
+      [
+        'project-1',
+        createProjectMeta({
+          id: 'project-1',
+          title: 'Old',
+          pageCount: 1,
+          createdAt: 10,
+          updatedAt: 10,
+          thumbnail: existingThumbnail,
+        }),
+      ],
+    ])
+    const saveProjectRecord = vi.fn(async () => {})
+    const service = createProjectAuthoringService({
+      loadProjectMeta: async (id) => metas.get(id),
+      saveProjectRecord,
+    })
+    const firstPage = createPageReference({ id: 'page-1' })
+
+    const meta = await service.persistProject({
+      projectId: 'project-1',
+      existingMeta: null,
+      projectTitle: 'New Title',
+      contentPages: [firstPage],
+      contentPageCount: 1,
+      snapshot: {
+        activeSourceIds: ['source-1'],
+        pageMap: [firstPage],
+        history: [],
+        historyPointer: 0,
+        zoom: 210,
+        outlineTree: [],
+        outlineDirty: false,
+        metadata: {
+          title: 'Doc',
+          author: 'Alice',
+          subject: '',
+          keywords: [],
+        },
+        security: undefined,
+        metadataDirty: true,
+        ignoredPreflightRuleIds: [],
+      },
+      ensureThumbnail: vi.fn(async () => undefined),
+      now: 999,
+    })
+
+    expect(meta?.thumbnail).toBe(existingThumbnail)
+    expect(meta?.thumbnailKey).toBe('source-1-0-0')
+    expect(saveProjectRecord).toHaveBeenCalledOnce()
+  })
+
+  it('persists project state even when thumbnail generation throws', async () => {
+    const existingThumbnail = new Blob(['existing-thumb'])
+    const metas = new Map<string, ProjectMeta>([
+      [
+        'project-1',
+        createProjectMeta({
+          id: 'project-1',
+          title: 'Old',
+          pageCount: 1,
+          createdAt: 10,
+          updatedAt: 10,
+          thumbnail: existingThumbnail,
+          thumbnailKey: 'source-1-0-0',
+        }),
+      ],
+    ])
+    const saveProjectRecord = vi.fn(async () => {})
+    const service = createProjectAuthoringService({
+      loadProjectMeta: async (id) => metas.get(id),
+      saveProjectRecord,
+    })
+    const firstPage = createPageReference({ id: 'page-1' })
+
+    const meta = await service.persistProject({
+      projectId: 'project-1',
+      existingMeta: null,
+      projectTitle: 'Recovered Save',
+      contentPages: [firstPage],
+      contentPageCount: 2,
+      snapshot: {
+        activeSourceIds: ['source-1'],
+        pageMap: [firstPage],
+        history: [],
+        historyPointer: 0,
+        zoom: 210,
+        outlineTree: [],
+        outlineDirty: false,
+        metadata: {
+          title: 'Doc',
+          author: 'Alice',
+          subject: '',
+          keywords: [],
+        },
+        security: undefined,
+        metadataDirty: true,
+        ignoredPreflightRuleIds: [],
+      },
+      ensureThumbnail: vi.fn(async () => {
+        throw new Error('thumbnail failed')
+      }),
+      now: 999,
+    })
+
+    expect(meta?.title).toBe('Recovered Save')
+    expect(meta?.pageCount).toBe(2)
+    expect(meta?.thumbnail).toBe(existingThumbnail)
+    expect(meta?.thumbnailKey).toBe('source-1-0-0')
+    expect(saveProjectRecord).toHaveBeenCalledOnce()
+  })
+
+  it('clears the thumbnail when a project no longer has content pages', async () => {
+    const existingThumbnail = new Blob(['existing-thumb'])
+    const metas = new Map<string, ProjectMeta>([
+      [
+        'project-1',
+        createProjectMeta({
+          id: 'project-1',
+          title: 'Old',
+          pageCount: 1,
+          createdAt: 10,
+          updatedAt: 10,
+          thumbnail: existingThumbnail,
+          thumbnailKey: 'source-1-0-0',
+        }),
+      ],
+    ])
+    const saveProjectRecord = vi.fn(async () => {})
+    const service = createProjectAuthoringService({
+      loadProjectMeta: async (id) => metas.get(id),
+      saveProjectRecord,
+    })
+
+    const meta = await service.persistProject({
+      projectId: 'project-1',
+      existingMeta: null,
+      projectTitle: 'Empty Project',
+      contentPages: [],
+      contentPageCount: 0,
+      snapshot: {
+        activeSourceIds: [],
+        pageMap: [],
+        history: [],
+        historyPointer: -1,
+        zoom: 210,
+        outlineTree: [],
+        outlineDirty: false,
+        metadata: {
+          title: 'Doc',
+          author: 'Alice',
+          subject: '',
+          keywords: [],
+        },
+        security: undefined,
+        metadataDirty: true,
+        ignoredPreflightRuleIds: [],
+      },
+      ensureThumbnail: vi.fn(async () => undefined),
+      now: 999,
+    })
+
+    expect(meta?.thumbnail).toBeUndefined()
+    expect(meta?.thumbnailKey).toBeNull()
+    expect(saveProjectRecord).toHaveBeenCalledOnce()
   })
 
   it('returns null when persisting a project that has no stored meta', async () => {

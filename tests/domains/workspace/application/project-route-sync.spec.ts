@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createProjectRouteSync } from '@/domains/workspace/application/project-route-sync'
+import { createProjectRouteSync } from '@/domains/project-session/application/project-route-sync'
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void

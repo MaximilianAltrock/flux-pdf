@@ -3,8 +3,8 @@ import type { ProjectMeta, ProjectState } from '@/shared/infrastructure/db'
 import {
   createProjectLifecycleService,
   type ProjectLifecycleStateController,
-} from '@/domains/workspace/application/project-lifecycle.service'
-import type { GcStateSnapshot } from '@/domains/workspace/application/project-storage-gc'
+} from '@/domains/project-session/application/project-lifecycle.service'
+import type { GcStateSnapshot } from '@/domains/project-session/domain/project-storage-gc'
 
 function createProjectMeta(partial: Partial<ProjectMeta>): ProjectMeta {
   return {
@@ -55,6 +55,14 @@ function createStateController(state: {
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 describe('project-lifecycle.service', () => {
   it('loads project bundle and updates active state', async () => {
     const state = {
@@ -67,7 +75,7 @@ describe('project-lifecycle.service', () => {
       id: 'p1',
       pageMap: [{ id: 'page-1', sourceFileId: 's1', sourcePageIndex: 0, rotation: 0 }],
     })
-    const hydrateStore = vi.fn(async () => {})
+    const hydrateStore = vi.fn(async () => true)
     const rememberThumbnailKey = vi.fn()
     const runGarbageCollection = vi.fn(async (_state?: GcStateSnapshot) => {})
     const setHydrating = vi.fn()
@@ -95,7 +103,7 @@ describe('project-lifecycle.service', () => {
     const loaded = await service.loadProject('p1')
 
     expect(loaded).toBe(true)
-    expect(hydrateStore).toHaveBeenCalledWith(meta, projectState)
+    expect(hydrateStore).toHaveBeenCalledWith(meta, projectState, expect.any(Function))
     expect(state.activeProjectId).toBe('p1')
     expect(state.activeProjectMeta).toEqual(meta)
     expect(state.lastActiveProjectId).toBe('p1')
@@ -125,7 +133,7 @@ describe('project-lifecycle.service', () => {
         emptyTrash: async () => [],
       },
       state: createStateController(state),
-      hydrateStore: vi.fn(async () => {}),
+      hydrateStore: vi.fn(async () => true),
       persistActiveProject: vi.fn(async () => {}),
       rememberThumbnailKey: vi.fn(),
       getLiveGcState: () => ({ activeSourceIds: [], pages: [], history: [] }),
@@ -160,7 +168,7 @@ describe('project-lifecycle.service', () => {
         emptyTrash: async () => [],
       },
       state: createStateController(state),
-      hydrateStore: vi.fn(async () => {}),
+      hydrateStore: vi.fn(async () => true),
       persistActiveProject,
       rememberThumbnailKey: vi.fn(),
       getLiveGcState: () => ({ activeSourceIds: [], pages: [], history: [] }),
@@ -176,11 +184,53 @@ describe('project-lifecycle.service', () => {
     expect(loadProjectBundle).toHaveBeenCalledWith('new')
   })
 
-  it('clears active/last state for trash, delete, and emptyTrash flows', async () => {
+  it('persists the active project before moving it to trash', async () => {
     const state = {
       activeProjectId: 'p1',
       activeProjectMeta: createProjectMeta({ id: 'p1' }),
       lastActiveProjectId: 'p1',
+    }
+    const persistActiveProject = vi.fn(async () => {})
+    const trashProject = vi.fn(async () => createProjectMeta({ id: 'p1', trashedAt: Date.now() }))
+    const service = createProjectLifecycleService({
+      persistence: {
+        loadProjectBundle: async () => ({ meta: undefined, state: undefined }),
+        permanentlyDeleteProject: async () => {},
+        trashProject,
+        restoreProject: async () => null,
+        emptyTrash: async () => [],
+      },
+      state: createStateController(state),
+      hydrateStore: vi.fn(async () => true),
+      persistActiveProject,
+      rememberThumbnailKey: vi.fn(),
+      getLiveGcState: () => ({ activeSourceIds: [], pages: [], history: [] }),
+      runGarbageCollection: vi.fn(async () => {}),
+      setHydrating: vi.fn(),
+      setLoading: vi.fn(),
+    })
+
+    await service.trashProject('p1')
+
+    expect(persistActiveProject).toHaveBeenCalledOnce()
+    expect(trashProject).toHaveBeenCalledWith('p1')
+    expect(persistActiveProject.mock.invocationCallOrder[0]).toBeLessThan(
+      trashProject.mock.invocationCallOrder[0]!,
+    )
+    expect(state.activeProjectId).toBeNull()
+    expect(state.lastActiveProjectId).toBeNull()
+  })
+
+  it('passes the live GC snapshot to delete and empty-trash cleanup', async () => {
+    const state = {
+      activeProjectId: 'p1',
+      activeProjectMeta: createProjectMeta({ id: 'p1' }),
+      lastActiveProjectId: 'p1',
+    }
+    const liveGcState: GcStateSnapshot = {
+      activeSourceIds: ['live-1'],
+      pages: [],
+      history: [],
     }
     const runGarbageCollection = vi.fn(async () => {})
     const service = createProjectLifecycleService({
@@ -192,18 +242,14 @@ describe('project-lifecycle.service', () => {
         emptyTrash: async () => ['p1'],
       },
       state: createStateController(state),
-      hydrateStore: vi.fn(async () => {}),
+      hydrateStore: vi.fn(async () => true),
       persistActiveProject: vi.fn(async () => {}),
       rememberThumbnailKey: vi.fn(),
-      getLiveGcState: () => ({ activeSourceIds: [], pages: [], history: [] }),
+      getLiveGcState: () => liveGcState,
       runGarbageCollection,
       setHydrating: vi.fn(),
       setLoading: vi.fn(),
     })
-
-    await service.trashProject('p1')
-    expect(state.activeProjectId).toBeNull()
-    expect(state.lastActiveProjectId).toBeNull()
 
     state.activeProjectId = 'p1'
     state.activeProjectMeta = createProjectMeta({ id: 'p1' })
@@ -211,6 +257,7 @@ describe('project-lifecycle.service', () => {
     await service.permanentlyDeleteProject('p1')
     expect(state.activeProjectId).toBeNull()
     expect(state.lastActiveProjectId).toBeNull()
+    expect(runGarbageCollection).toHaveBeenNthCalledWith(1, liveGcState)
 
     state.activeProjectId = 'p1'
     state.activeProjectMeta = createProjectMeta({ id: 'p1' })
@@ -220,5 +267,51 @@ describe('project-lifecycle.service', () => {
     expect(state.activeProjectId).toBeNull()
     expect(state.lastActiveProjectId).toBeNull()
     expect(runGarbageCollection).toHaveBeenCalledTimes(2)
+    expect(runGarbageCollection).toHaveBeenNthCalledWith(2, liveGcState)
+  })
+
+  it('ignores stale loads that resolve after a newer project is applied', async () => {
+    const state = {
+      activeProjectId: null,
+      activeProjectMeta: null as ProjectMeta | null,
+      lastActiveProjectId: null,
+    }
+    const firstHydration = createDeferred<void>()
+    const service = createProjectLifecycleService({
+      persistence: {
+        loadProjectBundle: async (id: string) => ({
+          meta: createProjectMeta({ id }),
+          state: createProjectState({ id }),
+        }),
+        permanentlyDeleteProject: async () => {},
+        trashProject: async () => null,
+        restoreProject: async () => null,
+        emptyTrash: async () => [],
+      },
+      state: createStateController(state),
+      hydrateStore: vi.fn(async (meta, _projectState, isCurrent) => {
+        if (meta.id === 'first') {
+          await firstHydration.promise
+        }
+        return isCurrent()
+      }),
+      persistActiveProject: vi.fn(async () => {}),
+      rememberThumbnailKey: vi.fn(),
+      getLiveGcState: () => ({ activeSourceIds: [], pages: [], history: [] }),
+      runGarbageCollection: vi.fn(async () => {}),
+      setHydrating: vi.fn(),
+      setLoading: vi.fn(),
+    })
+
+    const firstLoad = service.loadProject('first')
+    const secondLoad = service.loadProject('second')
+
+    await expect(secondLoad).resolves.toBe(true)
+    firstHydration.resolve()
+    await expect(firstLoad).resolves.toBe(false)
+
+    expect(state.activeProjectId).toBe('second')
+    expect(state.activeProjectMeta?.id).toBe('second')
+    expect(state.lastActiveProjectId).toBe('second')
   })
 })

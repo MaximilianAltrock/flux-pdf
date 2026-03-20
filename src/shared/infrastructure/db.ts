@@ -22,6 +22,9 @@ export interface ProjectMeta {
   /** Cached PNG thumbnail of the first page */
   thumbnail?: Blob
 
+  /** Stable identity of the page the cached thumbnail was generated from */
+  thumbnailKey?: string | null
+
   /** Number of content pages */
   pageCount: number
 
@@ -145,4 +148,3 @@ export class FluxDatabase extends Dexie {
 
 /** Global database instance */
 export const db = new FluxDatabase()
-

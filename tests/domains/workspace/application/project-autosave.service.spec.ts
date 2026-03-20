@@ -1,7 +1,7 @@
 import { nextTick, ref } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createProjectAutosaveService } from '@/domains/workspace/application/project-autosave.service'
-import type { GcStateSnapshot } from '@/domains/workspace/application/project-storage-gc'
+import { createProjectAutosaveService } from '@/domains/project-session/application/project-autosave.service'
+import type { GcStateSnapshot } from '@/domains/project-session/domain/project-storage-gc'
 
 describe('project-autosave.service', () => {
   afterEach(() => {

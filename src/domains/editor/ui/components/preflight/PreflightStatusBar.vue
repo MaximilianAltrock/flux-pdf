@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { CheckCircle2, AlertTriangle } from 'lucide-vue-next'
-import { usePreflight } from '@/domains/editor/application/usePreflight'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { usePreflightContext } from '@/domains/editor/application/usePreflight'
+import { useProjectSession } from '@/domains/project-session/session'
 
-const ui = useUiStore()
-const preflight = usePreflight()
+const { editor: ui } = useProjectSession()
+const preflight = usePreflightContext()
 
 const problemCount = computed(() => preflight.problemCount.value)
 const isHealthy = computed(() => preflight.isHealthy.value)
@@ -33,4 +33,3 @@ const label = computed(() =>
     <span class="ui-caption text-muted-foreground">Preflight</span>
   </footer>
 </template>
-

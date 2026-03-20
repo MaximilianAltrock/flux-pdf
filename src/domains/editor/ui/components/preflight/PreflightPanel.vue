@@ -11,8 +11,8 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { usePreflight } from '@/domains/editor/application/usePreflight'
+import { useProjectSession } from '@/domains/project-session/session'
+import { usePreflightContext } from '@/domains/editor/application/usePreflight'
 import type { LintResult, Severity } from '@/shared/types/linter'
 
 defineProps<{
@@ -24,8 +24,8 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
-const preflight = usePreflight()
+const { document } = useProjectSession()
+const preflight = usePreflightContext()
 
 const problems = computed(() => preflight.problems.value)
 const ignoredCount = computed(() => preflight.ignoredRules.value.size)
@@ -154,4 +154,3 @@ function ignoreProblem(problem: LintResult) {
     </DrawerContent>
   </Drawer>
 </template>
-

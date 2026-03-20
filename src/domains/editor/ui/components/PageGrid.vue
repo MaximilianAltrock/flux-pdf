@@ -15,9 +15,8 @@ import GridTargetingBanner from './grid/GridTargetingBanner.vue'
 import { UserAction } from '@/shared/types/actions'
 import type { PageReference } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { usePreflight } from '@/domains/editor/application/usePreflight'
-import { useUiStore } from '@/domains/editor/store/ui.store'
+import { useProjectSession } from '@/domains/project-session/session'
+import { usePreflightContext } from '@/domains/editor/application/usePreflight'
 
 const emit = defineEmits<{
   filesDropped: [files: FileList]
@@ -29,9 +28,8 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
-const ui = useUiStore()
-const preflight = usePreflight()
+const { document, editor: ui } = useProjectSession()
+const preflight = usePreflightContext()
 const { policy } = useGridInteractionPolicy()
 
 const { localPages, isDragging, isSelected, gridItems } = useGridLogic(document)
@@ -354,5 +352,4 @@ useEventListener('dragleave', (event) => {
   cursor: crosshair;
 }
 </style>
-
 

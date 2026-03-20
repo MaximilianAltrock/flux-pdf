@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { useSourceDropHandlers } from '@/domains/document/application/composables/useSourceDropHandlers'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
 import { AddPagesCommand } from '@/domains/history/domain/commands'
 import type { Command } from '@/domains/history/domain/commands/types'
 import type { SourceFile } from '@/shared/types'
@@ -29,7 +29,7 @@ function createHarness(sources: SourceFile[]) {
   ) => Command | null>()
   const store = {
     sources: new Map(sources.map((source) => [source.id, source])),
-  } as unknown as ReturnType<typeof useDocumentStore>
+  } as unknown as DocumentState
 
   const history = {
     execute,

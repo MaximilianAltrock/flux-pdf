@@ -5,13 +5,11 @@ import { useMobile } from '@/shared/composables/useMobile'
 import { useMobileActionRegistry } from '@/domains/editor/application/useMobileActionRegistry'
 import { Button } from '@/shared/components/ui/button'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { useMobileEditorMode } from '@/domains/editor/ui/useMobileEditorMode'
 
 const actions = useDocumentActionsContext()
-const ui = useUiStore()
-const document = useDocumentStore()
+const { editor: ui, document } = useProjectSession()
 
 const emit = defineEmits<{
   export: []

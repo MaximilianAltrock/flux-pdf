@@ -1,9 +1,9 @@
 import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { createPageActions } from '@/domains/editor/application/actions/page-actions'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useHistoryStore } from '@/domains/history/store/history.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { HistorySession } from '@/domains/history/session/create-history-session'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { PageReference } from '@/shared/types'
 import type { PreflightFix } from '@/shared/types/linter'
 
@@ -46,12 +46,12 @@ function createHarness(overrides?: {
     togglePageSelection: vi.fn(),
     selectRange: vi.fn(),
     selectAll: vi.fn(),
-  } as unknown as ReturnType<typeof useDocumentStore>
+  } as unknown as DocumentState
 
   const history = {
     execute: vi.fn(),
     undo: vi.fn(),
-  } as unknown as ReturnType<typeof useHistoryStore>
+  } as unknown as HistorySession
 
   const ui = {
     previewPageRef: null,
@@ -64,7 +64,7 @@ function createHarness(overrides?: {
     enterMobileMoveMode: vi.fn(),
     exitMobileMoveMode: vi.fn(),
     setCurrentTool: vi.fn(),
-  } as unknown as ReturnType<typeof useUiStore>
+  } as unknown as EditorUiState
 
   const toast = {
     success: vi.fn(),

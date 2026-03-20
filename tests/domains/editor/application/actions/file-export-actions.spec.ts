@@ -1,25 +1,25 @@
 import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { createFileExportActions } from '@/domains/editor/application/actions/file-export-actions'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
-import type { useExportStore } from '@/domains/export/store/export.store'
-import type { DocumentService } from '@/domains/document/application/document.service'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
+import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
+import type { ProjectSessionServices } from '@/domains/project-session/application/create-project-session-services'
 
 function createHarness(options?: { isMobile?: boolean }) {
   const store = {
     contentPages: [],
     contentPageCount: 0,
     projectTitle: 'Project',
-  } as unknown as ReturnType<typeof useDocumentStore>
+  } as unknown as DocumentState
 
   const ui = {
     setLoading: vi.fn(),
-  } as unknown as Pick<ReturnType<typeof useUiStore>, 'setLoading'>
+  } as unknown as Pick<EditorUiState, 'setLoading'>
 
   const exportState = {
     openExportModal: vi.fn(),
-  } as unknown as Pick<ReturnType<typeof useExportStore>, 'openExportModal'>
+  } as unknown as Pick<ExportOperationState, 'openExportModal'>
 
   const toast = {
     success: vi.fn(),
@@ -27,33 +27,19 @@ function createHarness(options?: { isMobile?: boolean }) {
     error: vi.fn(),
   }
 
-  const openFileDialog = vi.fn()
-  const clearFileInput = vi.fn()
   const blurActiveElement = vi.fn()
   const haptic = vi.fn()
   const shareFile = vi.fn(async () => ({ shared: false, downloaded: false }))
-  const importFiles = vi.fn<
-    DocumentService['importFiles']
-  >(async () => ({
-    ok: true,
-    value: {
-      results: [],
-      successes: [{ success: true }],
-      errors: [],
-      totalPages: 1,
-    },
-  }))
   const services = {
-    importFiles,
-    generateRawPdf: vi.fn<DocumentService['generateRawPdf']>(async () => ({
+    generateRawPdf: vi.fn<ProjectSessionServices['generateRawPdf']>(async () => ({
       ok: true,
       value: new Uint8Array(),
     })),
-    exportDocument: vi.fn<DocumentService['exportDocument']>(async () => ({
+    exportDocument: vi.fn<ProjectSessionServices['exportDocument']>(async () => ({
       ok: false,
       error: { message: 'not-used' },
     })),
-    parsePageRange: vi.fn<DocumentService['parsePageRange']>(() => []),
+    parsePageRange: vi.fn<ProjectSessionServices['parsePageRange']>(() => []),
   }
 
   const actions = createFileExportActions({
@@ -67,13 +53,11 @@ function createHarness(options?: { isMobile?: boolean }) {
       haptic,
       shareFile,
     },
-    openFileDialog,
-    clearFileInput,
     blurActiveElement,
     services,
   })
 
-  return { actions, services, exportState, toast, haptic, openFileDialog }
+  return { actions, services, exportState, toast, haptic }
 }
 
 describe('file/export action module', () => {
@@ -92,15 +76,5 @@ describe('file/export action module', () => {
     await harness.actions.handleExport()
 
     expect(harness.exportState.openExportModal).toHaveBeenCalledWith(false)
-  })
-
-  it('imports selected files through document service and reports success', async () => {
-    const harness = createHarness()
-    const files = [] as unknown as FileList
-
-    await harness.actions.handleFilesSelected(files)
-
-    expect(harness.services.importFiles).toHaveBeenCalledWith(files, { addPages: true })
-    expect(harness.toast.success).toHaveBeenCalled()
   })
 })

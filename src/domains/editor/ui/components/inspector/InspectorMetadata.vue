@@ -13,10 +13,10 @@ import {
 import { FileDown, Plus, X } from 'lucide-vue-next'
 import type { DocumentMetadata } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 
 const keywordInput = shallowRef('')
 

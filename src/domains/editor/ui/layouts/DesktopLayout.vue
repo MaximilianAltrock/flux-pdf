@@ -16,12 +16,10 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/shared/c
 import type { PageReference } from '@/shared/types'
 import type { UserAction } from '@/shared/types/actions'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { withPrimaryModifier } from '@/shared/utils/shortcuts'
 
-const ui = useUiStore()
-const document = useDocumentStore()
+const { editor: ui, document } = useProjectSession()
 const actions = useDocumentActionsContext()
 const commandPaletteShortcut = withPrimaryModifier('K')
 
@@ -172,4 +170,3 @@ async function onDeleteProject() {
   opacity: 0;
 }
 </style>
-

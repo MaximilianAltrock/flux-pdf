@@ -3,7 +3,7 @@ import { RouterView } from 'vue-router'
 import { TooltipProvider } from '@/shared/components/ui/tooltip'
 import Toaster from '@/shared/components/ui/sonner/Sonner.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
-import { useAppPreferences } from '@/domains/workspace/application/useAppPreferences'
+import { useAppPreferences } from '@/domains/settings/application'
 
 import 'vue-sonner/style.css'
 

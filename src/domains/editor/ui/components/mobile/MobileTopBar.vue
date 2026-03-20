@@ -2,14 +2,12 @@
 import { computed } from 'vue'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import MobileTopBarView from '@/domains/editor/ui/components/mobile/top-bar/MobileTopBarView.vue'
 import { useMobileEditorMode } from '@/domains/editor/ui/useMobileEditorMode'
 
 const actions = useDocumentActionsContext()
-const ui = useUiStore()
-const document = useDocumentStore()
+const { editor: ui, document } = useProjectSession()
 
 const emit = defineEmits<{
   menu: []

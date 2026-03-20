@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { ChevronRight, Moon, SlidersHorizontal, Sun } from 'lucide-vue-next'
 import { useMobile } from '@/shared/composables/useMobile'
-import { useThemeToggle } from '@/domains/workspace/application/useThemeToggle'
+import { useThemeToggle } from '@/domains/settings/application'
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,7 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { Button } from '@/shared/components/ui/button'
 import { Separator } from '@/shared/components/ui/separator'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import MenuDrawerSourcesSection from '@/domains/editor/ui/components/mobile/menu-drawer/MenuDrawerSourcesSection.vue'
 import MenuDrawerHistorySection from '@/domains/editor/ui/components/mobile/menu-drawer/MenuDrawerHistorySection.vue'
 import MenuDrawerFooterActions from '@/domains/editor/ui/components/mobile/menu-drawer/MenuDrawerFooterActions.vue'
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
+const { document } = useProjectSession()
 const { historyList, jumpTo } = actions
 const { haptic } = useMobile()
 const { toggleTheme } = useThemeToggle()
@@ -151,4 +151,3 @@ function handleSettings() {
     </SheetContent>
   </Sheet>
 </template>
-

@@ -5,11 +5,11 @@ import {
   addPagesBatch as addPagesBatchUseCase,
   type AddPagesBatchEntry,
 } from '@/domains/document/application/use-cases'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
 import type { PageReference } from '@/shared/types'
 
 export interface SourceDropHandlersDeps {
-  store: ReturnType<typeof useDocumentStore>
+  store: DocumentState
   history: HistoryBatchCommandExecutor
 }
 

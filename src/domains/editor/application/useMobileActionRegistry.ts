@@ -8,7 +8,7 @@ import {
   Download,
   Scissors,
 } from 'lucide-vue-next'
-import { useDocumentStore } from '@/domains/document/store/document.store'
+import { useProjectSession } from '@/domains/project-session/session'
 import { ROTATION_DELTA_DEGREES, type RotationDelta } from '@/shared/constants'
 import { isDividerEntry } from '@/shared/types'
 import { useEditorActionAvailability } from '@/domains/editor/application/useEditorActionAvailability'
@@ -53,7 +53,7 @@ export function useMobileActionRegistry(actions: {
   handleDeleteSelected: () => void
   handleExportSelected: () => void
 }) {
-  const store = useDocumentStore()
+  const { document: store } = useProjectSession()
   const { hasSelection } = useEditorActionAvailability()
   const canSplit = computed(() => {
     const pages = store.pages
@@ -194,4 +194,3 @@ function getCategoryLabel(category: MobileActionCategory): string {
       return 'Utilities'
   }
 }
-

@@ -3,7 +3,7 @@ import { db } from '@/shared/infrastructure/db'
 import {
   isAccessibleProject,
   normalizeProjectIdParam,
-} from '@/domains/workspace/application/router-guards'
+} from '@/domains/workspace/application'
 import { STORAGE_KEYS } from '@/shared/constants'
 import { createLogger } from '@/shared/infrastructure/logger'
 
@@ -29,12 +29,12 @@ const router = createRouter({
         {
           path: 'workflows',
           name: 'dashboard-workflows',
-          component: () => import('@/domains/workspace/ui/views/WorkflowsView.vue'),
+          component: () => import('@/domains/workflows/ui/views/WorkflowsView.vue'),
         },
         {
           path: 'settings',
           name: 'dashboard-settings',
-          component: () => import('@/domains/workspace/ui/views/SettingsView.vue'),
+          component: () => import('@/domains/settings/ui/views/SettingsView.vue'),
         },
       ],
     },

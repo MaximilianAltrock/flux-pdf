@@ -9,9 +9,8 @@ import MobileGridModeBanner from '@/domains/editor/ui/components/mobile/MobileGr
 import MobileGridMarkerButton from '@/domains/editor/ui/components/mobile/MobileGridMarkerButton.vue'
 import { type PageReference } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
-import { useDocumentStore } from '@/domains/document/store/document.store'
-import { useUiStore } from '@/domains/editor/store/ui.store'
-import { usePreflight } from '@/domains/editor/application/usePreflight'
+import { useProjectSession } from '@/domains/project-session/session'
+import { usePreflightContext } from '@/domains/editor/application/usePreflight'
 import { usePageProblemMeta } from '@/domains/editor/ui/usePageProblemMeta'
 import { useMobileGridTargets } from '@/domains/editor/ui/useMobileGridTargets'
 import { useMobileGridGestures } from '@/domains/editor/ui/useMobileGridGestures'
@@ -22,9 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const actions = useDocumentActionsContext()
-const document = useDocumentStore()
-const ui = useUiStore()
-const preflight = usePreflight()
+const { document, editor: ui } = useProjectSession()
+const preflight = usePreflightContext()
 const { haptic } = useMobile()
 const { localPages, isSelected, contentPages, getContentPageNumber } = useGridLogic(document)
 
@@ -212,6 +210,5 @@ function preventContextMenu(event: Event) {
   display: none;
 }
 </style>
-
 
 

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
-import { createProjectStateController } from '@/domains/workspace/application/project-state.service'
+import { createProjectStateController } from '@/domains/project-session/session/project-state'
 import type { DocumentUiState } from '@/shared/types/ui'
 
 function createProjectMeta(partial: Partial<ProjectMeta>): ProjectMeta {

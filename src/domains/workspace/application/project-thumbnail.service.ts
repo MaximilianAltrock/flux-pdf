@@ -40,7 +40,7 @@ export function createProjectThumbnailService(
 
     const key = getProjectThumbnailKey(page)
     if (!key) return undefined
-    const existingKey = thumbnailKeyByProject.get(meta.id) ?? null
+    const existingKey = thumbnailKeyByProject.get(meta.id) ?? meta.thumbnailKey ?? null
 
     if (key && existingKey === key && meta.thumbnail) {
       return meta.thumbnail

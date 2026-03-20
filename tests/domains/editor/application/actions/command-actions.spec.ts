@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createCommandActions } from '@/domains/editor/application/actions/command-actions'
 import { UserAction } from '@/shared/types/actions'
-import type { useDocumentStore } from '@/domains/document/store/document.store'
-import type { useUiStore } from '@/domains/editor/store/ui.store'
+import type { DocumentState } from '@/domains/project-session/session/document-state'
+import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { PageReference } from '@/shared/types'
 
 function createHarness() {
@@ -14,12 +14,12 @@ function createHarness() {
     selectPage: vi.fn(),
     selectAll: vi.fn(),
   } as unknown as Pick<
-    ReturnType<typeof useDocumentStore>,
+    DocumentState,
     'selection' | 'contentPages' | 'selectedCount' | 'selectPage' | 'selectAll'
   >
   const ui = {
     closeCommandPalette: vi.fn(),
-  } as unknown as Pick<ReturnType<typeof useUiStore>, 'closeCommandPalette'>
+  } as unknown as Pick<EditorUiState, 'closeCommandPalette'>
 
   const handlers = {
     openFileDialog: vi.fn(),

@@ -1,51 +1,64 @@
-import { storeToRefs } from 'pinia'
-import { inject, provide, type InjectionKey } from 'vue'
-import { useEditorCompositionRoot } from '@/app/composition-root'
+import { computed, inject, onScopeDispose, provide, toRef, type InjectionKey } from 'vue'
 import { useRouter } from 'vue-router'
 import { DEFAULT_PROJECT_TITLE } from '@/shared/constants'
 import { useToast } from '@/shared/composables/useToast'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useActiveElementBlur } from '@/shared/composables/useActiveElementBlur'
-import { useSourceDropHandlers } from '@/domains/document/application/composables/useSourceDropHandlers'
-import { createCommandActions } from '@/domains/editor/application/actions/command-actions'
-import { createFileExportActions } from '@/domains/editor/application/actions/file-export-actions'
-import { createMetadataActions } from '@/domains/editor/application/actions/metadata-actions'
-import { createPageActions } from '@/domains/editor/application/actions/page-actions'
-import { createOutlineActions } from '@/domains/editor/application/actions/outline-actions'
-import { createProjectActions } from '@/domains/editor/application/actions/project-actions'
+import { createProjectSessionServices } from '@/domains/project-session/application/create-project-session-services'
 import { useFileInput } from '@/shared/composables/useFileInput'
-import type { DocumentUiState } from '@/shared/types/ui'
+import { useSettingsPreferencesState } from '@/domains/settings/application'
+import { useProjectSession } from '@/domains/project-session/session'
+import type { ProjectSession } from '@/domains/project-session/domain/project-session'
+import { useHistoryActionGroup } from '@/domains/editor/application/action-groups/useHistoryActionGroup'
+import { useImportActionGroup } from '@/domains/editor/application/action-groups/useImportActionGroup'
+import { useExportActionGroup } from '@/domains/editor/application/action-groups/useExportActionGroup'
+import { useDocumentActionGroup } from '@/domains/editor/application/action-groups/useDocumentActionGroup'
+import { useProjectActionGroup } from '@/domains/editor/application/action-groups/useProjectActionGroup'
+import { useEditorShellActionGroup } from '@/domains/editor/application/action-groups/useEditorShellActionGroup'
 
 /**
- * Centralized action handlers for the application
- * All business logic lives here, keeping components thin
+ * Thin editor action assembly.
+ *
+ * Bounded action groups own their own orchestration; this file only composes the
+ * groups into the flat action context consumed by existing editor UI components.
  */
-export function useDocumentActions() {
-  const root = useEditorCompositionRoot()
-  const store = root.stores.documentStore
-  const history = root.stores.historyStore
-  const ui = root.stores.uiStore
-  const exportState = root.stores.exportStore
-  const projects = root.stores.projectsStore
-  const { zoom, ignoredPreflightRuleIds } = root.refs
-  const { exportJob: exportStateJob, activeProjectId, activeProjectMeta } = root.refs
+export function useDocumentActions(sessionOverride?: ProjectSession) {
+  const session = sessionOverride ?? useProjectSession()
+  const store = session.document
+  const ui = session.editor
+  const exportState = session.exportOperation
+  const projects = session.project
+  const activeProjectId = toRef(projects, 'activeProjectId')
+  const activeProjectMeta = toRef(projects, 'activeProjectMeta')
+  const { preferences } = useSettingsPreferencesState()
   const { openFileDialog, clearFileInput } = useFileInput()
-  const { undo, redo, jumpTo, clearHistory } = history
-  const { canUndo, canRedo, undoName, redoName, historyList } = storeToRefs(history)
   const toast = useToast()
   const { confirmDelete, confirm } = useConfirm()
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
   const { blurActiveElement } = useActiveElementBlur()
   const router = useRouter()
-  const uiState: DocumentUiState = {
-    zoom,
-    setZoom: ui.setZoom,
-    setLoading: ui.setLoading,
-    ignoredPreflightRuleIds,
-    setIgnoredPreflightRuleIds: ui.setIgnoredPreflightRuleIds,
-  }
-  projects.bindUiState(uiState)
+  const autoGenerateOutlineSinglePage = computed(
+    () => preferences.value.autoGenerateOutlineSinglePage,
+  )
+  const filenamePattern = computed(() => preferences.value.filenamePattern)
+  const projectSessionServices = createProjectSessionServices({
+    documentStore: session.document,
+    historyStore: session.history,
+    ui: {
+      setLoading: ui.setLoading,
+      importJob: toRef(session.importOperation, 'importJob'),
+      exportJob: toRef(session.exportOperation, 'exportJob'),
+    },
+    settings: {
+      autoGenerateOutlineSinglePage,
+      filenamePattern,
+    },
+  })
+  onScopeDispose(() => {
+    projectSessionServices.dispose()
+  })
+
   const {
     importFiles,
     generateRawPdf,
@@ -55,123 +68,48 @@ export function useDocumentActions() {
     clearExportError,
     parsePageRange,
     validatePageRange,
-  } = root.services.documentService
-  const exportJob = exportStateJob
-  const { handleSourceDropped, handleSourcePageDropped, handleSourcePagesDropped } =
-    useSourceDropHandlers({
-      store,
-      history,
-    })
-  const {
-    updateOutlineTree,
-    addOutlineNodeForPage,
-    renameOutlineNode,
-    setOutlineNodeTarget,
-    setOutlineNodeUrl,
-    clearOutlineNodeTarget,
-    updateOutlineNodeStyle,
-    deleteOutlineNode,
-    deleteOutlineBranch,
-    toggleOutlineExpanded,
-    resetOutlineToFileStructure,
-    cleanBrokenOutlineNodes,
-    beginOutlineTargeting,
-    completeOutlineTargeting,
-  } = createOutlineActions({
-    store,
-    history,
-    ui,
-    toast,
-  })
-  const {
-    handleFileInputChange,
-    handleFilesSelected,
-    handleSourcesSelected,
-    exportDocument,
-    handleExport,
-    handleExportSelected,
-    handleExportSuccess,
-    openExportOptions,
-    handleMobileAddFiles,
-    handleMobileTakePhoto,
-  } = createFileExportActions({
-    store,
-    ui,
-    exportState,
-    toast,
-    mobile: { isMobile, canShareFiles, haptic, shareFile },
-    openFileDialog,
-    clearFileInput,
-    blurActiveElement,
-    services: {
-      importFiles,
-      generateRawPdf,
-      exportDocument: exportDocumentService,
-      parsePageRange,
-    },
-  })
-  const {
-    handleReorderPages,
-    handleSplitGroup,
-    handlePagePreview,
-    handleClosePreview,
-    handleDeleteSelected,
-    handleDuplicateSelected,
-    handleRotateSelected,
-    handleDiffSelected,
-    addRedaction,
-    updateRedaction,
-    deleteRedaction,
-    deleteRedactions,
-    applyPreflightFix,
-    handleRemoveSource,
-    selectPage,
-    togglePageSelection,
-    selectRange,
-    selectAllPages,
-    clearSelection,
-    clearSelectionKeepMode,
-    enterMobileSelectionMode,
-    exitMobileSelectionMode,
-    enterMobileMoveMode,
-    exitMobileMoveMode,
-    enterMobileSplitMode,
-    exitMobileSplitMode,
-    handleMoveSelectedToPosition,
-  } = createPageActions({
-    store,
-    history,
-    ui,
-    toast,
-    isMobile,
-    haptic,
-    confirmDelete,
-  })
+  } = projectSessionServices
 
   function normalizeProjectTitle(value: string) {
     let next = value.trim()
     if (!next) next = DEFAULT_PROJECT_TITLE
     return next.replace(/[/\\:]/g, '-')
   }
-  const {
-    setProjectTitleDraft,
-    commitProjectTitle,
-    setCurrentTool,
-    setMetadata,
-    applyMetadataFromSource,
-    addKeyword,
-    removeKeyword,
-    setSecurity,
-  } = createMetadataActions({
+  const historyActions = useHistoryActionGroup(session.history)
+  const importActions = useImportActionGroup({
+    toast,
+    openFileDialog,
+    clearFileInput,
+    services: { importFiles },
+  })
+  const exportActions = useExportActionGroup({
     store,
     ui,
+    exportState,
+    toast,
+    mobile: { isMobile, canShareFiles, haptic, shareFile },
+    blurActiveElement,
+    services: {
+      generateRawPdf,
+      exportDocument: exportDocumentService,
+      getSuggestedFilename,
+      getEstimatedSize,
+      clearExportError,
+      parsePageRange,
+      validatePageRange,
+    },
+  })
+  const documentActions = useDocumentActionGroup({
+    store,
+    history: session.history,
+    ui,
+    toast,
+    isMobile,
+    haptic,
+    confirmDelete,
     normalizeProjectTitle,
   })
-  const {
-    handleClearProject,
-    handleDeleteProject,
-    handleNewProject,
-  } = createProjectActions({
+  const projectActions = useProjectActionGroup({
     store,
     ui,
     exportState,
@@ -179,148 +117,32 @@ export function useDocumentActions() {
     router,
     toast,
     confirm,
-    clearHistory,
+    clearHistory: historyActions.clearHistory,
     activeProjectId,
     activeProjectMeta,
     normalizeProjectTitle,
   })
-  const { handleContextAction, handleCommandAction } = createCommandActions({
+  const shellActions = useEditorShellActionGroup({
     store,
     ui,
     openFileDialog,
-    handlePagePreview,
-    handleDuplicateSelected,
-    handleRotateSelected,
-    handleExportSelected,
-    handleDeleteSelected,
-    handleDiffSelected,
-    handleExport,
-    handleNewProject,
+    handlePagePreview: documentActions.handlePagePreview,
+    handleDuplicateSelected: documentActions.handleDuplicateSelected,
+    handleRotateSelected: documentActions.handleRotateSelected,
+    handleExportSelected: exportActions.handleExportSelected,
+    handleDeleteSelected: documentActions.handleDeleteSelected,
+    handleDiffSelected: documentActions.handleDiffSelected,
+    handleExport: exportActions.handleExport,
+    handleNewProject: projectActions.handleNewProject,
   })
 
-  // ============================================
-  // Project Management
-  // ============================================
-
-  // ============================================
-  // Zoom Actions
-  // ============================================
-
-  function zoomIn() {
-    ui.zoomIn()
-  }
-
-  function zoomOut() {
-    ui.zoomOut()
-  }
-
   return {
-    // File Handling
-    handleFileInputChange,
-    handleFilesSelected,
-    handleSourcesSelected,
-    handleSourceDropped,
-    handleSourcePageDropped,
-    handleSourcePagesDropped,
-
-    // Export
-    handleExport,
-    handleExportSelected,
-    handleExportSuccess,
-    openExportOptions,
-    exportDocument,
-    exportJob,
-    getSuggestedFilename,
-    getEstimatedSize,
-    clearExportError,
-    parsePageRange,
-    validatePageRange,
-
-    // Page Actions
-    handlePagePreview,
-    handleClosePreview,
-    handleDeleteSelected,
-    handleDuplicateSelected,
-    handleRotateSelected,
-    handleDiffSelected,
-    applyPreflightFix,
-    addRedaction,
-    updateRedaction,
-    deleteRedaction,
-    deleteRedactions,
-
-    // Source Management
-    handleRemoveSource,
-
-    // Project Management
-    handleClearProject,
-    handleDeleteProject,
-    handleNewProject,
-
-    // Context/Command Actions
-    handleContextAction,
-    handleCommandAction,
-
-    // Mobile Actions
-    handleMobileAddFiles,
-    handleMobileTakePhoto,
-
-    // Zoom
-    zoomIn,
-    zoomOut,
-
-    // History (Command Manager)
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    undoName,
-    redoName,
-    historyList,
-    jumpTo,
-
-    // Undoable structure changes
-    handleReorderPages,
-    handleSplitGroup,
-
-    // Selection + UI State
-    selectPage,
-    togglePageSelection,
-    selectRange,
-    selectAllPages,
-    clearSelection,
-    clearSelectionKeepMode,
-    enterMobileSelectionMode,
-    exitMobileSelectionMode,
-    enterMobileMoveMode,
-    exitMobileMoveMode,
-    enterMobileSplitMode,
-    exitMobileSplitMode,
-    handleMoveSelectedToPosition,
-
-    // Project / Metadata / Security
-    setProjectTitleDraft,
-    commitProjectTitle,
-    setCurrentTool,
-    setMetadata,
-    applyMetadataFromSource,
-    addKeyword,
-    removeKeyword,
-    setSecurity,
-    updateOutlineTree,
-    addOutlineNodeForPage,
-    renameOutlineNode,
-    setOutlineNodeTarget,
-    setOutlineNodeUrl,
-    clearOutlineNodeTarget,
-    updateOutlineNodeStyle,
-    deleteOutlineNode,
-    deleteOutlineBranch,
-    toggleOutlineExpanded,
-    resetOutlineToFileStructure,
-    cleanBrokenOutlineNodes,
-    beginOutlineTargeting,
-    completeOutlineTargeting,
+    ...importActions,
+    ...exportActions,
+    ...documentActions,
+    ...projectActions,
+    ...historyActions,
+    ...shellActions,
   }
 }
 
@@ -339,5 +161,3 @@ export function useDocumentActionsContext(): DocumentActions {
   }
   return actions
 }
-
-
