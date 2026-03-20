@@ -46,8 +46,9 @@ function handlePageClick(event: MouseEvent | KeyboardEvent) {
     const index = pages.findIndex((p) => p.id === props.page.id)
     const prevPage = pages[index - 1]
 
-    // Prevent invalid splits
-    if (index > 0 && index < pages.length - 1 && prevPage && !prevPage.isDivider) {
+    // Clicking a page inserts a divider before it, so any non-first page is valid
+    // as long as it does not already follow a divider.
+    if (index > 0 && prevPage && !prevPage.isDivider) {
       actions.handleSplitGroup(index)
     }
     return
@@ -186,4 +187,3 @@ function handleContextMenu(event: MouseEvent) {
     </ContextMenuContent>
   </ContextMenu>
 </template>
-
