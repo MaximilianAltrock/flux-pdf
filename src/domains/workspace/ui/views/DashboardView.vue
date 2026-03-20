@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import { liveQuery } from 'dexie'
+import { computed, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { DEFAULT_PROJECT_TITLE } from '@/shared/constants'
-import { useProjectThumbnailUrls } from '@/domains/workspace/application'
-import { useWorkspaceCatalogStore } from '@/domains/workspace/store'
+import {
+  useLiveProjectList,
+  useProjectCatalog,
+  useProjectThumbnailUrls,
+} from '@/domains/workspace/application'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useToast } from '@/shared/composables/useToast'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
@@ -20,16 +22,21 @@ const sortOptions = [
 type SortKey = (typeof sortOptions)[number]['value']
 
 const router = useRouter()
-const projectsStore = useWorkspaceCatalogStore()
+const projectCatalog = useProjectCatalog()
 const { confirm } = useConfirm()
 const toast = useToast()
 
-const projects = ref<ProjectMeta[]>([])
-const isLoading = shallowRef(true)
 const query = shallowRef('')
 const sort = shallowRef<SortKey>('updated')
 const editingId = shallowRef<string | null>(null)
-let projectFeed: { unsubscribe(): void } | null = null
+const { items: projects, isLoading } = useLiveProjectList(
+  () => projectCatalog.listRecentProjects(PROJECT_LIST_LIMIT),
+  {
+    onError: (error) => {
+      console.error('Failed to subscribe to recent projects:', error)
+    },
+  },
+)
 
 const searchTerm = computed(() => query.value.trim().toLowerCase())
 const isSearchActive = computed(() => searchTerm.value.length > 0)
@@ -40,44 +47,6 @@ const sortComparators: Record<SortKey, (a: ProjectMeta, b: ProjectMeta) => numbe
   created: (a, b) => b.createdAt - a.createdAt,
   title: (a, b) => a.title.localeCompare(b.title),
 }
-
-async function refreshProjects() {
-  // Don't set loading true if we already have data (prevents flashing on soft refresh)
-  if (projects.value.length === 0) isLoading.value = true
-
-  try {
-    // Artificial delay removed, logic stays same
-    projects.value = await projectsStore.listRecentProjects(PROJECT_LIST_LIMIT)
-  } catch (error) {
-    console.error('Failed to load projects:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function startProjectFeed() {
-  projectFeed?.unsubscribe()
-  projectFeed = liveQuery(() => projectsStore.listRecentProjects(PROJECT_LIST_LIMIT)).subscribe({
-    next: (nextProjects) => {
-      projects.value = nextProjects
-      isLoading.value = false
-    },
-    error: (error) => {
-      console.error('Failed to subscribe to recent projects:', error)
-      void refreshProjects()
-    },
-  })
-}
-
-onMounted(() => {
-  startProjectFeed()
-  void refreshProjects()
-})
-
-onBeforeUnmount(() => {
-  projectFeed?.unsubscribe()
-  projectFeed = null
-})
 
 const handleRenameCancel = () => {
   editingId.value = null
@@ -96,15 +65,14 @@ async function handleOpenProject(id: string) {
 }
 
 async function handleCreateProject() {
-  const meta = await projectsStore.createProject({ title: DEFAULT_PROJECT_TITLE })
+  const meta = await projectCatalog.createProject({ title: DEFAULT_PROJECT_TITLE })
   await router.push(`/project/${meta.id}`)
 }
 
 async function handleDuplicate(project: ProjectMeta) {
-  const created = await projectsStore.duplicateProject(project.id)
+  const created = await projectCatalog.duplicateProject(project.id)
   if (created) {
     toast.success('Project duplicated')
-    await refreshProjects()
   }
 }
 
@@ -116,9 +84,8 @@ async function handleDelete(project: ProjectMeta) {
     variant: 'warning',
   })
   if (!confirmed) return
-  await projectsStore.trashProject(project.id)
+  await projectCatalog.trashProject(project.id)
   toast.success('Project moved to trash')
-  await refreshProjects()
 }
 
 function handleRenameStart(project: ProjectMeta) {
@@ -130,8 +97,7 @@ async function handleRenameCommit(project: ProjectMeta, nextTitle: string) {
   editingId.value = null
   const trimmed = nextTitle.trim()
   if (!trimmed || trimmed === project.title) return
-  await projectsStore.renameProject(project.id, trimmed)
-  await refreshProjects()
+  await projectCatalog.renameProject(project.id, trimmed)
 }
 </script>
 

@@ -34,7 +34,7 @@ const emit = defineEmits<{
   navigate: [pageRef: PageReference]
 }>()
 
-const { renderThumbnail, getPageViewportSize } = useThumbnailRenderer()
+const { renderThumbnail, getPageViewportSize, releaseThumbnail } = useThumbnailRenderer()
 const { isMobile, onBackButton } = useMobile()
 const actions = useDocumentActionsContext()
 const { document } = useProjectSession()
@@ -74,6 +74,13 @@ const pageNumber = computed(() => currentIndex.value + 1)
 const totalPages = computed(() => contentPages.value.length)
 const hasPreviewPage = computed(() => !!props.pageRef)
 const pageRedactions = computed(() => props.pageRef?.redactions ?? [])
+const pageRedactionBoxes = computed(() =>
+  pageRedactions.value.map((redaction) => ({
+    redaction,
+    rect: getRedactionRect(redaction),
+    isSelected: selectedIds.value.has(redaction.id),
+  })),
+)
 const pageSize = computed(() => getPageSizePoints(props.pageRef))
 
 // CSS for the overlay container (matches image position)
@@ -183,10 +190,11 @@ watch(
     let canceled = false
     onInvalidate(() => {
       canceled = true
+      releasePreviewThumbnailUrl()
     })
 
     if (!isOpen || !props.pageRef) {
-      previewUrl.value = null
+      releasePreviewThumbnailUrl()
       isLoading.value = false
       if (isRedactMode.value) toggleRedactMode() // Reset mode on close
       pageViewportSize.value = null
@@ -222,6 +230,12 @@ watch(
   },
   { immediate: true },
 )
+
+function releasePreviewThumbnailUrl() {
+  if (!props.pageRef || !previewUrl.value) return
+  releaseThumbnail(props.pageRef, isMobile.value ? 600 : 1200, 2)
+  previewUrl.value = null
+}
 
 function normalizeRotation(value: number | undefined): number {
   if (!Number.isFinite(value)) return 0
@@ -389,6 +403,7 @@ onBackButton(
 )
 
 onUnmounted(() => {
+  releasePreviewThumbnailUrl()
   clearOverlaySync()
 })
 </script>
@@ -464,36 +479,36 @@ onUnmounted(() => {
         >
           <!-- 1. Redaction Boxes -->
           <div
-            v-for="redaction in pageRedactions"
-            :key="redaction.id"
+            v-for="overlay in pageRedactionBoxes"
+            :key="overlay.redaction.id"
             class="absolute border border-white/20"
-            :class="selectedIds.has(redaction.id) ? 'z-20 ring-2 ring-primary' : 'z-10'"
+            :class="overlay.isSelected ? 'z-20 ring-2 ring-primary' : 'z-10'"
             :style="{
-              left: getRedactionRect(redaction).left + 'px',
-              top: getRedactionRect(redaction).top + 'px',
-              width: getRedactionRect(redaction).width + 'px',
-              height: getRedactionRect(redaction).height + 'px',
-              backgroundColor: redaction.color,
+              left: overlay.rect.left + 'px',
+              top: overlay.rect.top + 'px',
+              width: overlay.rect.width + 'px',
+              height: overlay.rect.height + 'px',
+              backgroundColor: overlay.redaction.color,
             }"
-            @pointerdown.stop="startMove($event, redaction.id, redaction)"
+            @pointerdown.stop="startMove($event, overlay.redaction.id, overlay.redaction)"
           >
             <!-- 2. Resize Handles (Only if selected) -->
-            <template v-if="selectedIds.has(redaction.id)">
+            <template v-if="overlay.isSelected">
               <div
                 class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-background border border-primary cursor-nwse-resize z-30"
-                @pointerdown.stop="startResize($event, 'nw', redaction.id, redaction)"
+                @pointerdown.stop="startResize($event, 'nw', overlay.redaction.id, overlay.redaction)"
               ></div>
               <div
                 class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-background border border-primary cursor-nesw-resize z-30"
-                @pointerdown.stop="startResize($event, 'ne', redaction.id, redaction)"
+                @pointerdown.stop="startResize($event, 'ne', overlay.redaction.id, overlay.redaction)"
               ></div>
               <div
                 class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-background border border-primary cursor-nesw-resize z-30"
-                @pointerdown.stop="startResize($event, 'sw', redaction.id, redaction)"
+                @pointerdown.stop="startResize($event, 'sw', overlay.redaction.id, overlay.redaction)"
               ></div>
               <div
                 class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-background border border-primary cursor-nwse-resize z-30"
-                @pointerdown.stop="startResize($event, 'se', redaction.id, redaction)"
+                @pointerdown.stop="startResize($event, 'se', overlay.redaction.id, overlay.redaction)"
               ></div>
             </template>
           </div>
@@ -568,4 +583,3 @@ onUnmounted(() => {
     </DialogContent>
   </Dialog>
 </template>
-

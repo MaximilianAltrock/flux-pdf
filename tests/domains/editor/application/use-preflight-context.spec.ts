@@ -1,10 +1,13 @@
 import { computed, defineComponent, h, nextTick, ref } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  createPreflightState,
   providePreflight,
   usePreflightContext,
   type PreflightState,
 } from '@/domains/editor/application/usePreflight'
+import { createDocumentState } from '@/domains/project-session/session/document-state'
+import { createEditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import { PreflightRuleId } from '@/shared/types/linter'
 import type { LintResult } from '@/shared/types/linter'
 import { mountVueComponent } from '../../../utils/mount-vue-component'
@@ -90,5 +93,57 @@ describe('usePreflightContext', () => {
     expect(mounted.host.textContent).toBe('1|1|false')
 
     mounted.unmount()
+  })
+
+  it('enriches missing source metrics lazily when preflight needs them', async () => {
+    const store = createDocumentState()
+    const editor = createEditorUiState()
+    store.addSourceFile({
+      id: 'source-1',
+      filename: 'scan.pdf',
+      pageCount: 1,
+      fileSize: 1024,
+      addedAt: Date.now(),
+      color: 'zinc',
+      pageMetaData: [{ width: 612, height: 792, rotation: 0 }],
+    })
+    store.addPages([
+      {
+        id: 'page-1',
+        sourceFileId: 'source-1',
+        sourcePageIndex: 0,
+        rotation: 0,
+        width: 612,
+        height: 792,
+      },
+    ])
+
+    const ensurePageAnalysisMetrics = vi.fn(async () => [
+      {
+        width: 612,
+        height: 792,
+        rotation: 0,
+        textChars: 0,
+        dominantImageCoverage: 1,
+        dominantImageDpi: 100,
+      },
+    ])
+
+    const preflight = createPreflightState(store, editor, {
+      ensurePageAnalysisMetrics,
+    })
+
+    await Promise.resolve()
+    await nextTick()
+
+    expect(ensurePageAnalysisMetrics).toHaveBeenCalledTimes(1)
+    expect(preflight.problems.value).toContainEqual(
+      expect.objectContaining({
+        ruleId: PreflightRuleId.LOW_QUALITY,
+      }),
+    )
+
+    await nextTick()
+    expect(ensurePageAnalysisMetrics).toHaveBeenCalledTimes(1)
   })
 })

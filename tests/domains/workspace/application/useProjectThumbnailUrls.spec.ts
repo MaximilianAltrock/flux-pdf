@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref, type EffectScope } from 'vue'
 import { useProjectThumbnailUrls } from '@/domains/workspace/application/useProjectThumbnailUrls'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
+import { sharedRenderedThumbnailCache, sharedWorkspaceThumbnailCache } from '@/shared/infrastructure/thumbnail-cache'
 
 function createProjectMeta(partial: Partial<ProjectMeta>): ProjectMeta {
   return {
@@ -25,6 +26,8 @@ describe('useProjectThumbnailUrls', () => {
     while (scopes.length > 0) {
       scopes.pop()?.stop()
     }
+    sharedRenderedThumbnailCache.clear()
+    sharedWorkspaceThumbnailCache.clear()
     vi.restoreAllMocks()
   })
 
@@ -146,5 +149,70 @@ describe('useProjectThumbnailUrls', () => {
 
     expect(remounted.state.thumbnailUrlById.value['project-2']).toBe('blob:test-1')
     expect(createObjectUrlSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('shares one retained workspace url across simultaneous consumers', async () => {
+    stubObjectUrls()
+    const project = createProjectMeta({
+      id: 'project-shared',
+      thumbnail: new Blob(['thumb']),
+      thumbnailKey: 'source-1-0-0',
+    })
+    const first = createHarness([project])
+    const second = createHarness([project])
+
+    await nextTick()
+
+    expect(first.state.thumbnailUrlById.value['project-shared']).toBe('blob:test-1')
+    expect(second.state.thumbnailUrlById.value['project-shared']).toBe('blob:test-1')
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1)
+
+    first.scope.stop()
+    expect(revokeObjectUrlSpy).not.toHaveBeenCalled()
+    expect(second.state.thumbnailUrlById.value['project-shared']).toBe('blob:test-1')
+  })
+
+  it('keeps workspace thumbnail urls isolated from rendered thumbnail cache clears', async () => {
+    stubObjectUrls()
+    const project = createProjectMeta({
+      id: 'project-isolated',
+      thumbnail: new Blob(['thumb']),
+      thumbnailKey: 'source-1-0-0',
+    })
+    const { state } = createHarness([project])
+    await nextTick()
+
+    expect(state.thumbnailUrlById.value['project-isolated']).toBe('blob:test-1')
+
+    sharedRenderedThumbnailCache.clear()
+
+    expect(state.thumbnailUrlById.value['project-isolated']).toBe('blob:test-1')
+    expect(revokeObjectUrlSpy).not.toHaveBeenCalled()
+  })
+
+  it('replaces the current url when a project thumbnail key changes without revoking shared cache entries eagerly', async () => {
+    stubObjectUrls()
+    const project = createProjectMeta({
+      id: 'project-rotate',
+      thumbnail: new Blob(['thumb-a']),
+      thumbnailKey: 'source-1-0-0',
+    })
+    const { projects, state } = createHarness([project])
+    await nextTick()
+
+    expect(state.thumbnailUrlById.value['project-rotate']).toBe('blob:test-1')
+
+    projects.value = [
+      createProjectMeta({
+        id: 'project-rotate',
+        thumbnail: new Blob(['thumb-b']),
+        thumbnailKey: 'source-1-0-90',
+      }),
+    ]
+    await nextTick()
+
+    expect(state.thumbnailUrlById.value['project-rotate']).toBe('blob:test-2')
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(2)
+    expect(revokeObjectUrlSpy).not.toHaveBeenCalled()
   })
 })

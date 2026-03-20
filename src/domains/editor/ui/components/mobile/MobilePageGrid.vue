@@ -11,7 +11,7 @@ import { type PageReference } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
 import { useProjectSession } from '@/domains/project-session/session'
 import { usePreflightContext } from '@/domains/editor/application/usePreflight'
-import { usePageProblemMeta } from '@/domains/editor/ui/usePageProblemMeta'
+import { usePageProblemMeta, type PageProblemMeta } from '@/domains/editor/ui/usePageProblemMeta'
 import { useMobileGridTargets } from '@/domains/editor/ui/useMobileGridTargets'
 import { useMobileGridGestures } from '@/domains/editor/ui/useMobileGridGestures'
 import { useMobileEditorMode } from '@/domains/editor/ui/useMobileEditorMode'
@@ -34,7 +34,17 @@ const { isSplit, isBrowse, isSelect, isMove } = useMobileEditorMode(
 const selectedCount = computed(() => document.selectedCount)
 const selectedIds = computed(() => document.selectedIds)
 
-const { getPageProblemMeta } = usePageProblemMeta(preflight.problemsByPageId)
+const { pageProblemsById } = usePageProblemMeta(preflight.problemsByPageId)
+const EMPTY_PAGE_PROBLEM_META: PageProblemMeta = {
+  severity: undefined,
+  messages: [],
+}
+const localPagesWithProblemMeta = computed(() =>
+  localPages.value.map((pageRef) => ({
+    pageRef,
+    problemMeta: pageProblemsById.value.get(pageRef.id) ?? EMPTY_PAGE_PROBLEM_META,
+  })),
+)
 
 const { splitTargets, dropTargets } = useMobileGridTargets({
   localPages,
@@ -96,7 +106,7 @@ function preventContextMenu(event: Event) {
 
     <!-- Page Grid -->
     <div class="grid gap-3 p-4 min-h-[50vh]" :style="gridStyle">
-      <template v-for="(pageRef, index) in localPages" :key="pageRef.id">
+      <template v-for="(item, index) in localPagesWithProblemMeta" :key="item.pageRef.id">
         <!-- Split marker before this page (in Split mode) -->
         <MobileGridMarkerButton
           v-if="isSplit && splitTargets.has(index)"
@@ -108,7 +118,7 @@ function preventContextMenu(event: Event) {
 
         <!-- Drop marker before this page (in Move mode) -->
         <MobileGridMarkerButton
-          v-if="isMove && dropTargets.has(index) && !selectedIds.has(pageRef.id)"
+          v-if="isMove && dropTargets.has(index) && !selectedIds.has(item.pageRef.id)"
           label="Insert here"
           @select="handleDropMarkerTap(index)"
         >
@@ -116,41 +126,41 @@ function preventContextMenu(event: Event) {
         </MobileGridMarkerButton>
 
         <!-- Section Divider -->
-        <PageDivider v-if="pageRef.isDivider" variant="mobile" class="col-span-full" />
+        <PageDivider v-if="item.pageRef.isDivider" variant="mobile" class="col-span-full" />
 
         <!-- Page Thumbnail -->
         <div
           v-else
-          :data-mobile-page-id="pageRef.id"
+          :data-mobile-page-id="item.pageRef.id"
           class="relative transition-opacity duration-200"
           :class="{
-            'opacity-40': isMove && selectedIds.has(pageRef.id),
+            'opacity-40': isMove && selectedIds.has(item.pageRef.id),
           }"
-          @touchstart="handleTouchStart(pageRef.id)"
+          @touchstart="handleTouchStart(item.pageRef.id)"
           @touchmove="handleTouchMove"
           @touchend="handleTouchEnd"
-          @click="handlePageTap(pageRef, $event)"
+          @click="handlePageTap(item.pageRef, $event)"
         >
           <!-- Long press highlight -->
           <Transition name="fade">
             <div
-              v-if="longPressPageId === pageRef.id"
+              v-if="longPressPageId === item.pageRef.id"
               class="absolute inset-0 bg-primary/20 rounded-lg z-10 pointer-events-none"
             />
           </Transition>
 
           <PdfThumbnail
-            :page-ref="pageRef"
-            :page-number="getContentPageNumber(pageRef.id)"
-            :selected="isSelect && isSelected(pageRef.id)"
+            :page-ref="item.pageRef"
+            :page-number="getContentPageNumber(item.pageRef.id)"
+            :selected="isSelect && isSelected(item.pageRef.id)"
             :fixed-size="false"
             :width="300"
-            :source-color="document.getSourceColor(pageRef.sourceFileId)"
+            :source-color="document.getSourceColor(item.pageRef.sourceFileId)"
             :is-start-of-file="false"
             :is-razor-active="false"
             :can-split="false"
-            :problem-severity="getPageProblemMeta(pageRef.id).severity"
-            :problem-messages="getPageProblemMeta(pageRef.id).messages"
+            :problem-severity="item.problemMeta.severity"
+            :problem-messages="item.problemMeta.messages"
             class="pointer-events-none"
           />
         </div>
@@ -210,5 +220,4 @@ function preventContextMenu(event: Event) {
   display: none;
 }
 </style>
-
 

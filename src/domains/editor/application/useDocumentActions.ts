@@ -5,16 +5,17 @@ import { useToast } from '@/shared/composables/useToast'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useMobile } from '@/shared/composables/useMobile'
 import { useActiveElementBlur } from '@/shared/composables/useActiveElementBlur'
-import { createProjectSessionServices } from '@/domains/project-session/application/create-project-session-services'
+import { createDocumentImportService } from '@/domains/import/application/document-import.service'
+import { createDocumentExportService } from '@/domains/export/application/document-export.service'
+import { usePdfRepository } from '@/shared/infrastructure/pdf.repository'
 import { useFileInput } from '@/shared/composables/useFileInput'
 import { useSettingsPreferencesState } from '@/domains/settings/application'
 import { useProjectSession } from '@/domains/project-session/session'
 import type { ProjectSession } from '@/domains/project-session/domain/project-session'
-import { useHistoryActionGroup } from '@/domains/editor/application/action-groups/useHistoryActionGroup'
-import { useImportActionGroup } from '@/domains/editor/application/action-groups/useImportActionGroup'
+import { createFileImportActions } from '@/domains/editor/application/actions/file-import-actions'
+import { createProjectActions } from '@/domains/editor/application/actions/project-actions'
 import { useExportActionGroup } from '@/domains/editor/application/action-groups/useExportActionGroup'
 import { useDocumentActionGroup } from '@/domains/editor/application/action-groups/useDocumentActionGroup'
-import { useProjectActionGroup } from '@/domains/editor/application/action-groups/useProjectActionGroup'
 import { useEditorShellActionGroup } from '@/domains/editor/application/action-groups/useEditorShellActionGroup'
 
 /**
@@ -38,29 +39,41 @@ export function useDocumentActions(sessionOverride?: ProjectSession) {
   const { isMobile, haptic, shareFile, canShareFiles } = useMobile()
   const { blurActiveElement } = useActiveElementBlur()
   const router = useRouter()
+  const pdfRepository = usePdfRepository()
   const autoGenerateOutlineSinglePage = computed(
     () => preferences.value.autoGenerateOutlineSinglePage,
   )
   const filenamePattern = computed(() => preferences.value.filenamePattern)
-  const projectSessionServices = createProjectSessionServices({
-    documentStore: session.document,
+  const importService = createDocumentImportService({
+    documentStore: store,
     historyStore: session.history,
     ui: {
       setLoading: ui.setLoading,
       importJob: toRef(session.importOperation, 'importJob'),
-      exportJob: toRef(session.exportOperation, 'exportJob'),
     },
     settings: {
       autoGenerateOutlineSinglePage,
+    },
+  })
+  const exportService = createDocumentExportService({
+    documentStore: store,
+    pdfRepository,
+    ui: {
+      setLoading: ui.setLoading,
+      exportJob: toRef(session.exportOperation, 'exportJob'),
+    },
+    settings: {
       filenamePattern,
     },
   })
   onScopeDispose(() => {
-    projectSessionServices.dispose()
+    exportService.dispose()
   })
 
   const {
     importFiles,
+  } = importService
+  const {
     generateRawPdf,
     exportDocument: exportDocumentService,
     getSuggestedFilename,
@@ -68,15 +81,25 @@ export function useDocumentActions(sessionOverride?: ProjectSession) {
     clearExportError,
     parsePageRange,
     validatePageRange,
-  } = projectSessionServices
+  } = exportService
 
   function normalizeProjectTitle(value: string) {
     let next = value.trim()
     if (!next) next = DEFAULT_PROJECT_TITLE
     return next.replace(/[/\\:]/g, '-')
   }
-  const historyActions = useHistoryActionGroup(session.history)
-  const importActions = useImportActionGroup({
+  const historyActions = {
+    undo: session.history.undo,
+    redo: session.history.redo,
+    clearHistory: session.history.clearHistory,
+    jumpTo: session.history.jumpTo,
+    canUndo: toRef(session.history, 'canUndo'),
+    canRedo: toRef(session.history, 'canRedo'),
+    undoName: toRef(session.history, 'undoName'),
+    redoName: toRef(session.history, 'redoName'),
+    historyList: toRef(session.history, 'historyList'),
+  }
+  const importActions = createFileImportActions({
     toast,
     openFileDialog,
     clearFileInput,
@@ -109,7 +132,7 @@ export function useDocumentActions(sessionOverride?: ProjectSession) {
     confirmDelete,
     normalizeProjectTitle,
   })
-  const projectActions = useProjectActionGroup({
+  const projectActions = createProjectActions({
     store,
     ui,
     exportState,

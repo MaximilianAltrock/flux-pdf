@@ -1,14 +1,8 @@
 import { onScopeDispose, shallowRef, watchEffect, type MaybeRefOrGetter, toValue } from 'vue'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
+import { sharedWorkspaceThumbnailCache } from '@/shared/infrastructure/thumbnail-cache'
 
 type ProjectListSource = MaybeRefOrGetter<ReadonlyArray<ProjectMeta>>
-
-type WorkspaceThumbnailCacheEntry = {
-  signature: string
-  url: string
-}
-
-const workspaceThumbnailCache = new Map<string, WorkspaceThumbnailCacheEntry>()
 
 function buildThumbnailSignature(project: ProjectMeta): string | null {
   if (!project.thumbnail || !project.thumbnailKey) {
@@ -18,50 +12,56 @@ function buildThumbnailSignature(project: ProjectMeta): string | null {
   return `page:${project.thumbnailKey}`
 }
 
-function getExactCachedThumbnailUrl(project: ProjectMeta): string | undefined {
+function getWorkspaceThumbnailCacheKey(project: ProjectMeta): string | null {
   const signature = buildThumbnailSignature(project)
-  if (!signature) return undefined
-  const existing = workspaceThumbnailCache.get(project.id)
-  if (existing?.signature === signature) {
-    return existing.url
-  }
-
-  return undefined
-}
-
-function storeCachedThumbnail(project: ProjectMeta): string | undefined {
-  const signature = buildThumbnailSignature(project)
-  const blob = project.thumbnail
-  if (!signature || !blob) {
-    return undefined
-  }
-
-  const existing = workspaceThumbnailCache.get(project.id)
-  if (existing?.signature === signature) {
-    return existing.url
-  }
-
-  if (existing) {
-    URL.revokeObjectURL(existing.url)
-  }
-
-  const url = URL.createObjectURL(blob)
-  workspaceThumbnailCache.set(project.id, { signature, url })
-  return url
+  if (!signature) return null
+  return `workspace:${project.id}:${signature}`
 }
 
 export function useProjectThumbnailUrls(projectsSource: ProjectListSource) {
   const thumbnailUrlById = shallowRef<Record<string, string | undefined>>({})
+  const publishedKeyByProjectId = new Map<string, string>()
 
   function publishThumbnailUrls(projects: ReadonlyArray<ProjectMeta>): void {
     const nextUrls: Record<string, string | undefined> = {}
+    const nextKeysByProjectId = new Map<string, string>()
+
     for (const project of projects) {
-      nextUrls[project.id] = getExactCachedThumbnailUrl(project) ?? storeCachedThumbnail(project)
+      const cacheKey = getWorkspaceThumbnailCacheKey(project)
+      const blob = project.thumbnail
+      if (!cacheKey || !blob) continue
+
+      nextKeysByProjectId.set(project.id, cacheKey)
+      const previousKey = publishedKeyByProjectId.get(project.id)
+
+      if (previousKey === cacheKey) {
+        nextUrls[project.id] = thumbnailUrlById.value[project.id]
+        continue
+      }
+
+      if (previousKey) {
+        sharedWorkspaceThumbnailCache.releaseUrl(previousKey)
+        publishedKeyByProjectId.delete(project.id)
+      }
+
+      nextUrls[project.id] = sharedWorkspaceThumbnailCache.retainUrl(cacheKey, blob)
+      publishedKeyByProjectId.set(project.id, cacheKey)
     }
+
+    for (const [projectId, cacheKey] of publishedKeyByProjectId) {
+      if (nextKeysByProjectId.has(projectId)) continue
+      sharedWorkspaceThumbnailCache.releaseUrl(cacheKey)
+      publishedKeyByProjectId.delete(projectId)
+    }
+
     thumbnailUrlById.value = nextUrls
   }
 
   function clearThumbnailUrls(): void {
+    for (const cacheKey of publishedKeyByProjectId.values()) {
+      sharedWorkspaceThumbnailCache.releaseUrl(cacheKey)
+    }
+    publishedKeyByProjectId.clear()
     thumbnailUrlById.value = {}
   }
 

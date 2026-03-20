@@ -2,8 +2,7 @@ import type { ProjectMeta } from '@/shared/infrastructure/db'
 import type { PageReference } from '@/shared/types'
 
 export interface ProjectThumbnailServiceOptions {
-  renderThumbnail: (page: PageReference) => Promise<string>
-  fetchBlob?: (url: string) => Promise<Blob>
+  renderThumbnailBlob: (page: PageReference) => Promise<Blob>
 }
 
 export interface ProjectThumbnailService {
@@ -22,13 +21,6 @@ export function createProjectThumbnailService(
   const thumbnailKeyByProject = new Map<string, string | null>()
   const thumbnailInFlight = new Map<string, Promise<Blob | undefined>>()
 
-  const fetchBlob =
-    options.fetchBlob ??
-    (async (url: string) => {
-      const response = await fetch(url)
-      return response.blob()
-    })
-
   async function ensureThumbnail(
     meta: ProjectMeta,
     page: PageReference | null,
@@ -45,14 +37,12 @@ export function createProjectThumbnailService(
     if (key && existingKey === key && meta.thumbnail) {
       return meta.thumbnail
     }
-
     if (thumbnailInFlight.has(key)) {
       return thumbnailInFlight.get(key)
     }
 
     const job = options
-      .renderThumbnail(page)
-      .then((url) => fetchBlob(url))
+      .renderThumbnailBlob(page)
       .then((blob) => {
         thumbnailKeyByProject.set(meta.id, key)
         return blob

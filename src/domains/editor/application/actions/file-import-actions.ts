@@ -1,4 +1,4 @@
-import type { ProjectSessionServices } from '@/domains/project-session/application/create-project-session-services'
+import type { ImportService } from '@/domains/import/application/import-service'
 import { importPdf as importPdfUseCase } from '@/domains/import/application/use-cases/import-pdf'
 import { getImportErrorMessage } from '@/domains/import/domain/errors'
 
@@ -11,7 +11,7 @@ export interface CreateFileImportActionsDeps {
   toast: FileImportToast
   openFileDialog: () => void
   clearFileInput: () => void
-  services: Pick<ProjectSessionServices, 'importFiles'>
+  services: Pick<ImportService, 'importFiles'>
 }
 
 export function createFileImportActions({

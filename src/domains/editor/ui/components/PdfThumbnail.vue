@@ -32,7 +32,7 @@ const emit = defineEmits<{
   visible: [pageId: string, ratio: number]
 }>()
 
-const { renderThumbnail, cancelRender } = useThumbnailRenderer()
+const { renderThumbnail, releaseThumbnail } = useThumbnailRenderer()
 
 const containerRef = useTemplateRef<HTMLElement>('containerRef')
 const lastPageRefId = shallowRef(props.pageRef.id)
@@ -80,7 +80,6 @@ async function loadThumbnail() {
   const requestId = ++renderRequestId.value
   const pageRef = props.pageRef
   lastPageRefId.value = pageRef.id
-  cancelRender(pageRef.id)
   isLoading.value = true
   hasError.value = false
 
@@ -101,6 +100,12 @@ async function loadThumbnail() {
   }
 }
 
+function releaseCurrentThumbnail() {
+  if (!thumbnailUrl.value) return
+  releaseThumbnail(props.pageRef, renderTargetWidth.value)
+  thumbnailUrl.value = null
+}
+
 watch(
   [
     () => props.pageRef.sourceFileId,
@@ -109,9 +114,8 @@ watch(
   ],
   () => {
     if (hasBeenVisible.value) {
-      cancelRender(lastPageRefId.value)
+      releaseCurrentThumbnail()
       lastPageRefId.value = props.pageRef.id
-      thumbnailUrl.value = null
       loadThumbnail()
     }
   },
@@ -119,7 +123,7 @@ watch(
 
 onUnmounted(() => {
   stopObserver()
-  cancelRender(props.pageRef.id)
+  releaseCurrentThumbnail()
 })
 
 function handleClick(event: MouseEvent | KeyboardEvent) {

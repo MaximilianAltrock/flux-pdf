@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFileImportActions } from '@/domains/editor/application/actions/file-import-actions'
-import type { ProjectSessionServices } from '@/domains/project-session/application/create-project-session-services'
+import type { ImportService } from '@/domains/import/application/import-service'
 
 function createHarness() {
   const toast = {
@@ -10,7 +10,7 @@ function createHarness() {
 
   const openFileDialog = vi.fn()
   const clearFileInput = vi.fn()
-  const importFiles = vi.fn<ProjectSessionServices['importFiles']>(async () => ({
+  const importFiles = vi.fn<ImportService['importFiles']>(async () => ({
     ok: true,
     value: {
       results: [],

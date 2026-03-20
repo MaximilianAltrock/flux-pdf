@@ -10,13 +10,14 @@ import { useThumbnailRenderer } from '@/domains/document/application/composables
 import { evictPdfCache } from '@/domains/import/infrastructure/import'
 import { createProjectAuthoringService } from '@/domains/project-session/application/project-authoring.service'
 import { createProjectAutosaveService } from '@/domains/project-session/application/project-autosave.service'
+import {
+  createProjectCatalogService,
+  resolveProjectCatalogDefaults,
+} from '@/domains/project-session/application/project-catalog.service'
 import { hydrateProjectWorkspace } from '@/domains/project-session/application/project-hydration.service'
 import { createProjectLifecycleService } from '@/domains/project-session/application/project-lifecycle.service'
 import { createProjectPersistenceService } from '@/domains/project-session/application/project-persistence.service'
 import { createProjectSourceGcService } from '@/domains/project-session/application/project-source-gc.service'
-import {
-  clampProjectGridZoom,
-} from '@/domains/project-session/domain/project-snapshot'
 import { createProjectStateController } from '@/domains/project-session/session/project-state'
 import { createProjectThumbnailService } from '@/domains/workspace/application'
 import { STORAGE_KEYS } from '@/shared/constants'
@@ -36,10 +37,15 @@ export function createProjectSession(): ProjectSession {
     const editor = createEditorUiState()
     const importOperation = createImportOperationState()
     const exportOperation = createExportOperationState()
-    const { renderThumbnail, clearCache } = useThumbnailRenderer()
+    const { renderThumbnailBlob, clearCache } = useThumbnailRenderer()
     const projectPersistence = createProjectPersistenceService()
     const projectAuthoring = createProjectAuthoringService(projectPersistence)
-    const projectThumbnail = createProjectThumbnailService({ renderThumbnail })
+    const projectCatalog = createProjectCatalogService({
+      persistence: projectPersistence,
+      authoring: projectAuthoring,
+      getDefaults: () => resolveProjectCatalogDefaults(preferences.value),
+    })
+    const projectThumbnail = createProjectThumbnailService({ renderThumbnailBlob })
     const sourceGc = createProjectSourceGcService(projectPersistence, {
       evictSourceCache: evictPdfCache,
     })
@@ -57,40 +63,52 @@ export function createProjectSession(): ProjectSession {
     }
     projectState.bindUiState(uiState)
 
-    function getDefaultGridZoom(): number {
-      return clampProjectGridZoom(preferences.value.defaultGridZoom)
-    }
+    function buildLiveProjectSnapshot() {
+      const activeSourceIds = Array.from(document.sources.keys())
+      const serializedHistory = history.serializeHistory()
+      const snapshot = {
+        activeSourceIds,
+        pageMap: document.pages,
+        history: serializedHistory,
+        historyPointer: history.getHistoryPointer(),
+        zoom: editor.zoom,
+        outlineTree: document.outlineTree,
+        outlineDirty: document.outlineDirty,
+        metadata: document.metadata,
+        security: document.security,
+        metadataDirty: document.metadataDirty,
+        ignoredPreflightRuleIds: editor.ignoredPreflightRuleIds,
+      }
 
-    function getLiveGcState() {
       return {
-        activeSourceIds: Array.from(document.sources.keys()),
-        pages: document.pages,
-        history: history.serializeHistory(),
+        projectTitle: document.projectTitle,
+        contentPages: document.contentPages as PageReference[],
+        contentPageCount: document.contentPageCount,
+        snapshot,
+        gcState: {
+          activeSourceIds,
+          pages: document.pages,
+          history: serializedHistory,
+        },
       }
     }
 
     async function persistActiveProject(): Promise<void> {
       if (!projectState.activeProjectId.value) return
+      await persistProjectFromSnapshot(buildLiveProjectSnapshot())
+    }
 
+    async function persistProjectFromSnapshot(
+      liveSnapshot: ReturnType<typeof buildLiveProjectSnapshot>,
+    ): Promise<void> {
+      if (!projectState.activeProjectId.value) return
       const meta = await projectAuthoring.persistProject({
         projectId: projectState.activeProjectId.value,
         existingMeta: projectState.activeProjectMeta.value,
-        projectTitle: document.projectTitle,
-        contentPages: document.contentPages as PageReference[],
-        contentPageCount: document.contentPageCount,
-        snapshot: {
-          activeSourceIds: Array.from(document.sources.keys()),
-          pageMap: document.pages,
-          history: history.serializeHistory(),
-          historyPointer: history.getHistoryPointer(),
-          zoom: editor.zoom,
-          outlineTree: document.outlineTree,
-          outlineDirty: document.outlineDirty,
-          metadata: document.metadata,
-          security: document.security,
-          metadataDirty: document.metadataDirty,
-          ignoredPreflightRuleIds: editor.ignoredPreflightRuleIds,
-        },
+        projectTitle: liveSnapshot.projectTitle,
+        contentPages: liveSnapshot.contentPages,
+        contentPageCount: liveSnapshot.contentPageCount,
+        snapshot: liveSnapshot.snapshot,
         ensureThumbnail: projectThumbnail.ensureThumbnail,
       })
 
@@ -114,7 +132,7 @@ export function createProjectSession(): ProjectSession {
         documentStore: document,
         historyStore: history,
         uiState,
-        defaultGridZoom: getDefaultGridZoom(),
+        defaultGridZoom: resolveProjectCatalogDefaults(preferences.value).defaultGridZoom,
         clearThumbnailCache: clearCache,
       })
 
@@ -130,7 +148,7 @@ export function createProjectSession(): ProjectSession {
       hydrateStore,
       persistActiveProject,
       rememberThumbnailKey: projectThumbnail.rememberThumbnailKey,
-      getLiveGcState,
+      getLiveGcState: () => buildLiveProjectSnapshot().gcState,
       runGarbageCollection: sourceGc.run,
       setHydrating: projectState.setHydrating,
       setLoading: projectState.setLoading,
@@ -143,10 +161,8 @@ export function createProjectSession(): ProjectSession {
       title?: string
       open?: boolean
     }) {
-      const meta = await projectAuthoring.createProject({
+      const meta = await projectCatalog.createProject({
         title: options?.title,
-        defaultAuthor: preferences.value.defaultAuthor,
-        defaultGridZoom: getDefaultGridZoom(),
       })
 
       if (options?.open) {
@@ -157,7 +173,7 @@ export function createProjectSession(): ProjectSession {
     }
 
     async function renameProject(id: string, title: string): Promise<void> {
-      const updated = await projectPersistence.renameProject(id, title)
+      const updated = await projectCatalog.renameProject(id, title)
       if (!updated) return
 
       if (projectState.activeProjectId.value === id) {
@@ -167,18 +183,18 @@ export function createProjectSession(): ProjectSession {
     }
 
     async function duplicateProject(id: string) {
-      return projectPersistence.duplicateProject(id)
+      return projectCatalog.duplicateProject(id)
     }
 
     async function runGarbageCollection() {
-      await sourceGc.run(getLiveGcState())
+      await sourceGc.run(buildLiveProjectSnapshot().gcState)
     }
 
     const projectAutosave = createProjectAutosaveService({
       canPersist: () => Boolean(projectState.activeProjectId.value) && !projectState.isHydrating.value,
-      persistProject: persistActiveProject,
-      collectGarbage: sourceGc.run,
-      getLiveGcState,
+      buildSnapshot: buildLiveProjectSnapshot,
+      persistProject: persistProjectFromSnapshot,
+      collectGarbage: (liveSnapshot) => sourceGc.run(liveSnapshot.gcState),
       saveWatchSource: () => [
         document.pagesVersion,
         document.sourcesVersion,
@@ -219,9 +235,9 @@ export function createProjectSession(): ProjectSession {
       },
       getLastActiveProjectId: projectState.getLastActiveProjectId,
       setLastActiveProjectId: projectState.setLastActiveProjectId,
-      listRecentProjects: projectPersistence.listRecentProjects,
-      listTrashedProjects: projectPersistence.listTrashedProjects,
-      loadProjectMeta: projectPersistence.loadProjectMeta,
+      listRecentProjects: projectCatalog.listRecentProjects,
+      listTrashedProjects: projectCatalog.listTrashedProjects,
+      loadProjectMeta: projectCatalog.loadProjectMeta,
       createProject,
       persistActiveProject,
       loadProject: projectLifecycle.loadProject,

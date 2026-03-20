@@ -23,37 +23,6 @@ import {
   cloneSourceFile,
 } from '@/shared/utils/document-clone'
 
-export const DOCUMENT_STATE_CONCERNS = [
-  'sources',
-  'pages',
-  'metadata',
-  'security',
-  'outline',
-] as const
-
-export type DocumentStateConcern = (typeof DOCUMENT_STATE_CONCERNS)[number]
-
-export const DOCUMENT_STATE_FIELD_CLASSIFICATION = {
-  sources: 'deep-reactive mutable state',
-  pages: 'deep-reactive mutable state',
-  selection: 'deep-reactive mutable state',
-  metadata: 'deep-reactive mutable state',
-  security: 'deep-reactive mutable state',
-  outlineTree: 'deep-reactive mutable state',
-  pagesStructureVersion: 'shallow replacement-based state',
-  pagesVersion: 'shallow replacement-based state',
-  sourcesVersion: 'shallow replacement-based state',
-  outlineVersion: 'shallow replacement-based state',
-  metadataVersion: 'shallow replacement-based state',
-  securityVersion: 'shallow replacement-based state',
-  outlineDirty: 'shallow replacement-based state',
-  metadataDirty: 'shallow replacement-based state',
-  projectTitle: 'shallow replacement-based state',
-  activePageId: 'shallow replacement-based state',
-} as const
-
-export const DOCUMENT_STATE_RAW_FIELDS = [] as const
-
 export function createDocumentState() {
   // ============================================
   // State
@@ -190,12 +159,40 @@ export function createDocumentState() {
     bumpPagesStructureVersion()
   }
 
-  function insertPages(index: number, newPages: PageEntry[]) {
-    if (index < 0) index = 0
-    if (index > pages.value.length) index = pages.value.length
+  function insertPagesBatch(insertions: ReadonlyArray<{ index: number; pages: PageEntry[] }>) {
+    if (insertions.length === 0) return
 
-    pages.value.splice(index, 0, ...clonePageEntries(newPages))
+    const currentPages = pages.value
+    const currentLength = currentPages.length
+    const sortedInsertions = [...insertions]
+      .map((insertion, order) => ({
+        index: Math.max(0, Math.min(insertion.index, currentLength)),
+        pages: clonePageEntries(insertion.pages),
+        order,
+      }))
+      .sort((a, b) => (a.index === b.index ? a.order - b.order : a.index - b.index))
+
+    const nextPages: PageEntry[] = []
+    let sourceIndex = 0
+
+    for (const insertion of sortedInsertions) {
+      if (sourceIndex < insertion.index) {
+        nextPages.push(...currentPages.slice(sourceIndex, insertion.index))
+        sourceIndex = insertion.index
+      }
+      nextPages.push(...insertion.pages)
+    }
+
+    if (sourceIndex < currentLength) {
+      nextPages.push(...currentPages.slice(sourceIndex))
+    }
+
+    pages.value = nextPages
     bumpPagesStructureVersion()
+  }
+
+  function insertPages(index: number, newPages: PageEntry[]) {
+    insertPagesBatch([{ index, pages: newPages }])
   }
 
   // === HARD DELETE (The only delete now) ===
@@ -218,13 +215,55 @@ export function createDocumentState() {
     bumpPagesStructureVersion()
   }
 
-  function rotatePage(pageId: string, degrees: RotationDelta) {
-    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
-    if (page) {
-      const current = page.rotation
+  function rotatePages(pageIds: readonly string[], degrees: RotationDelta) {
+    if (pageIds.length === 0) return
+    const pageIdSet = new Set(pageIds)
+    let didUpdate = false
+
+    for (const entry of pages.value) {
+      if (!isPageEntry(entry) || !pageIdSet.has(entry.id)) continue
+      const current = entry.rotation
       const newRotation = ((current + degrees + ROTATION_FULL_DEGREES) %
         ROTATION_FULL_DEGREES) as RotationAngle
-      page.rotation = newRotation
+      if (newRotation === current) continue
+      entry.rotation = newRotation
+      didUpdate = true
+    }
+
+    if (didUpdate) {
+      bumpPagesVersion()
+    }
+  }
+
+  function rotatePage(pageId: string, degrees: RotationDelta) {
+    rotatePages([pageId], degrees)
+  }
+
+  function setPageTargetDimensionsBatch(
+    targets: ReadonlyArray<{
+      pageId: string
+      targetDimensions?: { width: number; height: number } | null
+    }>,
+  ) {
+    if (targets.length === 0) return
+    const targetByPageId = new Map(
+      targets.map((target) => [target.pageId, target.targetDimensions ?? null] as const),
+    )
+    let didUpdate = false
+
+    for (const entry of pages.value) {
+      if (!isPageEntry(entry)) continue
+      if (!targetByPageId.has(entry.id)) continue
+      const nextTarget = targetByPageId.get(entry.id) ?? null
+      if (nextTarget) {
+        entry.targetDimensions = { ...nextTarget }
+      } else {
+        entry.targetDimensions = undefined
+      }
+      didUpdate = true
+    }
+
+    if (didUpdate) {
       bumpPagesVersion()
     }
   }
@@ -233,14 +272,14 @@ export function createDocumentState() {
     pageId: string,
     targetDimensions?: { width: number; height: number } | null,
   ) {
-    const page = pages.value.find((p): p is PageReference => isPageEntry(p) && p.id === pageId)
-    if (!page) return
-    if (targetDimensions) {
-      page.targetDimensions = { ...targetDimensions }
-    } else {
-      page.targetDimensions = undefined
-    }
-    bumpPagesVersion()
+    setPageTargetDimensionsBatch([{ pageId, targetDimensions }])
+  }
+
+  function setSourcePageMetrics(sourceFileId: string, nextPageMetaData: SourceFile['pageMetaData']) {
+    const source = sources.value.get(sourceFileId)
+    if (!source) return
+    source.pageMetaData = nextPageMetaData.map((metrics) => ({ ...metrics }))
+    bumpSourcesVersion()
   }
 
   function addRedaction(pageId: string, redaction: RedactionMark) {
@@ -492,11 +531,15 @@ export function createDocumentState() {
     removeSourceFile,
     removeSourceOnly,
     addPages,
+    insertPagesBatch,
     insertPages,
     deletePages,
     reorderPages,
+    rotatePages,
     rotatePage,
+    setPageTargetDimensionsBatch,
     setPageTargetDimensions,
+    setSourcePageMetrics,
     addRedaction,
     addRedactions,
     updateRedaction,

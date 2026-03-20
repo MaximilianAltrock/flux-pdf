@@ -17,6 +17,7 @@ import type { PageReference } from '@/shared/types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
 import { useProjectSession } from '@/domains/project-session/session'
 import { usePreflightContext } from '@/domains/editor/application/usePreflight'
+import type { PageProblemMeta } from '@/domains/editor/ui/usePageProblemMeta'
 
 const emit = defineEmits<{
   filesDropped: [files: FileList]
@@ -44,7 +45,20 @@ const selectedCount = computed(() => document.selectedCount)
 const isTargeting = computed(() => policy.value.tool === 'target')
 const isRazor = computed(() => policy.value.tool === 'razor')
 
-const { getPageProblemMeta } = usePageProblemMeta(preflight.problemsByPageId)
+const { pageProblemsById } = usePageProblemMeta(preflight.problemsByPageId)
+const EMPTY_PAGE_PROBLEM_META: PageProblemMeta = {
+  severity: undefined,
+  messages: [],
+}
+const gridItemsWithProblemMeta = computed(() =>
+  gridItems.value.map((item) => ({
+    ...item,
+    problemMeta:
+      item.kind === 'page'
+        ? (pageProblemsById.value.get(item.id) ?? EMPTY_PAGE_PROBLEM_META)
+        : EMPTY_PAGE_PROBLEM_META,
+  })),
+)
 const {
   isFileDragOver,
   handleFileDragEnter,
@@ -279,7 +293,7 @@ useEventListener('dragleave', (event) => {
       :style="gridStyle"
     >
       <SortableGridItem
-        v-for="item in gridItems"
+        v-for="item in gridItemsWithProblemMeta"
         :key="item.id"
         :entry="item.entry"
         :index="item.index"
@@ -299,8 +313,8 @@ useEventListener('dragleave', (event) => {
           :selected="isSelected(item.id)"
           :is-start-of-file="item.isStartOfFile"
           :interaction-policy="policy"
-          :problem-severity="getPageProblemMeta(item.id).severity"
-          :problem-messages="getPageProblemMeta(item.id).messages"
+          :problem-severity="item.problemMeta.severity"
+          :problem-messages="item.problemMeta.messages"
           @preview="handlePreview"
           @context-action="handleContextAction"
         />
@@ -352,4 +366,3 @@ useEventListener('dragleave', (event) => {
   cursor: crosshair;
 }
 </style>
-

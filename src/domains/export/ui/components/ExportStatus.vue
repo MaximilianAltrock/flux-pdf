@@ -3,14 +3,7 @@ import { CheckCircle, AlertCircle } from 'lucide-vue-next'
 import { Button } from '@/shared/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert'
 import { formatBytes } from '@/shared/utils/format'
-
-export type ExportStats = {
-  filename: string
-  sizeKB: number
-  durationMs: number
-  originalSizeKB?: number
-  compressionRatio?: number
-}
+import type { ExportStats } from '@/domains/export/ui/export-flow.types'
 
 defineProps<{
   isExporting: boolean

@@ -19,7 +19,7 @@ import { Timeline, TimelineItem, TimelineTime, TimelineTitle } from '@/shared/co
 import { useToast } from '@/shared/composables/useToast'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
 import { useProjectSession } from '@/domains/project-session/session'
-import { useWorkflowLibrary } from '@/domains/workflows/application'
+import { createWorkflowService } from '@/domains/workflows/application'
 import { formatTime } from '@/shared/utils/format'
 import {
   buildWorkflowCandidateSteps,
@@ -29,7 +29,7 @@ import {
 
 const { historyList, jumpTo } = useDocumentActionsContext()
 const { history: historyStore } = useProjectSession()
-const workflowLibrary = useWorkflowLibrary()
+const workflowService = createWorkflowService()
 const toast = useToast()
 const history = toRef(historyStore, 'history')
 const historyPointer = toRef(historyStore, 'historyPointer')
@@ -153,7 +153,7 @@ async function handleSaveWorkflow(): Promise<void> {
   try {
     const steps = materializeWorkflowSteps(selectedCandidates.value)
 
-    await workflowLibrary.createWorkflow({
+    await workflowService.createWorkflow({
       name: workflowName.value.trim(),
       description: workflowDescription.value.trim(),
       icon: 'workflow',

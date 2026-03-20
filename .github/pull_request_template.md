@@ -2,22 +2,19 @@
 
 Describe the behavior change and affected domain(s).
 
+## Review References
+
+- `README.md`
+- `docs/adr/0001-domain-layered-architecture.md`
+- `docs/refactor/codebase-cleanup-plan.md` when the change continues an active cleanup phase
+
 ## Checklist
 
-- [ ] Changes follow domain boundaries (`ui -> application -> domain -> infrastructure`)
-- [ ] Public APIs and payloads are fully typed (no implicit `any`)
-- [ ] No hidden side effects inside `computed()`
-- [ ] Component data flow follows props-down/events-up
-- [ ] Legacy folders (`src/stores`, `src/services`, `src/commands`) are not used
 - [ ] Added or updated tests for changed behavior
-- [ ] Ran `npm run type-check`
-- [ ] Ran `npm run lint`
-- [ ] Ran `npm run test:unit:run`
-- [ ] Ran `npm run test:e2e` for UI/interaction changes
-- [ ] Ran `npm run validate:shadcn` for UI primitive/config changes
-- [ ] Ran `npm run validate:a11y-overlays` for dialog/sheet/drawer changes
-- [ ] Ran `npm run validate:architecture` for legacy-path/SFC/JSX guardrails
+- [ ] Followed the documented architecture/process guidance instead of adding a new local rule
+- [ ] Ran the required validation commands for this change
+- [ ] Updated docs only where the source-of-truth docs or executable workflow changed
 
 ## Validation Notes
 
-Paste command outputs or short notes for type-check/lint/tests.
+List the commands you ran and any scoped deviations.

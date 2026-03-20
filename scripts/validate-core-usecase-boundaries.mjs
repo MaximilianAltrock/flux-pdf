@@ -127,17 +127,17 @@ async function main() {
   }
 
   if (violations.length > 0) {
-    console.error('Core use-case boundary validation failed:')
+    console.error('Architecture validation failed:')
     for (const violation of violations) {
       console.error(`- ${violation}`)
     }
     process.exit(1)
   }
 
-  console.log('Core use-case boundary validation passed (editor workflows route through use-cases).')
+  console.log('Architecture validation passed (editor workflows route through use-cases).')
 }
 
 main().catch((error) => {
-  console.error('Failed to validate core use-case boundaries:', error)
+  console.error('Failed to validate architecture workflow boundaries:', error)
   process.exit(1)
 })

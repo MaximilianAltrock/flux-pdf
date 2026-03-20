@@ -1,4 +1,5 @@
 export * from './project-thumbnail.service'
 export * from './router-guards'
+export * from './useLiveProjectList'
+export * from './useProjectCatalog'
 export * from './useProjectThumbnailUrls'
-export * from './useWorkspaceCatalog'

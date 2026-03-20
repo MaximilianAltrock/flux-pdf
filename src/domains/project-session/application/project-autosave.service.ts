@@ -3,11 +3,15 @@ import { useDebounceFn } from '@vueuse/core'
 import { TIMEOUTS_MS } from '@/shared/constants'
 import type { GcStateSnapshot } from '@/domains/project-session/domain/project-storage-gc'
 
-export interface ProjectAutosaveServiceOptions {
+export interface ProjectAutosaveSnapshot {
+  gcState: GcStateSnapshot
+}
+
+export interface ProjectAutosaveServiceOptions<TSnapshot extends ProjectAutosaveSnapshot> {
   canPersist: () => boolean
-  persistProject: () => Promise<void>
-  collectGarbage: (state: GcStateSnapshot) => Promise<void>
-  getLiveGcState: () => GcStateSnapshot
+  buildSnapshot: () => TSnapshot
+  persistProject: (snapshot: TSnapshot) => Promise<void>
+  collectGarbage: (snapshot: TSnapshot) => Promise<void>
   saveWatchSource: () => readonly unknown[]
   gcWatchSource: () => readonly unknown[]
   debounceMs?: number
@@ -18,8 +22,8 @@ export interface ProjectAutosaveService {
   stop(): void
 }
 
-export function createProjectAutosaveService(
-  options: ProjectAutosaveServiceOptions,
+export function createProjectAutosaveService<TSnapshot extends ProjectAutosaveSnapshot>(
+  options: ProjectAutosaveServiceOptions<TSnapshot>,
 ): ProjectAutosaveService {
   const scope = effectScope(true)
   const debounceMs = options.debounceMs ?? TIMEOUTS_MS.SESSION_SAVE_DEBOUNCE
@@ -30,21 +34,34 @@ export function createProjectAutosaveService(
     started = true
 
     scope.run(() => {
-      const saveProject = useDebounceFn(async () => {
-        if (!options.canPersist()) return
-        await options.persistProject()
-      }, debounceMs)
+      let needsPersist = false
+      let needsGc = false
 
-      const scheduleGc = useDebounceFn(async () => {
-        await options.collectGarbage(options.getLiveGcState())
+      const flushSnapshot = useDebounceFn(async () => {
+        if (!needsPersist && !needsGc) return
+
+        const shouldPersist = needsPersist
+        const shouldGc = needsGc
+        needsPersist = false
+        needsGc = false
+
+        const snapshot = options.buildSnapshot()
+        if (shouldPersist && options.canPersist()) {
+          await options.persistProject(snapshot)
+        }
+        if (shouldGc) {
+          await options.collectGarbage(snapshot)
+        }
       }, debounceMs)
 
       watch(options.saveWatchSource, () => {
-        void saveProject()
+        needsPersist = true
+        void flushSnapshot()
       })
 
       watch(options.gcWatchSource, () => {
-        void scheduleGc()
+        needsGc = true
+        void flushSnapshot()
       })
     })
   }

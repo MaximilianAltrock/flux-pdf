@@ -16,7 +16,7 @@ const props = defineProps<{
   selected?: boolean
 }>()
 
-const { renderThumbnail, cancelRender } = useThumbnailRenderer()
+const { renderThumbnail, releaseThumbnail } = useThumbnailRenderer()
 
 const containerRef = useTemplateRef<HTMLElement>('containerRef')
 const thumbnailUrl = shallowRef<string | null>(null)
@@ -54,7 +54,6 @@ async function loadThumbnail() {
   const requestId = ++renderRequestId.value
   const currentRef = pageRef.value
   lastPageRefId.value = currentRef.id
-  cancelRender(currentRef.id)
   isLoading.value = true
   hasError.value = false
 
@@ -74,17 +73,22 @@ async function loadThumbnail() {
   }
 }
 
+function releaseCurrentThumbnail() {
+  if (!thumbnailUrl.value) return
+  releaseThumbnail(pageRef.value, renderTargetWidth.value)
+  thumbnailUrl.value = null
+}
+
 watch([() => props.sourceId, () => props.pageIndex], () => {
   if (hasBeenVisible.value) {
-    if (lastPageRefId.value) cancelRender(lastPageRefId.value)
-    thumbnailUrl.value = null
+    releaseCurrentThumbnail()
     loadThumbnail()
   }
 })
 
 onUnmounted(() => {
   stopObserver()
-  cancelRender(pageRefId.value)
+  releaseCurrentThumbnail()
 })
 </script>
 

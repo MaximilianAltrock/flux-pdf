@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import { liveQuery } from 'dexie'
+import { computed } from 'vue'
 import { RotateCcw, Trash2 } from 'lucide-vue-next'
-import { useProjectThumbnailUrls } from '@/domains/workspace/application'
-import { useWorkspaceCatalogStore } from '@/domains/workspace/store'
+import {
+  useLiveProjectList,
+  useProjectCatalog,
+  useProjectThumbnailUrls,
+} from '@/domains/workspace/application'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useToast } from '@/shared/composables/useToast'
 import { SidebarTrigger } from '@/shared/components/ui/sidebar'
@@ -20,40 +22,22 @@ import {
 } from '@/shared/components/ui/empty'
 import type { ProjectMeta } from '@/shared/infrastructure/db'
 
-const projectsStore = useWorkspaceCatalogStore()
+const projectCatalog = useProjectCatalog()
 const { confirm } = useConfirm()
 const toast = useToast()
 
-const trashedProjects = ref<ProjectMeta[]>([])
-const isLoading = shallowRef(true)
-let trashFeed: { unsubscribe(): void } | null = null
+const { items: trashedProjects, isLoading } = useLiveProjectList(
+  () => projectCatalog.listTrashedProjects(),
+  {
+    onError: (error) => {
+      console.error('Failed to subscribe to trashed projects:', error)
+    },
+  },
+)
 
 const projectCount = computed(() => trashedProjects.value.length)
 const isEmpty = computed(() => !isLoading.value && projectCount.value === 0)
 const { thumbnailFor } = useProjectThumbnailUrls(trashedProjects)
-
-async function refreshTrashedProjects(): Promise<void> {
-  if (trashedProjects.value.length === 0) isLoading.value = true
-  try {
-    trashedProjects.value = await projectsStore.listTrashedProjects()
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function startTrashFeed() {
-  trashFeed?.unsubscribe()
-  trashFeed = liveQuery(() => projectsStore.listTrashedProjects()).subscribe({
-    next: (nextProjects) => {
-      trashedProjects.value = nextProjects
-      isLoading.value = false
-    },
-    error: (error) => {
-      console.error('Failed to subscribe to trashed projects:', error)
-      void refreshTrashedProjects()
-    },
-  })
-}
 
 function formatDate(timestamp: number | null | undefined): string {
   if (!timestamp) return 'Unknown'
@@ -67,9 +51,8 @@ function formatDate(timestamp: number | null | undefined): string {
 }
 
 async function handleRestore(project: ProjectMeta): Promise<void> {
-  await projectsStore.restoreProject(project.id)
+  await projectCatalog.restoreProject(project.id)
   toast.success('Project restored')
-  await refreshTrashedProjects()
 }
 
 async function handleDeleteForever(project: ProjectMeta): Promise<void> {
@@ -82,9 +65,8 @@ async function handleDeleteForever(project: ProjectMeta): Promise<void> {
 
   if (!confirmed) return
 
-  await projectsStore.permanentlyDeleteProject(project.id)
+  await projectCatalog.permanentlyDeleteProject(project.id)
   toast.success('Project permanently deleted')
-  await refreshTrashedProjects()
 }
 
 async function handleEmptyTrash(): Promise<void> {
@@ -99,22 +81,11 @@ async function handleEmptyTrash(): Promise<void> {
 
   if (!confirmed) return
 
-  const deletedCount = await projectsStore.emptyTrash()
+  const deletedCount = await projectCatalog.emptyTrash()
   if (deletedCount > 0) {
     toast.success(`Deleted ${deletedCount} project${deletedCount > 1 ? 's' : ''}`)
   }
-  await refreshTrashedProjects()
 }
-
-onMounted(() => {
-  startTrashFeed()
-  void refreshTrashedProjects()
-})
-
-onBeforeUnmount(() => {
-  trashFeed?.unsubscribe()
-  trashFeed = null
-})
 </script>
 
 <template>

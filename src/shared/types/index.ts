@@ -21,4 +21,4 @@ export type {
   FileUploadResult,
 } from './document'
 
-export { isDividerEntry, isPageEntry } from './document'
+export { hasPageAnalysisMetrics, isDividerEntry, isPageEntry } from './document'

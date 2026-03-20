@@ -42,10 +42,18 @@ export interface HistoryDocumentStoreAdapter {
   addSourceFile(sourceFile: SourceFile): void
   removeSourceOnly(sourceFileId: string): void
   addPages(newPages: PageReference[]): void
+  insertPagesBatch(insertions: ReadonlyArray<{ index: number; pages: PageEntry[] }>): void
   insertPages(index: number, newPages: PageEntry[]): void
   deletePages(ids: string[]): void
   reorderPages(newOrder: PageEntry[]): void
+  rotatePages(pageIds: readonly string[], degrees: RotationDelta): void
   rotatePage(pageId: string, degrees: RotationDelta): void
+  setPageTargetDimensionsBatch(
+    targets: ReadonlyArray<{
+      pageId: string
+      targetDimensions?: { width: number; height: number } | null
+    }>,
+  ): void
   setPageTargetDimensions(
     pageId: string,
     targetDimensions?: { width: number; height: number } | null,
@@ -214,10 +222,14 @@ function applyDeletePages(
     return
   }
 
-  const snapshots = [...command.backupSnapshots].sort((a, b) => a.index - b.index)
-  for (const snapshot of snapshots) {
-    store.insertPages(snapshot.index, [clonePageReference(snapshot.page)])
-  }
+  store.insertPagesBatch(
+    [...command.backupSnapshots]
+      .sort((a, b) => a.index - b.index)
+      .map((snapshot) => ({
+        index: snapshot.index,
+        pages: [clonePageReference(snapshot.page)],
+      })),
+  )
 }
 
 function captureSnapshots(pages: ReadonlyArray<PageEntry>, pageIds: ReadonlyArray<string>): PageSnapshot[] {
@@ -246,43 +258,36 @@ function applyDuplicatePages(
     return
   }
 
-  const pagesToDuplicate: { page: PageReference; index: number }[] = []
-
-  for (const sourceId of command.sourcePageIds) {
-    const index = store.pages.findIndex((page) => page.id === sourceId)
-    if (index < 0) continue
-
+  const snapshotsById = new Map<string, { page: PageReference; index: number }>()
+  for (let index = 0; index < store.pages.length; index += 1) {
     const page = store.pages[index]
     if (!page || !isPageEntry(page)) continue
-
-    pagesToDuplicate.push({
-      page,
-      index,
-    })
+    snapshotsById.set(page.id, { page, index })
   }
 
-  pagesToDuplicate.sort((a, b) => b.index - a.index)
+  const orderedSnapshots = command.sourcePageIds
+    .map((sourceId) => snapshotsById.get(sourceId))
+    .filter((value): value is NonNullable<typeof value> => Boolean(value))
+  if (orderedSnapshots.length === 0) return
 
   const isRedo = command.createdPageIds.length > 0
-  const createdIds: string[] = []
-  let reuseIndex = 0
+  const createdIds = isRedo
+    ? orderedSnapshots.map((_, index) => command.createdPageIds[index] ?? crypto.randomUUID())
+    : orderedSnapshots.map(() => crypto.randomUUID())
 
-  for (const { page, index } of pagesToDuplicate) {
-    const reuseId = command.createdPageIds[command.createdPageIds.length - 1 - reuseIndex]
-    const newId = isRedo && reuseId ? reuseId : crypto.randomUUID()
-
-    const duplicate = clonePageReference(page)
-    duplicate.id = newId
-    store.insertPages(index + 1, [duplicate])
-
-    if (!isRedo) {
-      createdIds.push(newId)
-    }
-    reuseIndex += 1
-  }
+  store.insertPagesBatch(
+    orderedSnapshots.map((snapshot, index) => {
+      const duplicate = clonePageReference(snapshot.page)
+      duplicate.id = createdIds[index]!
+      return {
+        index: snapshot.index + 1,
+        pages: [duplicate],
+      }
+    }),
+  )
 
   if (!isRedo) {
-    command.createdPageIds = createdIds.reverse()
+    command.createdPageIds = createdIds
   }
 }
 
@@ -301,9 +306,7 @@ function applyRotatePages(
   store: HistoryDocumentStoreAdapter,
 ): void {
   const degrees = direction === 'execute' ? command.degrees : reverseRotation(command.degrees)
-  for (const pageId of command.pageIds) {
-    store.rotatePage(pageId, degrees)
-  }
+  store.rotatePages(command.pageIds, degrees)
 }
 
 function reverseRotation(value: RotationDelta): RotationDelta {
@@ -319,26 +322,28 @@ function applyResizePages(
 ): void {
   if (direction === 'execute') {
     if (command.previousTargets.length === 0) {
-      command.previousTargets = command.targets.map((target) => {
-        const page = store.pages.find(
-          (entry): entry is PageReference => isPageEntry(entry) && entry.id === target.pageId,
+      const currentTargetByPageId = new Map<string, { width: number; height: number } | null>()
+      const targetPageIds = new Set(command.targets.map((target) => target.pageId))
+      for (const entry of store.pages) {
+        if (!isPageEntry(entry) || !targetPageIds.has(entry.id)) continue
+        currentTargetByPageId.set(
+          entry.id,
+          entry.targetDimensions ? { ...entry.targetDimensions } : null,
         )
+      }
+      command.previousTargets = command.targets.map((target) => {
         return {
           pageId: target.pageId,
-          targetDimensions: page?.targetDimensions ? { ...page.targetDimensions } : null,
+          targetDimensions: currentTargetByPageId.get(target.pageId) ?? null,
         }
       })
     }
 
-    for (const target of command.targets) {
-      store.setPageTargetDimensions(target.pageId, target.targetDimensions ?? null)
-    }
+    store.setPageTargetDimensionsBatch(command.targets)
     return
   }
 
-  for (const target of command.previousTargets) {
-    store.setPageTargetDimensions(target.pageId, target.targetDimensions ?? null)
-  }
+  store.setPageTargetDimensionsBatch(command.previousTargets)
 }
 
 function applySplitGroup(
@@ -370,10 +375,14 @@ function applyRemoveSource(
     store.addSourceFile(cloneSourceFile(command.sourceFile))
   }
 
-  const snapshots = [...command.pageSnapshots].sort((a, b) => a.index - b.index)
-  for (const snapshot of snapshots) {
-    store.insertPages(snapshot.index, [clonePageReference(snapshot.page)])
-  }
+  store.insertPagesBatch(
+    [...command.pageSnapshots]
+      .sort((a, b) => a.index - b.index)
+      .map((snapshot) => ({
+        index: snapshot.index,
+        pages: [clonePageReference(snapshot.page)],
+      })),
+  )
 }
 
 function applyAddRedaction(

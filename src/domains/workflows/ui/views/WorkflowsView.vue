@@ -3,7 +3,7 @@ import { computed, onMounted, ref, shallowRef, type Component } from 'vue'
 import { FileCheck2, RefreshCw, Workflow as WorkflowIcon } from 'lucide-vue-next'
 import { useConfirm } from '@/shared/composables/useConfirm'
 import { useToast } from '@/shared/composables/useToast'
-import { useWorkflowRunner } from '@/domains/workflows/application'
+import { createWorkflowService, useWorkflowRunner } from '@/domains/workflows/application'
 import { SidebarTrigger } from '@/shared/components/ui/sidebar'
 import { Button } from '@/shared/components/ui/button'
 import { Card } from '@/shared/components/ui/card'
@@ -16,12 +16,11 @@ import {
   EmptyTitle,
 } from '@/shared/components/ui/empty'
 import { Skeleton } from '@/shared/components/ui/skeleton'
-import { useWorkflowsStore } from '@/domains/workflows/store'
 import type { Workflow } from '@/shared/types/workflow'
 import { formatRelativeTime } from '@/shared/utils/relative-time'
 import WorkflowCard from '@/domains/workflows/ui/components/WorkflowCard.vue'
 
-const workflowsStore = useWorkflowsStore()
+const workflowService = createWorkflowService()
 const { confirm } = useConfirm()
 const toast = useToast()
 const { runWorkflow, downloadWorkflowRun } = useWorkflowRunner()
@@ -60,7 +59,7 @@ function formatStepCount(count: number): string {
 async function refreshWorkflows(): Promise<void> {
   if (workflows.value.length === 0) isLoading.value = true
   try {
-    workflows.value = await workflowsStore.listWorkflows()
+    workflows.value = await workflowService.listWorkflows()
   } finally {
     isLoading.value = false
   }
@@ -77,7 +76,7 @@ async function handleDeleteWorkflow(workflow: Workflow): Promise<void> {
   })
 
   if (!confirmed) return
-  await workflowsStore.deleteWorkflow(workflow.id)
+  await workflowService.deleteWorkflow(workflow.id)
   toast.success('Workflow deleted')
   await refreshWorkflows()
 }
@@ -85,7 +84,7 @@ async function handleDeleteWorkflow(workflow: Workflow): Promise<void> {
 async function handleDuplicateWorkflow(workflow: Workflow): Promise<void> {
   if (runningWorkflowId.value) return
 
-  const copy = await workflowsStore.duplicateWorkflow(workflow.id)
+  const copy = await workflowService.duplicateWorkflow(workflow.id)
   if (!copy) return
   toast.success('Workflow duplicated')
   await refreshWorkflows()

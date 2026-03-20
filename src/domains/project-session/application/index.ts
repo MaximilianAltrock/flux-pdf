@@ -1,4 +1,3 @@
-export * from './create-project-session-services'
 export * from './project-authoring.service'
 export * from './project-autosave.service'
 export * from './project-hydration.service'

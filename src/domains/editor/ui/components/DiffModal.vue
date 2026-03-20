@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch } from 'vue'
+import { ref, shallowRef, watch, onUnmounted } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { X, ZoomIn, ZoomOut, Eye, Layers, Zap, Columns } from 'lucide-vue-next'
 import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
@@ -27,7 +27,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const { renderThumbnail } = useThumbnailRenderer()
+const { renderThumbnail, releaseThumbnail } = useThumbnailRenderer()
 
 // State
 const urlA = shallowRef<string | null>(null)
@@ -61,6 +61,7 @@ watch(
     let canceled = false
     onInvalidate(() => {
       canceled = true
+      releaseDiffThumbnailUrls()
     })
 
     if (isOpen && props.pages) {
@@ -93,10 +94,26 @@ watch(
     }
 
     if (!isOpen) {
+      releaseDiffThumbnailUrls()
       stopBlink()
     }
   },
 )
+
+function releaseDiffThumbnailUrls() {
+  if (props.pages?.[0] && urlA.value) {
+    releaseThumbnail(props.pages[0], 800, 3)
+  }
+  if (props.pages?.[1] && urlB.value) {
+    releaseThumbnail(props.pages[1], 800, 3)
+  }
+  urlA.value = null
+  urlB.value = null
+}
+
+onUnmounted(() => {
+  releaseDiffThumbnailUrls()
+})
 
 // --- Actions ---
 

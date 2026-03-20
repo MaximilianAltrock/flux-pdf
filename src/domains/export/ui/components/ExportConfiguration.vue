@@ -15,21 +15,10 @@ import { Button } from '@/shared/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
 import { formatBytes } from '@/shared/utils/format'
 import type { PageReference } from '@/shared/types'
-import type { CompressionQuality } from '@/domains/export/application/usePdfCompression'
+import type { ExportSettings } from '@/domains/export/ui/export-flow.types'
 import { useDocumentActionsContext } from '@/domains/editor/application/useDocumentActions'
 import { useProjectSession } from '@/domains/project-session/session'
 import { useVModel } from '@vueuse/core'
-
-export interface ExportSettings {
-  filename: string
-  pageRangeMode: 'all' | 'selected' | 'custom'
-  customPageRange: string
-  compress: boolean
-  compressionQuality: CompressionQuality | 'none'
-  outlineInclude: boolean
-  outlineFlatten: boolean
-  outlineExpandAll: boolean
-}
 
 const props = defineProps<{
   settings: ExportSettings
@@ -64,18 +53,44 @@ watch(
   { deep: true, immediate: true },
 )
 
+const customRangeResolution = computed(() => {
+  const customRange = localSettings.value.customPageRange.trim()
+  if (localSettings.value.pageRangeMode !== 'custom' || !customRange) {
+    return {
+      valid: false,
+      error: customRange ? 'Invalid range' : null,
+      pages: [] as PageReference[],
+      pageCount: 0,
+    }
+  }
+
+  const validation = validatePageRange(customRange, document.contentPageCount)
+  if (!validation.valid) {
+    return {
+      valid: false,
+      error: validation.error ?? 'Invalid range',
+      pages: [] as PageReference[],
+      pageCount: 0,
+    }
+  }
+
+  const indices = parsePageRange(customRange, document.contentPageCount)
+  return {
+    valid: true,
+    error: null,
+    pages: indices.map((index) => document.contentPages[index]).filter((page): page is PageReference => !!page),
+    pageCount: indices.length,
+  }
+})
+
 // Computed
 const pageCount = computed(() => {
   if (localSettings.value.pageRangeMode === 'selected') {
     return document.selectedCount
   }
-  if (localSettings.value.pageRangeMode === 'custom' && localSettings.value.customPageRange) {
-    const validation = validatePageRange(
-      localSettings.value.customPageRange,
-      document.contentPageCount,
-    )
-    if (validation.valid) {
-      return parsePageRange(localSettings.value.customPageRange, document.contentPageCount).length
+  if (localSettings.value.pageRangeMode === 'custom' && localSettings.value.customPageRange.trim()) {
+    if (customRangeResolution.value.valid) {
+      return customRangeResolution.value.pageCount
     }
   }
   return document.contentPageCount
@@ -88,14 +103,9 @@ const pagesToExport = computed(() => {
   if (localSettings.value.pageRangeMode === 'selected') {
     return document.selectedPages
   }
-  if (localSettings.value.pageRangeMode === 'custom' && localSettings.value.customPageRange) {
-    const validation = validatePageRange(
-      localSettings.value.customPageRange,
-      document.contentPageCount,
-    )
-    if (validation.valid) {
-      const indices = parsePageRange(localSettings.value.customPageRange, document.contentPageCount)
-      return indices.map((i) => document.contentPages[i]).filter((p): p is PageReference => !!p)
+  if (localSettings.value.pageRangeMode === 'custom' && localSettings.value.customPageRange.trim()) {
+    if (customRangeResolution.value.valid) {
+      return customRangeResolution.value.pages
     }
   }
   return []
@@ -123,12 +133,8 @@ function validateForm() {
   if (!localSettings.value.filename.trim()) isValid = false
 
   if (localSettings.value.pageRangeMode === 'custom') {
-    const validation = validatePageRange(
-      localSettings.value.customPageRange,
-      document.contentPageCount,
-    )
-    pageRangeError.value = validation.valid ? null : (validation.error ?? 'Invalid range')
-    if (!validation.valid) isValid = false
+    pageRangeError.value = customRangeResolution.value.error
+    if (!customRangeResolution.value.valid) isValid = false
   } else {
     pageRangeError.value = null
   }
@@ -139,7 +145,6 @@ function validateForm() {
 
   emit('update:valid', isValid)
 }
-
 </script>
 
 <template>

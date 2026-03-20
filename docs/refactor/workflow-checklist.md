@@ -1,43 +1,20 @@
 # Flux PDF Refactor Workflow Checklist
 
-Use this checklist when implementing or reviewing features in the refactored architecture.
+Use this file as a short PR-prep checklist. The detailed rules live in:
 
-## 1. Placement
+- [`docs/adr/0001-domain-layered-architecture.md`](../adr/0001-domain-layered-architecture.md)
+- [`docs/refactor/codebase-cleanup-plan.md`](./codebase-cleanup-plan.md)
+- [`README.md`](../../README.md)
 
-- [x] New code is under `src/domains/*` unless it is shared infrastructure/UI primitive.
-- [x] Domain ownership is explicit (`workspace`, `document`, `editor`, `history`, `export`).
-- [x] Domain layer folders align with `docs/refactor/domain-layer-matrix.json`.
+## Checklist
 
-## 2. Layering
-
-- [x] `ui` depends on `application`/`domain`, not infrastructure adapters.
-- [x] `application` orchestrates use-cases and history execution.
-- [x] `application` may use Vue reactivity/composables for orchestration when needed.
-- [x] `domain` stays framework-free and deterministic.
-- [x] Infrastructure integrations are isolated in `infrastructure`.
-
-## 3. Vue and State
-
-- [x] Composition API + TypeScript (`<script setup lang="ts">`) used by default.
-- [x] Pinia store usage is reactivity-safe (`storeToRefs()` where needed).
-- [x] Computed values are pure; side effects stay in actions/watchers.
-
-## 4. Commands and History
-
-- [x] Mutations that should be undoable use command execution paths.
-- [x] Command payloads are serializable and deserializable.
-- [x] History command execution/undo is wired through `history/application` executors with injected deps, not domain/store imports.
-- [x] Batch/group commands are used for multi-step interactions.
-- [x] Core document workflows call use-cases first (`importPdf`, `exportPdf`, `reorderPages`, `updateMetadata`) instead of direct store/command wiring.
-- [x] Direct command execution is allowed only with a documented temporary exception approved in architecture docs (currently none).
-
-## 5. Validation
-
-- [x] `npm run type-check`
-- [x] `npm run lint`
-- [x] `npm run test:unit:run`
-- [x] `npm run test:e2e` for UI/interaction changes
-- [x] `npm run validate:shadcn` for UI primitive/config changes
-- [x] `npm run validate:a11y-overlays` for dialog/sheet/drawer changes
-- [x] `npm run validate:architecture` for domain-layer parity, core use-case boundaries, and legacy-path/SFC/JSX guardrails
-- [x] Behavior tests added/updated for changed functionality
+- [ ] The owning domain and layer follow the ADR instead of introducing a new local structure rule.
+- [ ] Behavior tests were added or updated for the changed functionality.
+- [ ] `npm run type-check`
+- [ ] `npm run lint`
+- [ ] `npm run test:unit:run`
+- [ ] `npm run validate:architecture` for editor workflow/application boundary changes
+- [ ] `npm run test:e2e` for UI/interaction changes
+- [ ] `npm run validate:shadcn` for shared UI primitive/config changes
+- [ ] `npm run validate:a11y-overlays` for dialog/sheet/drawer changes
+- [ ] Validation commands actually run are recorded in the PR template

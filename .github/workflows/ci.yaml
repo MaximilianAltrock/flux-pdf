@@ -28,7 +28,7 @@ jobs:
       - name: Validate overlay accessibility contracts
         run: npm run validate:a11y-overlays
 
-      - name: Validate architecture conventions
+      - name: Validate architecture workflow boundaries
         run: npm run validate:architecture
 
       - name: Type check

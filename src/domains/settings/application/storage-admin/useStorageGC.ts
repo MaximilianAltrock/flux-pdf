@@ -4,7 +4,7 @@ import { collectReachableSourceIdsFromState } from '@/domains/project-session/do
 import { clearPdfCache } from '@/domains/import/infrastructure/import'
 import { useThumbnailRenderer } from '@/domains/document/application/composables/useThumbnailRenderer'
 import { useSettingsPreferencesState } from '@/domains/settings/application'
-import { useWorkspaceCatalog } from '@/domains/workspace/application'
+import { useProjectCatalog } from '@/domains/workspace/application'
 import { createProjectPersistenceService } from '@/domains/project-session/application/project-persistence.service'
 import { createProjectSourceGcService } from '@/domains/project-session/application/project-source-gc.service'
 import { STORAGE_KEYS } from '@/shared/constants'
@@ -86,7 +86,7 @@ function collectSourceUsageById(options: {
 }
 
 export function useStorageGC() {
-  const catalogStore = useWorkspaceCatalog()
+  const catalogStore = useProjectCatalog()
   const { resetPreferences } = useSettingsPreferencesState()
   const { clearCache: clearThumbnailCache } = useThumbnailRenderer()
   const projectPersistence = createProjectPersistenceService()

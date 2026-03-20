@@ -32,9 +32,8 @@ function createPageReference(partial: Partial<PageReference>): PageReference {
 
 describe('project-thumbnail.service', () => {
   it('reuses existing thumbnail when cached key matches', async () => {
-    const renderThumbnail = vi.fn(async () => 'blob://thumbnail')
-    const fetchBlob = vi.fn(async () => new Blob(['new']))
-    const service = createProjectThumbnailService({ renderThumbnail, fetchBlob })
+    const renderThumbnailBlob = vi.fn(async () => new Blob(['new']))
+    const service = createProjectThumbnailService({ renderThumbnailBlob })
     const page = createPageReference({ sourceFileId: 'source-a', sourcePageIndex: 2, rotation: 90 })
     const cachedBlob = new Blob(['cached'])
 
@@ -46,39 +45,35 @@ describe('project-thumbnail.service', () => {
     )
 
     expect(thumbnail).toBe(cachedBlob)
-    expect(renderThumbnail).not.toHaveBeenCalled()
-    expect(fetchBlob).not.toHaveBeenCalled()
+    expect(renderThumbnailBlob).not.toHaveBeenCalled()
   })
 
   it('deduplicates in-flight thumbnail work by thumbnail key', async () => {
-    let resolveRender: ((url: string) => void) | undefined
-    const renderThumbnail = vi.fn(
+    let resolveRender: ((blob: Blob) => void) | undefined
+    const renderThumbnailBlob = vi.fn(
       () =>
-        new Promise<string>((resolve) => {
+        new Promise<Blob>((resolve) => {
           resolveRender = resolve
         }),
     )
     const renderedBlob = new Blob(['thumbnail'])
-    const fetchBlob = vi.fn(async () => renderedBlob)
-    const service = createProjectThumbnailService({ renderThumbnail, fetchBlob })
+    const service = createProjectThumbnailService({ renderThumbnailBlob })
     const page = createPageReference({ sourceFileId: 'source-b', sourcePageIndex: 0, rotation: 0 })
     const meta = createProjectMeta({ id: 'project-2' })
 
     const first = service.ensureThumbnail(meta, page)
     const second = service.ensureThumbnail(meta, page)
-    resolveRender?.('blob://thumbnail')
+    resolveRender?.(renderedBlob)
     const [firstBlob, secondBlob] = await Promise.all([first, second])
 
-    expect(renderThumbnail).toHaveBeenCalledTimes(1)
-    expect(fetchBlob).toHaveBeenCalledTimes(1)
+    expect(renderThumbnailBlob).toHaveBeenCalledTimes(1)
     expect(firstBlob).toBe(renderedBlob)
     expect(secondBlob).toBe(renderedBlob)
   })
 
   it('handles null page keys and returns undefined thumbnail', async () => {
-    const renderThumbnail = vi.fn(async () => 'blob://thumbnail')
-    const fetchBlob = vi.fn(async () => new Blob(['thumbnail']))
-    const service = createProjectThumbnailService({ renderThumbnail, fetchBlob })
+    const renderThumbnailBlob = vi.fn(async () => new Blob(['thumbnail']))
+    const service = createProjectThumbnailService({ renderThumbnailBlob })
     const page = createPageReference({ sourceFileId: 'source-c', sourcePageIndex: 1, rotation: 180 })
 
     service.rememberThumbnailKey('project-3', page)
@@ -86,7 +81,6 @@ describe('project-thumbnail.service', () => {
 
     expect(thumbnail).toBeUndefined()
     expect(getProjectThumbnailKey(null)).toBeNull()
-    expect(renderThumbnail).not.toHaveBeenCalled()
-    expect(fetchBlob).not.toHaveBeenCalled()
+    expect(renderThumbnailBlob).not.toHaveBeenCalled()
   })
 })

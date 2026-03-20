@@ -1,9 +1,9 @@
 import { toRef, type Ref } from 'vue'
 import { createFileExportActions } from '@/domains/editor/application/actions/file-export-actions'
 import type {
-  ProjectSessionServices,
   ExportOptions,
-} from '@/domains/project-session/application/create-project-session-services'
+  ExportService,
+} from '@/domains/export/application/export-service'
 import type { DocumentState } from '@/domains/project-session/session/document-state'
 import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
@@ -29,7 +29,7 @@ export interface UseExportActionGroupDeps {
   mobile: ExportActionMobile
   blurActiveElement: () => void
   services: Pick<
-    ProjectSessionServices,
+    ExportService,
     | 'generateRawPdf'
     | 'exportDocument'
     | 'getSuggestedFilename'

@@ -51,6 +51,15 @@ export interface PageMetrics {
   dominantImageDpi?: number
 }
 
+export function hasPageAnalysisMetrics(metrics: PageMetrics | null | undefined): boolean {
+  if (!metrics) return false
+  return (
+    'textChars' in metrics ||
+    'dominantImageCoverage' in metrics ||
+    'dominantImageDpi' in metrics
+  )
+}
+
 /**
  * Redaction rectangle stored in PDF point coordinates (top-left origin).
  */

@@ -280,6 +280,7 @@ function buildMetadataRule(title: string): LintResult[] {
 
 export function createDocumentPreflightAnalysis(store: DocumentState): ComputedRef<LintResult[]> {
   return computed<LintResult[]>(() => {
+    void store.sourcesVersion
     const pages = store.contentPages as PageReference[]
     if (pages.length === 0) return []
 

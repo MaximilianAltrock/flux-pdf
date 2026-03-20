@@ -2,9 +2,9 @@ import type { Ref } from 'vue'
 import { TIMEOUTS_MS } from '@/shared/constants'
 import { exportPdf as exportPdfUseCase } from '@/domains/export/application/use-cases/export-pdf'
 import type {
-  ProjectSessionServices,
   ExportOptions,
-} from '@/domains/project-session/application/create-project-session-services'
+  ExportService,
+} from '@/domains/export/application/export-service'
 import type { DocumentState } from '@/domains/project-session/session/document-state'
 import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
@@ -31,7 +31,7 @@ export interface CreateFileExportActionsDeps {
   mobile: FileExportMobile
   blurActiveElement: () => void
   services: Pick<
-    ProjectSessionServices,
+    ExportService,
     'generateRawPdf' | 'exportDocument' | 'parsePageRange'
   >
 }

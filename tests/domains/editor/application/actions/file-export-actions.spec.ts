@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { createFileExportActions } from '@/domains/editor/application/actions/file-export-actions'
+import type { ExportService } from '@/domains/export/application/export-service'
 import type { DocumentState } from '@/domains/project-session/session/document-state'
 import type { EditorUiState } from '@/domains/project-session/session/editor-ui.state'
 import type { ExportOperationState } from '@/domains/export/session/export-operation.state'
-import type { ProjectSessionServices } from '@/domains/project-session/application/create-project-session-services'
 
 function createHarness(options?: { isMobile?: boolean }) {
   const store = {
@@ -31,15 +31,15 @@ function createHarness(options?: { isMobile?: boolean }) {
   const haptic = vi.fn()
   const shareFile = vi.fn(async () => ({ shared: false, downloaded: false }))
   const services = {
-    generateRawPdf: vi.fn<ProjectSessionServices['generateRawPdf']>(async () => ({
+    generateRawPdf: vi.fn<ExportService['generateRawPdf']>(async () => ({
       ok: true,
       value: new Uint8Array(),
     })),
-    exportDocument: vi.fn<ProjectSessionServices['exportDocument']>(async () => ({
+    exportDocument: vi.fn<ExportService['exportDocument']>(async () => ({
       ok: false,
       error: { message: 'not-used' },
     })),
-    parsePageRange: vi.fn<ProjectSessionServices['parsePageRange']>(() => []),
+    parsePageRange: vi.fn<ExportService['parsePageRange']>(() => []),
   }
 
   const actions = createFileExportActions({

@@ -13,6 +13,7 @@ import type {
   PdfOutlineNode,
   SourceFile,
 } from '@/shared/types'
+import { hasPageAnalysisMetrics } from '@/shared/types'
 import type { ImportErrorCode } from '@/shared/types/errors'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
@@ -24,6 +25,7 @@ const pdfDocCache = new Map<string, PDFDocumentProxy>()
 
 const PALETTE = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#06b6d4']
 const POINTS_PER_INCH = 72
+const sourcePageAnalysisInFlight = new Map<string, Promise<PageMetrics[]>>()
 
 function getNextColor(index: number): string {
   return PALETTE[index % PALETTE.length] ?? '#3b82f6'
@@ -249,6 +251,25 @@ async function analyzePageScanMetrics(
   return result
 }
 
+function resolvePageBaseMetrics(page: PDFPageProxy, existing?: Partial<PageMetrics>): PageMetrics {
+  const viewport = page.getViewport({ scale: 1 })
+  const pageRotation = (page as { rotate?: number }).rotate
+  const rotation =
+    typeof existing?.rotation === 'number'
+      ? existing.rotation
+      : typeof pageRotation === 'number'
+        ? pageRotation
+        : typeof viewport.rotation === 'number'
+          ? viewport.rotation
+          : 0
+
+  return {
+    width: existing?.width ?? viewport.width,
+    height: existing?.height ?? viewport.height,
+    rotation,
+  }
+}
+
 export interface LoadPdfFileOptions {
   colorIndex: number
   isImageSource?: boolean
@@ -288,20 +309,7 @@ export async function loadPdfFile(
 
     for (let i = 0; i < pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i + 1)
-      const viewport = page.getViewport({ scale: 1 })
-      const pageRotation = (page as { rotate?: number }).rotate
-      const rotation =
-        typeof pageRotation === 'number'
-          ? pageRotation
-          : typeof viewport.rotation === 'number'
-            ? viewport.rotation
-            : 0
-      const metrics: PageMetrics = {
-        width: viewport.width,
-        height: viewport.height,
-        rotation,
-      }
-      Object.assign(metrics, await analyzePageScanMetrics(page, metrics.width, metrics.height))
+      const metrics = resolvePageBaseMetrics(page)
       pageMetaData.push(metrics)
       pageRefs.push({
         id: crypto.randomUUID(),
@@ -383,6 +391,60 @@ export async function loadPdfFiles(
   return results
 }
 
+export async function ensureSourcePageAnalysisMetrics(
+  sourceFileId: string,
+): Promise<PageMetrics[]> {
+  const inFlight = sourcePageAnalysisInFlight.get(sourceFileId)
+  if (inFlight) return inFlight
+
+  const job = (async () => {
+    const record = await db.files.get(sourceFileId)
+    if (!record) {
+      throw new Error(`Source file ${sourceFileId} missing from storage`)
+    }
+
+    const pdfDoc = await getPdfDocument(sourceFileId)
+    const pageCount = pdfDoc.numPages
+    const nextPageMetaData: PageMetrics[] = Array.from({ length: pageCount }, (_, index) => {
+      const existing = record.pageMetaData?.[index]
+      return existing ? { ...existing } : { width: 0, height: 0, rotation: 0 }
+    })
+
+    const missingIndexes = nextPageMetaData.reduce<number[]>((indexes, metrics, index) => {
+      if (!hasPageAnalysisMetrics(metrics)) {
+        indexes.push(index)
+      }
+      return indexes
+    }, [])
+
+    if (missingIndexes.length === 0) {
+      return nextPageMetaData
+    }
+
+    for (const index of missingIndexes) {
+      const page = await pdfDoc.getPage(index + 1)
+      const baseMetrics = resolvePageBaseMetrics(page, nextPageMetaData[index])
+      const analysis = await analyzePageScanMetrics(page, baseMetrics.width, baseMetrics.height)
+      nextPageMetaData[index] = {
+        ...baseMetrics,
+        ...analysis,
+      }
+    }
+
+    await db.files.put({
+      ...record,
+      pageMetaData: nextPageMetaData,
+    })
+
+    return nextPageMetaData
+  })().finally(() => {
+    sourcePageAnalysisInFlight.delete(sourceFileId)
+  })
+
+  sourcePageAnalysisInFlight.set(sourceFileId, job)
+  return job
+}
+
 export async function getPdfDocument(sourceFileId: string): Promise<PDFDocumentProxy> {
   if (pdfDocCache.has(sourceFileId)) return pdfDocCache.get(sourceFileId)!
 
@@ -403,6 +465,7 @@ export async function getPdfBlob(sourceFileId: string): Promise<ArrayBuffer | un
 
 export function clearPdfCache(): void {
   pdfDocCache.clear()
+  sourcePageAnalysisInFlight.clear()
 }
 
 export function evictPdfCache(sourceFileIds: string[]): void {

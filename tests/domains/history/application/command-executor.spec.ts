@@ -95,4 +95,27 @@ describe('createHistoryCommandExecutor', () => {
     expect(command.createdPageIds).toEqual(firstIds)
     expect(store.pages.some((entry) => !entry.isDivider && entry.id === firstIds[0])).toBe(true)
   })
+
+  it('duplicates multiple pages in document order', () => {
+    const store = createDocumentState()
+    const executor = createHistoryCommandExecutor({ documentStore: store })
+    const source = createSource('source-1', 3)
+    const page1 = createPage('page-1', source.id, 0)
+    const page2 = createPage('page-2', source.id, 1)
+    const page3 = createPage('page-3', source.id, 2)
+
+    store.addSourceFile(source)
+    store.addPages([page1, page2, page3])
+
+    const command = new DuplicatePagesCommand([page1.id, page2.id])
+    executor.execute(command)
+
+    expect(store.pages.map((entry) => entry.id)).toEqual([
+      'page-1',
+      command.createdPageIds[0],
+      'page-2',
+      command.createdPageIds[1],
+      'page-3',
+    ])
+  })
 })

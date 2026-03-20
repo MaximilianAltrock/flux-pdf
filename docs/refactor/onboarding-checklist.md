@@ -1,31 +1,24 @@
-# Contributor Onboarding (Refactor Track)
+# Contributor Onboarding
+
+This file is an entry point only. The detailed architecture and cleanup rules live in:
+
+- [`docs/adr/0001-domain-layered-architecture.md`](../adr/0001-domain-layered-architecture.md)
+- [`docs/refactor/codebase-cleanup-plan.md`](./codebase-cleanup-plan.md)
+- [`README.md`](../../README.md)
 
 ## First Run
 
 - [ ] Install dependencies: `npm ci`
-- [ ] Verify baseline: `npm run type-check` and `npm run lint`
-- [ ] Read `docs/adr/0001-domain-layered-architecture.md`
-- [ ] Read `docs/refactor/domain-layer-matrix.json`
-- [ ] Read `docs/refactor/workflow-checklist.md`
-- [ ] Read `docs/refactor/visual-standard.md`
-- [ ] Read `docs/refactor/branch-protection.md`
+- [ ] Verify the baseline: `npm run type-check`, `npm run lint`, and `npm run test:unit:run`
+- [ ] Read the ADR before changing architecture-sensitive code
+- [ ] Read the cleanup plan before continuing any active cleanup phase
+- [ ] Read `docs/refactor/visual-standard.md` before substantial UI work
+- [ ] Read `docs/refactor/branch-protection.md` only if you need repository protection setup
 
-## Working Rules
+## Before Opening A PR
 
-- [ ] Add new behavior in `src/domains/*` first.
-- [ ] Keep app-level wiring in `src/app/*` (for example `src/app/composition-root.ts`, `src/app/document-service.bindings.ts`).
-- [ ] Do not reintroduce legacy paths (`src/stores/*`, `src/services/*`, `src/commands/*`).
-- [ ] Follow PR checklist in `.github/pull_request_template.md`.
-- [ ] For UI refactors, run `npm run validate:shadcn`.
-- [ ] For overlay refactors (dialogs/sheets/drawers), run `npm run validate:a11y-overlays`.
-- [ ] Run `npm run validate:architecture` before opening a PR.
-
-## Skill Setup (Codex)
-
-- [ ] Ensure required local skills are installed/updated:
-  - `vue-best-practices`
-  - `vue-development-guides`
-  - `vue-pinia-best-practices`
-  - `vue-testing-best-practices`
-  - `create-adaptable-composable`
-- [ ] Verify Codex skill install/update flow works on your machine (via skill-installer workflow).
+- [ ] Follow `.github/pull_request_template.md`
+- [ ] Run `npm run validate:architecture` for editor workflow/application boundary changes
+- [ ] Run `npm run test:e2e` for UI or interaction changes
+- [ ] Run `npm run validate:shadcn` for shared UI primitive/config changes
+- [ ] Run `npm run validate:a11y-overlays` for dialog/sheet/drawer changes

@@ -7,8 +7,9 @@ import {
 } from '@/shared/components/ui/drawer'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { Button } from '@/shared/components/ui/button'
-import ExportConfiguration, { type ExportSettings } from '@/domains/export/ui/components/ExportConfiguration.vue'
-import ExportStatus, { type ExportStats } from '@/domains/export/ui/components/ExportStatus.vue'
+import type { ExportSettings, ExportStats } from '@/domains/export/ui/export-flow.types'
+import ExportConfiguration from '@/domains/export/ui/components/ExportConfiguration.vue'
+import ExportStatus from '@/domains/export/ui/components/ExportStatus.vue'
 import MobileDrawerHeader from '@/domains/editor/ui/components/mobile/MobileDrawerHeader.vue'
 
 const props = defineProps<{

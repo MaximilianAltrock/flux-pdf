@@ -40,7 +40,7 @@ const { start: startPreviewTimer, stop: stopPreviewTimer } = useTimeoutFn(
   { immediate: false },
 )
 
-const { renderThumbnail, cancelRender } = useThumbnailRenderer()
+const { renderThumbnail, releaseThumbnail } = useThumbnailRenderer()
 
 const viewportRef = useTemplateRef<HTMLElement>('viewportRef')
 const viewportWidth = shallowRef(0)
@@ -100,9 +100,7 @@ useResizeObserver(viewportRef, (entries) => {
 })
 
 onUnmounted(() => {
-  if (lastPreviewId.value) {
-    cancelRender(lastPreviewId.value)
-  }
+  releasePreviewThumbnail()
   clearPreviewTimer()
   tileRefs.value.clear()
 })
@@ -132,8 +130,8 @@ function clearPreviewTimer() {
 function hidePreview() {
   clearPreviewTimer()
   showPreview.value = false
+  releasePreviewThumbnail()
   previewIndex.value = null
-  previewUrl.value = null
 }
 
 function schedulePreview(index: number) {
@@ -210,7 +208,7 @@ async function loadPreview(index: number) {
   const requestId = ++previewRequestId.value
   const pageRefId = `${props.sourceId}:${index}:preview`
   if (lastPreviewId.value && lastPreviewId.value !== pageRefId) {
-    cancelRender(lastPreviewId.value)
+    releasePreviewThumbnail()
   }
   lastPreviewId.value = pageRefId
 
@@ -229,6 +227,22 @@ async function loadPreview(index: number) {
   } catch {
     if (requestId !== previewRequestId.value) return
   }
+}
+
+function releasePreviewThumbnail() {
+  if (previewUrl.value && previewIndex.value !== null) {
+    releaseThumbnail(
+      {
+        id: `${props.sourceId}:${previewIndex.value}:preview`,
+        sourceFileId: props.sourceId,
+        sourcePageIndex: previewIndex.value,
+        rotation: ROTATION_DEFAULT_DEGREES,
+      },
+      previewWidth,
+    )
+  }
+  previewUrl.value = null
+  lastPreviewId.value = null
 }
 
 watch(hoveredIndex, (next) => {
